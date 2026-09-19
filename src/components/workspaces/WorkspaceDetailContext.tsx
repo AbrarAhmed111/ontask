@@ -4,14 +4,17 @@ import { createContext, useContext } from 'react'
 import type { AuthUser } from '@/hooks/useAuth'
 import type { useWorkspace } from '@/hooks/useWorkspace'
 import type { useWorkspaceInvitations } from '@/hooks/useWorkspaceInvitations'
+import type { useWorkspaceSlack } from '@/hooks/useWorkspaceSlack'
+import type { SlackChannel } from '@/lib/integrations/slack/slackClient'
 import type {
+  SlackStatusData,
   Workspace,
   WorkspaceMember,
   WorkspaceRole,
 } from '@/types/workspace'
 
 // Shared, layout-level workspace state (workspace/members/role/invitations/
-// presence) that every nested page (overview, members, settings) needs —
+// presence/slack) that every nested page (overview, members, settings) needs —
 // fetched once in the layout so switching between them doesn't re-fetch it.
 export type WorkspaceDetailContextValue = {
   workspaceId: string
@@ -41,6 +44,18 @@ export type WorkspaceDetailContextValue = {
   >['deleteInvitation']
   openInvite: () => void
   onLogout: () => void
+
+  // Workspace-scoped Slack Integration
+  slackStatus: SlackStatusData | null
+  slackLoading: boolean
+  slackError: string | null
+  slackChannels: SlackChannel[]
+  slackChannelsLoading: boolean
+  refetchSlackStatus: ReturnType<typeof useWorkspaceSlack>['refetchSlackStatus']
+  refetchSlackChannels: ReturnType<typeof useWorkspaceSlack>['refetchChannels']
+  updateSlackStatus: ReturnType<typeof useWorkspaceSlack>['updateSlackStatus']
+  saveSlackSettings: ReturnType<typeof useWorkspaceSlack>['saveSlackSettings']
+  disconnectSlack: ReturnType<typeof useWorkspaceSlack>['disconnectSlack']
 }
 
 export const WorkspaceDetailContext =

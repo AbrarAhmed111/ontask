@@ -9,6 +9,7 @@ import { useWorkspace } from '@/hooks/useWorkspace'
 import { useWorkspaceInvitations } from '@/hooks/useWorkspaceInvitations'
 import { useWorkspacePresence } from '@/hooks/useWorkspacePresence'
 import { usePersonalWelcome } from '@/hooks/usePersonalWelcome'
+import { useWorkspaceSlack } from '@/hooks/useWorkspaceSlack'
 import { InviteMemberModal } from '@/components/workspaces/InviteMemberModal'
 import { PersonalWelcomeModal } from '@/components/workspaces/PersonalWelcomeModal'
 import { GuestWorkPrompt } from '@/components/auth/GuestWorkPrompt'
@@ -151,6 +152,7 @@ export function WorkspaceLayout({
   const onlineUserIds = useWorkspacePresence(collaborationWorkspaceId, user)
   const [inviting, setInviting] = useState(false)
   const welcome = usePersonalWelcome({ user, workspace, updateWorkspace })
+  const slack = useWorkspaceSlack(workspaceId, user, isPersonal)
 
   // Skipping or finishing a tour is remembered per user and workspace so it
   // doesn't come back on its own. The tour is already gone from the screen by
@@ -225,6 +227,16 @@ export function WorkspaceLayout({
     deleteInvitation,
     openInvite: () => setInviting(true),
     onLogout,
+    slackStatus: slack.slackStatus,
+    slackLoading: slack.slackLoading,
+    slackError: slack.slackError,
+    slackChannels: slack.channels,
+    slackChannelsLoading: slack.loadingChannels,
+    refetchSlackStatus: slack.refetchSlackStatus,
+    refetchSlackChannels: slack.refetchChannels,
+    updateSlackStatus: slack.updateSlackStatus,
+    saveSlackSettings: slack.saveSlackSettings,
+    disconnectSlack: slack.disconnectSlack,
   }
 
   return (
@@ -272,7 +284,7 @@ export function WorkspaceLayout({
             <GuestWorkPrompt suppressed={!welcome.checked || welcome.open} />
           )}
           <Suspense fallback={null}>
-            <SlackToastFromUrl />
+            <SlackToastFromUrl onSlackConnected={slack.refetchSlackStatus} />
           </Suspense>
         </TourProvider>
       </WorkspaceThemeScope>

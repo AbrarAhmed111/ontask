@@ -4,7 +4,11 @@ import { useEffect } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { showErrorToast, showSuccessToast } from '@/lib/toast'
 
-export function SlackToastFromUrl() {
+export function SlackToastFromUrl({
+  onSlackConnected,
+}: {
+  onSlackConnected?: () => void
+} = {}) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -16,6 +20,7 @@ export function SlackToastFromUrl() {
 
     if (slack === 'connected') {
       showSuccessToast('Slack workspace connected successfully!')
+      onSlackConnected?.()
       const newParams = new URLSearchParams(searchParams.toString())
       newParams.delete('slack')
       const queryString = newParams.toString()
@@ -27,7 +32,7 @@ export function SlackToastFromUrl() {
       const queryString = newParams.toString()
       router.replace(queryString ? `${pathname}?${queryString}` : pathname)
     }
-  }, [searchParams, router, pathname])
+  }, [searchParams, router, pathname, onSlackConnected])
 
   return null
 }
