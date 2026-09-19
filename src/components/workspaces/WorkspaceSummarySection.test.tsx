@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
+import { buildDailyReportDigest } from '@/lib/dailyReportDigest'
+import { buildSlackEventMessage } from '@/lib/integrations/slack/slackMessageBuilder'
 import {
   BlockersSection,
   WorkspaceSummarySection,
@@ -387,5 +389,71 @@ describe('the Daily Reports switch', () => {
 
   it('is on by default for a caller that does not say', () => {
     expect(text(render(null))).toContain('Daily Report')
+  })
+})
+
+// ── the same report, in the app and in Slack ────────────────────────────────
+// Slack's Daily Report message is built from the stored row, through the same
+// helpers this card renders it with (narrativeParagraphs, getDailyReportMetrics).
+// The risk that creates is drift: two renderings of one report that slowly stop
+// agreeing. So this renders the card and builds the Slack message from ONE
+// stored report and checks that everything Slack says, the card says too.
+describe('the Daily Report in Slack and in the app', () => {
+  const stored = summary(sharedSnapshot(), SHARED_NARRATIVE)
+
+  const slackMessage = () =>
+    buildSlackEventMessage({
+      workspaceName: 'Design Team',
+      workspaceSlug: 'design-team',
+      eventType: 'daily_report_ready',
+      reportId: stored.id,
+      report: buildDailyReportDigest(stored),
+    })
+
+  // Slack mrkdwn escapes the three characters it reads as markup; undo that to
+  // compare the words themselves.
+  const unescape = (value: string) =>
+    value
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&')
+      .replace(/\s+/g, ' ')
+      .trim()
+
+  const slackBody = () => {
+    const section = slackMessage().blocks.find(
+      block => (block as { type: string }).type === 'section',
+    ) as { text: { text: string } }
+    return section.text.text
+  }
+
+  it('says nothing in Slack that the card does not show', () => {
+    const onScreen = text(render(stored, { isPersonal: false }))
+
+    for (const paragraph of slackBody().split('\n\n')) {
+      expect(onScreen).toContain(unescape(paragraph))
+    }
+  })
+
+  it('quotes the same figures the card prints', () => {
+    const onScreen = text(render(stored, { isPersonal: false }))
+    const context = slackMessage().blocks.find(
+      block => (block as { type: string }).type === 'context',
+    ) as { elements: { text: string }[] }
+
+    // 17280 + 3600 focused seconds and metrics.tasks_completed = 1, both read
+    // from the snapshot by getDailyReportMetrics -- the card's own source.
+    expect(context.elements[0].text).toContain('5h 48m focused')
+    expect(context.elements[0].text).toContain('1 task completed')
+    expect(onScreen).toContain('5h 48m focused')
+    expect(onScreen).toContain('1 task completed')
+  })
+
+  it('links to the report the card is showing', () => {
+    const actions = slackMessage().blocks.find(
+      block => (block as { type: string }).type === 'actions',
+    ) as { elements: { url: string }[] }
+
+    expect(actions.elements[0].url).toContain(`?report=${stored.id}`)
   })
 })
