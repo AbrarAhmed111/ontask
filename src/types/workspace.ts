@@ -1,3 +1,5 @@
+import type { SlackNotificationSettings } from '@/lib/integrations/slack/slackEventCategories'
+
 export type WorkspaceRole = 'owner' | 'member'
 
 // A `personal` workspace is the single, private, owner-only workspace every
@@ -425,4 +427,29 @@ export type WorkspaceDailySummary = {
   regeneratedBy: string | null
   regeneratedAt: string | null
   createdAt: string
+}
+
+// One home for the preference keys: slackEventCategories.ts, which is also
+// what the dispatcher reads them with. This file and SlackIntegrationCard.tsx
+// each used to declare their own copy of the six keys from 0045 -- three
+// lists, none of them checked against the others, which is how a preference
+// key and the dispatcher can quietly stop agreeing.
+export type { SlackNotificationSettings }
+
+export type SlackStatusData = {
+  connected: boolean
+  connection_status?:
+    | 'connected'
+    | 'disconnected'
+    | 'invalid_token'
+    | 'channel_missing'
+    | 'configuration_incomplete'
+    | string
+  id?: string
+  slack_team_id?: string
+  slack_team_name?: string
+  channel_id?: string
+  channel_name?: string
+  notification_settings?: SlackNotificationSettings
+  can_manage?: boolean
 }

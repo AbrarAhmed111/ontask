@@ -4,6 +4,7 @@ import type { ActivityEvent } from '@/hooks/useWorkspaceActivity'
 import type {
   Goal,
   NotificationWithWorkspace,
+  SlackStatusData,
   TaskNote,
   Workspace,
   WorkspaceDailySummary,
@@ -160,6 +161,18 @@ const isNote = isShape<TaskNote>({
   updatedAt: field.string,
 })
 
+const isSlackStatus = isShape<SlackStatusData>({
+  connected: field.boolean,
+  connection_status: field.optionalString,
+  id: field.optionalString,
+  slack_team_id: field.optionalString,
+  slack_team_name: field.optionalString,
+  channel_id: field.optionalString,
+  channel_name: field.optionalString,
+  notification_settings: field.object,
+  can_manage: { kind: 'boolean', optional: true },
+})
+
 function descriptor<T>(
   entity: string,
   validate: (value: unknown) => value is T,
@@ -184,4 +197,5 @@ export const SNAPSHOTS = {
   summaries: descriptor('daily-reports', isArrayOf(isSummary)),
   resources: descriptor('resources', isArrayOf(isResource)),
   notes: descriptor('task-notes', isArrayOf(isNote)),
+  slackStatus: descriptor('slack-status', isSlackStatus),
 }
