@@ -16,17 +16,42 @@ import { Button } from '@/components/ui/Button'
 import { ErrorBanner } from '@/components/ui/ErrorBanner'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { SlackChannel } from '@/lib/integrations/slack/slackClient'
+import type {
+  SlackNotificationSettings,
+  SlackPreferenceKey,
+} from '@/lib/integrations/slack/slackEventCategories'
 
-export interface SlackNotificationSettings {
-  assigned: boolean
-  completed: boolean
-  blockers: boolean
-  resolutions: boolean
-  mentions: boolean
-  daily_reports: boolean
-}
+import { useOptionalWorkspaceDetail } from '@/components/workspaces/WorkspaceDetailContext'
 
-interface SlackStatusData {
+// The key set lives with the dispatcher (slackEventCategories.ts) rather than
+// here: a switch this card offers that the dispatcher does not read, or the
+// other way round, is invisible from both sides.
+export type { SlackNotificationSettings }
+
+// Order is the order the panel scrolls through — roughly the order work
+// happens in, then the workspace-level things.
+const NOTIFICATION_TYPES: { key: SlackPreferenceKey; label: string }[] = [
+  { key: 'created', label: 'Tasks & goal tasks created' },
+  { key: 'assigned', label: 'Task assignments & reassignments' },
+  { key: 'started', label: 'Task started, paused & resumed' },
+  { key: 'completed', label: 'Task completions & reopens' },
+  { key: 'deleted', label: 'Tasks & goal tasks deleted' },
+  { key: 'notes', label: 'Notes added to tasks' },
+  { key: 'goals', label: 'Goals created, completed & removed' },
+  { key: 'blockers', label: 'Task blockers created' },
+  { key: 'resolutions', label: 'Blocker resolutions & unblocks' },
+  { key: 'mentions', label: 'Mentions in blockers' },
+  { key: 'resources', label: 'Resources added, updated & removed' },
+  { key: 'members', label: 'Invitations & membership changes' },
+  { key: 'daily_reports', label: 'Daily Reports' },
+]
+
+const DEFAULT_NOTIFICATION_SETTINGS: SlackNotificationSettings =
+  Object.fromEntries(
+    NOTIFICATION_TYPES.map(({ key }) => [key, true]),
+  ) as SlackNotificationSettings
+
+export interface SlackStatusData {
   connected: boolean
   connection_status?:
     | 'connected'
@@ -78,22 +103,25 @@ export function SlackIntegrationCard({
   workspaceId: string
   canManage: boolean
 }) {
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [status, setStatus] = useState<SlackStatusData | null>(null)
+  const detail = useOptionalWorkspaceDetail()
+
+  // Local state fallbacks for testing outside context
+  const [localLoading, setLocalLoading] = useState(false)
+  const [localError, setLocalError] = useState<string | null>(null)
+  const [localStatus, setLocalStatus] = useState<SlackStatusData | null>(null)
+  const [localChannels, setLocalChannels] = useState<SlackChannel[]>([])
+
+  const status = detail ? detail.slackStatus : localStatus
+  const loading = detail ? detail.slackLoading : localLoading
+  const error = localError || (detail ? detail.slackError : null)
+  const channels = detail ? detail.slackChannels : localChannels
+  const loadingChannels = detail ? detail.slackChannelsLoading : false
 
   // Channel selection and toggles state
-  const [channels, setChannels] = useState<SlackChannel[]>([])
-  const [loadingChannels, setLoadingChannels] = useState(false)
   const [selectedChannelId, setSelectedChannelId] = useState<string>('')
-  const [settings, setSettings] = useState<SlackNotificationSettings>({
-    assigned: true,
-    completed: true,
-    blockers: true,
-    resolutions: true,
-    mentions: true,
-    daily_reports: true,
-  })
+  const [settings, setSettings] = useState<SlackNotificationSettings>(
+    DEFAULT_NOTIFICATION_SETTINGS,
+  )
   const [saving, setSaving] = useState(false)
   const [savedSuccess, setSavedSuccess] = useState(false)
   const [disconnecting, setDisconnecting] = useState(false)
@@ -103,62 +131,61 @@ export function SlackIntegrationCard({
   const [copiedEmbed, setCopiedEmbed] = useState(false)
   const [copiedMeta, setCopiedMeta] = useState(false)
 
-  const fetchStatus = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const res = await fetch(
-        `/api/integrations/slack/status?workspace_id=${workspaceId}`,
-      )
-      if (!res.ok) {
-        throw new Error('Failed to load Slack integration status.')
-      }
-      const data: SlackStatusData = await res.json()
-      setStatus(data)
-      if (data.connected) {
-        setSelectedChannelId(data.channel_id || '')
-        if (data.notification_settings) {
-          setSettings(data.notification_settings)
-        }
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error fetching status')
-    } finally {
-      setLoading(false)
-    }
-  }, [workspaceId])
-
-  const fetchChannels = useCallback(async () => {
-    if (!status?.connected) return
-    setLoadingChannels(true)
-    try {
-      const res = await fetch(
-        `/api/integrations/slack/channels?workspace_id=${workspaceId}`,
-      )
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || 'Failed to fetch Slack channels.')
-      }
-      const data = await res.json()
-      setChannels(data.channels || [])
-    } catch (err) {
-      console.error('[Slack UI] Failed to fetch channels:', err)
-    } finally {
-      setLoadingChannels(false)
-    }
-  }, [status?.connected, workspaceId])
-
+  // Fallback fetch if rendered outside workspace detail context
   useEffect(() => {
-    if (workspaceId) {
-      void fetchStatus()
+    if (!detail && workspaceId) {
+      let cancelled = false
+      setLocalLoading(true)
+      setLocalError(null)
+      fetch(`/api/integrations/slack/status?workspace_id=${workspaceId}`)
+        .then(res => {
+          if (!res.ok) throw new Error('Failed to load Slack status.')
+          return res.json()
+        })
+        .then((data: SlackStatusData) => {
+          if (cancelled) return
+          setLocalStatus(data)
+          if (data.connected) {
+            fetch(
+              `/api/integrations/slack/channels?workspace_id=${workspaceId}`,
+            )
+              .then(res => res.json())
+              .then(cData => {
+                if (!cancelled) setLocalChannels(cData.channels || [])
+              })
+              .catch(() => {})
+          }
+        })
+        .catch(err => {
+          if (!cancelled)
+            setLocalError(
+              err instanceof Error ? err.message : 'Error fetching status',
+            )
+        })
+        .finally(() => {
+          if (!cancelled) setLocalLoading(false)
+        })
+
+      return () => {
+        cancelled = true
+      }
     }
-  }, [workspaceId, fetchStatus])
+  }, [detail, workspaceId])
 
   useEffect(() => {
     if (status?.connected) {
-      void fetchChannels()
+      setSelectedChannelId(status.channel_id || '')
+      if (status.notification_settings) {
+        // Merged over the defaults, so a connection stored before a category
+        // existed saves back with every switch the panel showed rather than
+        // dropping the ones it had no stored value for.
+        setSettings({
+          ...DEFAULT_NOTIFICATION_SETTINGS,
+          ...status.notification_settings,
+        })
+      }
     }
-  }, [status?.connected, fetchChannels])
+  }, [status])
 
   const getAuthorizeUrl = () => {
     const origin =
@@ -202,34 +229,53 @@ export function SlackIntegrationCard({
   const handleSave = async () => {
     setSaving(true)
     setSavedSuccess(false)
-    setError(null)
-    try {
-      const selectedChannel = channels.find(c => c.id === selectedChannelId)
-      const res = await fetch('/api/integrations/slack/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          workspaceId,
-          channelId: selectedChannelId,
-          channelName: selectedChannel
-            ? selectedChannel.name
-            : status?.channel_name || '',
-          notificationSettings: settings,
-        }),
+    setLocalError(null)
+
+    const selectedChannel = channels.find(c => c.id === selectedChannelId)
+    const channelName = selectedChannel
+      ? selectedChannel.name
+      : status?.channel_name || ''
+
+    if (detail) {
+      const result = await detail.saveSlackSettings({
+        channelId: selectedChannelId,
+        channelName,
+        notificationSettings: settings,
       })
-
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || 'Failed to save settings.')
+      if (result.success) {
+        setSavedSuccess(true)
+        setTimeout(() => setSavedSuccess(false), 3000)
+      } else if (result.error) {
+        setLocalError(result.error)
       }
-
-      setSavedSuccess(true)
-      setTimeout(() => setSavedSuccess(false), 3000)
-      void fetchStatus()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error saving settings')
-    } finally {
       setSaving(false)
+    } else {
+      try {
+        const res = await fetch('/api/integrations/slack/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            workspaceId,
+            channelId: selectedChannelId,
+            channelName,
+            notificationSettings: settings,
+          }),
+        })
+
+        if (!res.ok) {
+          const data = await res.json()
+          throw new Error(data.error || 'Failed to save settings.')
+        }
+
+        setSavedSuccess(true)
+        setTimeout(() => setSavedSuccess(false), 3000)
+      } catch (err) {
+        setLocalError(
+          err instanceof Error ? err.message : 'Error saving settings',
+        )
+      } finally {
+        setSaving(false)
+      }
     }
   }
 
@@ -239,29 +285,43 @@ export function SlackIntegrationCard({
     )
       return
     setDisconnecting(true)
-    setError(null)
-    try {
-      const res = await fetch('/api/integrations/slack/disconnect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workspaceId }),
-      })
+    setLocalError(null)
 
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || 'Failed to disconnect Slack.')
+    if (detail) {
+      const result = await detail.disconnectSlack()
+      if (result.error) {
+        setLocalError(result.error)
       }
-
-      setStatus({ connected: false })
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error disconnecting')
-    } finally {
       setDisconnecting(false)
+    } else {
+      try {
+        const res = await fetch('/api/integrations/slack/disconnect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ workspaceId }),
+        })
+
+        if (!res.ok) {
+          const data = await res.json()
+          throw new Error(data.error || 'Failed to disconnect Slack.')
+        }
+
+        setLocalStatus({ connected: false })
+      } catch (err) {
+        setLocalError(
+          err instanceof Error ? err.message : 'Error disconnecting',
+        )
+      } finally {
+        setDisconnecting(false)
+      }
     }
   }
 
-  const toggleSetting = (key: keyof SlackNotificationSettings) => {
-    setSettings(prev => ({ ...prev, [key]: !prev[key] }))
+  const toggleSetting = (key: SlackPreferenceKey) => {
+    // `=== false` rather than `!prev[key]`, so a key a stored connection has
+    // never carried (it reads as on everywhere else) turns OFF on first click
+    // instead of staying on.
+    setSettings(prev => ({ ...prev, [key]: prev[key] === false }))
   }
 
   return (
@@ -285,7 +345,7 @@ export function SlackIntegrationCard({
 
       {error && <ErrorBanner variant="flush">{error}</ErrorBanner>}
 
-      {loading ? (
+      {loading && !status ? (
         <div className="space-y-3 px-5 py-5">
           <Skeleton className="h-4 w-3/4" />
           <Skeleton className="h-20 w-full" />
@@ -464,32 +524,17 @@ export function SlackIntegrationCard({
                   Notification Types
                 </p>
                 <div className="max-h-[115px] overflow-y-auto space-y-1.5 pr-1 scrollbar-thin scrollbar-thumb-line scrollbar-track-transparent">
-                  {[
-                    {
-                      key: 'assigned',
-                      label: 'Task assignments & reassignments',
-                    },
-                    { key: 'completed', label: 'Task completions & reopens' },
-                    { key: 'blockers', label: 'Task blockers created' },
-                    {
-                      key: 'resolutions',
-                      label: 'Blocker resolutions & unblocks',
-                    },
-                    { key: 'mentions', label: 'Mentions in blockers' },
-                    { key: 'daily_reports', label: 'Daily Reports' },
-                  ].map(({ key, label }) => (
+                  {NOTIFICATION_TYPES.map(({ key, label }) => (
                     <label
                       key={key}
                       className="flex items-center gap-2 rounded-lg border border-line/50 px-2.5 py-1.5 text-xs text-ink hover:bg-subtle/40 cursor-pointer transition-colors"
                     >
                       <input
                         type="checkbox"
-                        checked={
-                          settings[key as keyof SlackNotificationSettings]
-                        }
-                        onChange={() =>
-                          toggleSetting(key as keyof SlackNotificationSettings)
-                        }
+                        // A key a stored connection predates counts as on,
+                        // matching the dispatcher's own `!== false`.
+                        checked={settings[key] !== false}
+                        onChange={() => toggleSetting(key)}
                         disabled={!canManage}
                         className="h-3.5 w-3.5 rounded border-line text-accent focus:ring-ring"
                       />
