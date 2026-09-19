@@ -23,5 +23,6 @@ describe('VisitorWelcomeModal', () => {
     expect(html).toContain('Continue as Guest')
     expect(html).toContain('Login / Sign Up')
     expect(html).toContain('Shared Workspaces')
+    expect(html).toContain('Slack integration')
   })
 })

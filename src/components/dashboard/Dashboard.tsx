@@ -470,7 +470,7 @@ export function Dashboard() {
             <p className="mt-1 max-w-xl text-[11px] leading-5 text-muted">
               Log in to get your own Personal Workspace where you can save your
               work, track goals and progress, access your history, use
-              AI-powered features, and more.
+              AI-powered features, Slack integration, and more.
             </p>
           </div>
           <Button
