@@ -44,6 +44,9 @@ export function WorkspaceResourcesSection({
 
   return (
     <div
+      // The anchor a Slack resource notification links to (#workspace-resources)
+      // — resources have no page of their own, so the list is the destination.
+      id="workspace-resources"
       {...tourAnchor('resources')}
       className="rounded-2xl border border-line bg-panel p-5 shadow-sm sm:p-6"
     >

@@ -27,6 +27,7 @@ import { GoalForm } from '@/components/goals/GoalForm'
 import { DependencyPicker } from '@/components/goals/DependencyPicker'
 import { TaskBlockerActionsContext } from '@/components/blockers/TaskBlockerActionsContext'
 import { useAnyTaskFocus } from '@/components/workspaces/FocusedTaskContext'
+import { useGoalFocus } from '@/components/workspaces/FocusedGoalContext'
 import { useCompletionAlert } from '@/hooks/useCompletionAlert'
 import { useGoalDetail } from '@/hooks/useGoalDetail'
 import { GoalFormValues } from '@/hooks/useWorkspaceGoals'
@@ -173,6 +174,20 @@ export function GoalCard({
     handledFocus.current = taskFocus
     setExpanded(true)
   }, [taskFocus, tasks])
+
+  // Arriving from a Slack message's "Open Goal" button: this goal opens and
+  // scrolls itself into view. Same once-per-request rule as the task focus
+  // above — closing it again afterwards has to stick.
+  const goalFocus = useGoalFocus(goal.id)
+  const handledGoalFocus = useRef<typeof goalFocus>(null)
+  useEffect(() => {
+    if (!goalFocus || handledGoalFocus.current === goalFocus) return
+    handledGoalFocus.current = goalFocus
+    setExpanded(true)
+    document
+      .getElementById(`goal-${goal.id}`)
+      ?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  }, [goalFocus, goal.id])
   const totalTasks = tasks.length
   const completedTasks = tasks.filter(isDone).length
   const focusedSeconds = Math.round(
@@ -344,7 +359,10 @@ export function GoalCard({
         : Target
 
   return (
-    <div className="rounded-2xl border border-line bg-panel shadow-sm">
+    <div
+      id={`goal-${goal.id}`}
+      className="rounded-2xl border border-line bg-panel shadow-sm"
+    >
       <div className="flex w-full items-start gap-3 px-5 py-4">
         <button
           type="button"

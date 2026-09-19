@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   ChevronDown,
   ChevronUp,
@@ -23,6 +23,7 @@ import {
   reportTaskStatus,
 } from '@/lib/dailyReportMetrics'
 import { formatHM } from '@/lib/time'
+import { useReportFocus } from '@/components/workspaces/FocusedReportContext'
 import {
   StructuredSnapshotBlocker,
   StructuredSnapshotMember,
@@ -398,6 +399,19 @@ export function WorkspaceSummarySection({
   defaultExpanded?: boolean
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded)
+
+  // Arriving from Slack's "View Daily Report" button: bring the card into view
+  // and open it, so the link lands on the report rather than on the top of the
+  // workspace with the report somewhere below the fold.
+  const reportFocus = useReportFocus()
+  useEffect(() => {
+    if (!reportFocus) return
+    setExpanded(true)
+    document
+      .getElementById('workspace-daily-report')
+      ?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  }, [reportFocus])
+
   if (!enabled) return null
   const isPending = summary?.generationStatus === 'pending'
   const isFailed = summary?.generationStatus === 'failed'
@@ -412,7 +426,10 @@ export function WorkspaceSummarySection({
     regeneratedByMember?.fullName || regeneratedByMember?.email || 'A member'
 
   return (
-    <div className="rounded-2xl border border-line bg-panel shadow-sm">
+    <div
+      id="workspace-daily-report"
+      className="rounded-2xl border border-line bg-panel shadow-sm"
+    >
       <div className="border-b border-line/70 px-5 py-4">
         <h2 className="flex items-center gap-2 text-sm font-bold tracking-tight text-ink">
           <Sparkles size={15} /> Daily Report
