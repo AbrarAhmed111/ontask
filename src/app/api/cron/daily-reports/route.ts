@@ -5,7 +5,6 @@ import {
   buildUnreachableFallbackMeta,
 } from '@/lib/dailyReportFallback'
 import { WorkspaceStructuredSnapshot } from '@/types/workspace'
-import { dispatchSlackNotification } from '@/lib/integrations/slack/slackDispatcher'
 
 // The automatic Daily Report scheduler's entry point. Invoked every 5
 // minutes by Supabase pg_cron/pg_net (see the `daily-reports-tick` job in
@@ -146,22 +145,21 @@ async function processCandidate(
   }
 
   try {
-    const { data: finished, error: finishError } = await supabase.rpc(
-      'finish_daily_report',
-      {
-        p_workspace_id: candidate.workspace_id,
-        p_report_end: candidate.report_end,
-        p_structured_snapshot: snapshot,
-        p_narrative: narrative,
-        p_meta: meta,
-      },
-    )
-    if (finishError) throw new Error(finishError.message)
-    void dispatchSlackNotification({
-      workspaceId: candidate.workspace_id,
-      eventType: 'daily_report_ready',
-      reportId: (finished as { id?: string } | null)?.id,
+    const { error: finishError } = await supabase.rpc('finish_daily_report', {
+      p_workspace_id: candidate.workspace_id,
+      p_report_end: candidate.report_end,
+      p_structured_snapshot: snapshot,
+      p_narrative: narrative,
+      p_meta: meta,
     })
+    if (finishError) throw new Error(finishError.message)
+    // Slack is NOT notified from here. finish_daily_report moves the row to
+    // 'completed', which is what trg_slack_daily_summaries (0045) watches --
+    // so this call was a second message for the same report, and neither path
+    // sent an eventId, so the dispatcher's idempotency check could not
+    // collapse them. The trigger is the one that survives: it covers every
+    // way a report can reach 'completed', and it carries the summary row's id
+    // as the event id, which makes a re-run of the scheduler a no-op.
     return 'completed'
   } catch (err) {
     const message =

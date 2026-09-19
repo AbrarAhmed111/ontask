@@ -6,15 +6,29 @@
 import { createServiceRoleClient } from '@/lib/supabase/service'
 import { postSlackMessage } from './slackClient'
 import { buildSlackEventMessage } from './slackMessageBuilder'
+import { isSlackEventEnabled } from './slackEventCategories'
+import type { SlackEntityType } from './slackMessageBuilder'
 
 export interface DispatchSlackEventParams {
   workspaceId: string
   eventType: string
   eventId?: string
+  /** What the event is about, decided by the database (migration 0048) so
+   *  this layer never has to guess from which fields arrived filled in. */
+  entityType?: SlackEntityType
+  entityId?: string
   taskId?: string
   taskTitle?: string
+  parentTitle?: string
+  goalId?: string
+  goalName?: string
+  /** A goal's name, a file's name, a member's name — whatever the event is
+   *  about when it is not about a task. */
+  entityName?: string
   actorId?: string
   recipientUserId?: string
+  previousAssigneeId?: string
+  selfRemoved?: boolean
   blockerReason?: string
   reportId?: string
 }
@@ -27,10 +41,18 @@ export async function dispatchSlackNotification(
       workspaceId,
       eventType,
       eventId,
+      entityType,
+      entityId,
       taskId,
       taskTitle,
+      parentTitle,
+      goalId,
+      goalName,
+      entityName,
       actorId,
       recipientUserId,
+      previousAssigneeId,
+      selfRemoved,
       blockerReason,
       reportId,
     } = params
@@ -77,27 +99,7 @@ export async function dispatchSlackNotification(
     }
 
     // 3. Check notification preferences
-    const settings = connection.notification_settings || {}
-    let isEnabled = true
-
-    if (eventType === 'assigned' || eventType === 'reassigned') {
-      isEnabled = settings.assigned !== false
-    } else if (eventType === 'completed' || eventType === 'reopened') {
-      isEnabled = settings.completed !== false
-    } else if (eventType === 'blocker_created') {
-      isEnabled = settings.blockers !== false
-    } else if (
-      eventType === 'blocker_resolved' ||
-      eventType === 'task_unblocked'
-    ) {
-      isEnabled = settings.resolutions !== false
-    } else if (eventType === 'mentioned') {
-      isEnabled = settings.mentions !== false
-    } else if (eventType === 'daily_report_ready') {
-      isEnabled = settings.daily_reports !== false
-    }
-
-    if (!isEnabled) {
+    if (!isSlackEventEnabled(connection.notification_settings, eventType)) {
       return { success: true, outcome: 'notification_type_disabled' }
     }
 
@@ -112,44 +114,44 @@ export async function dispatchSlackNotification(
       return { success: false, outcome: 'workspace_not_found' }
     }
 
-    // 5. Fetch display names for actor & recipient
-    let actorName = 'Someone'
-    if (actorId) {
-      const { data: actorProfile } = await supabase
+    // 5. Fetch display names for actor, recipient and (for an unassignment,
+    //    which has no recipient at all) whoever the task was taken from.
+    const displayName = async (userId: string): Promise<string | undefined> => {
+      const { data: profile } = await supabase
         .from('profiles')
         .select('full_name, email')
-        .eq('id', actorId)
+        .eq('id', userId)
         .single()
-      if (actorProfile) {
-        actorName =
-          actorProfile.full_name ||
-          actorProfile.email?.split('@')[0] ||
-          'Someone'
-      }
+      if (!profile) return undefined
+      return profile.full_name || profile.email?.split('@')[0] || undefined
     }
 
-    let recipientName: string | undefined
-    if (recipientUserId) {
-      const { data: recipientProfile } = await supabase
-        .from('profiles')
-        .select('full_name, email')
-        .eq('id', recipientUserId)
-        .single()
-      if (recipientProfile) {
-        recipientName =
-          recipientProfile.full_name || recipientProfile.email?.split('@')[0]
-      }
-    }
+    const actorName =
+      (actorId ? await displayName(actorId) : undefined) ?? 'Someone'
+    const recipientName = recipientUserId
+      ? await displayName(recipientUserId)
+      : undefined
+    const previousAssigneeName = previousAssigneeId
+      ? await displayName(previousAssigneeId)
+      : undefined
 
     // 6. Build message payload
     const messagePayload = buildSlackEventMessage({
       workspaceName: workspace.name,
       workspaceSlug: workspace.slug,
       eventType,
+      entityType,
+      entityId,
       taskTitle,
       taskId,
+      parentTitle,
+      goalId,
+      goalName,
+      entityName,
       actorName,
       recipientName,
+      previousAssigneeName,
+      selfRemoved,
       blockerReason,
       reportId,
     })

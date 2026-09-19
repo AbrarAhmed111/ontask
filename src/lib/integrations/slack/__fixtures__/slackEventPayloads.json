@@ -1,0 +1,693 @@
+{
+  "generatedFrom": "supabase/tests/0048_slack_entity_resolution.sql",
+  "profiles": [
+    {
+      "id": "00000000-0000-4000-8000-000000actorI",
+      "full_name": "Abrar Ahmed",
+      "email": "slack.ent.abrar@example.com"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000004recipi",
+      "full_name": "Iqra Nadeem",
+      "email": "slack.ent.iqra@example.com"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000024actorI",
+      "full_name": "Workspace Owner",
+      "email": "slack.ent.owner@example.com"
+    }
+  ],
+  "events": [
+    {
+      "step": "task created + assigned",
+      "payload": {
+        "goalId": null,
+        "taskId": "00000000-0000-4000-8000-000000taskId",
+        "actorId": "00000000-0000-4000-8000-000000actorI",
+        "eventId": "00000000-0000-4000-8000-000000eventI",
+        "entityId": "00000000-0000-4000-8000-000000taskId",
+        "goalName": null,
+        "createdAt": "2026-09-20T00:00:00+00:00",
+        "eventType": "task_created",
+        "taskTitle": "OnTask Integration to Slack",
+        "entityName": null,
+        "entityType": "task",
+        "parentTitle": null,
+        "selfRemoved": false,
+        "workspaceId": "00000000-0000-4000-8000-000000worksp",
+        "blockerReason": null,
+        "recipientUserId": "00000000-0000-4000-8000-000000actorI",
+        "previousAssigneeId": null
+      }
+    },
+    {
+      "step": "task started",
+      "payload": {
+        "goalId": null,
+        "taskId": "00000000-0000-4000-8000-000000taskId",
+        "actorId": "00000000-0000-4000-8000-000000actorI",
+        "eventId": "00000000-0000-4000-8000-000001eventI",
+        "entityId": "00000000-0000-4000-8000-000000taskId",
+        "goalName": null,
+        "createdAt": "2026-09-20T00:00:00+00:00",
+        "eventType": "started",
+        "taskTitle": "OnTask Integration to Slack",
+        "entityName": null,
+        "entityType": "task",
+        "parentTitle": null,
+        "selfRemoved": false,
+        "workspaceId": "00000000-0000-4000-8000-000000worksp",
+        "blockerReason": null,
+        "recipientUserId": null,
+        "previousAssigneeId": null
+      }
+    },
+    {
+      "step": "task paused",
+      "payload": {
+        "goalId": null,
+        "taskId": "00000000-0000-4000-8000-000000taskId",
+        "actorId": "00000000-0000-4000-8000-000000actorI",
+        "eventId": "00000000-0000-4000-8000-000002eventI",
+        "entityId": "00000000-0000-4000-8000-000000taskId",
+        "goalName": null,
+        "createdAt": "2026-09-20T00:00:00+00:00",
+        "eventType": "paused",
+        "taskTitle": "OnTask Integration to Slack",
+        "entityName": null,
+        "entityType": "task",
+        "parentTitle": null,
+        "selfRemoved": false,
+        "workspaceId": "00000000-0000-4000-8000-000000worksp",
+        "blockerReason": null,
+        "recipientUserId": null,
+        "previousAssigneeId": null
+      }
+    },
+    {
+      "step": "task resumed",
+      "payload": {
+        "goalId": null,
+        "taskId": "00000000-0000-4000-8000-000000taskId",
+        "actorId": "00000000-0000-4000-8000-000000actorI",
+        "eventId": "00000000-0000-4000-8000-000003eventI",
+        "entityId": "00000000-0000-4000-8000-000000taskId",
+        "goalName": null,
+        "createdAt": "2026-09-20T00:00:00+00:00",
+        "eventType": "resumed",
+        "taskTitle": "OnTask Integration to Slack",
+        "entityName": null,
+        "entityType": "task",
+        "parentTitle": null,
+        "selfRemoved": false,
+        "workspaceId": "00000000-0000-4000-8000-000000worksp",
+        "blockerReason": null,
+        "recipientUserId": null,
+        "previousAssigneeId": null
+      }
+    },
+    {
+      "step": "task reassigned",
+      "payload": {
+        "goalId": null,
+        "taskId": "00000000-0000-4000-8000-000000taskId",
+        "actorId": "00000000-0000-4000-8000-000000actorI",
+        "eventId": "00000000-0000-4000-8000-000004eventI",
+        "entityId": "00000000-0000-4000-8000-000000taskId",
+        "goalName": null,
+        "createdAt": "2026-09-20T00:00:00+00:00",
+        "eventType": "reassigned",
+        "taskTitle": "OnTask Integration to Slack",
+        "entityName": null,
+        "entityType": "task",
+        "parentTitle": null,
+        "selfRemoved": false,
+        "workspaceId": "00000000-0000-4000-8000-000000worksp",
+        "blockerReason": null,
+        "recipientUserId": "00000000-0000-4000-8000-000004recipi",
+        "previousAssigneeId": "00000000-0000-4000-8000-000000actorI"
+      }
+    },
+    {
+      "step": "task completed",
+      "payload": {
+        "goalId": null,
+        "taskId": "00000000-0000-4000-8000-000000taskId",
+        "actorId": "00000000-0000-4000-8000-000000actorI",
+        "eventId": "00000000-0000-4000-8000-000005eventI",
+        "entityId": "00000000-0000-4000-8000-000000taskId",
+        "goalName": null,
+        "createdAt": "2026-09-20T00:00:00+00:00",
+        "eventType": "completed",
+        "taskTitle": "OnTask Integration to Slack",
+        "entityName": null,
+        "entityType": "task",
+        "parentTitle": null,
+        "selfRemoved": false,
+        "workspaceId": "00000000-0000-4000-8000-000000worksp",
+        "blockerReason": null,
+        "recipientUserId": null,
+        "previousAssigneeId": null
+      }
+    },
+    {
+      "step": "task deleted",
+      "payload": {
+        "goalId": null,
+        "taskId": "00000000-0000-4000-8000-000006taskId",
+        "actorId": "00000000-0000-4000-8000-000000actorI",
+        "eventId": "00000000-0000-4000-8000-000006eventI",
+        "entityId": "00000000-0000-4000-8000-000006taskId",
+        "goalName": null,
+        "createdAt": "2026-09-20T00:00:00+00:00",
+        "eventType": "task_deleted",
+        "taskTitle": "Old Integration Task",
+        "entityName": null,
+        "entityType": "task",
+        "parentTitle": null,
+        "selfRemoved": false,
+        "workspaceId": "00000000-0000-4000-8000-000000worksp",
+        "blockerReason": null,
+        "recipientUserId": null,
+        "previousAssigneeId": null
+      }
+    },
+    {
+      "step": "goal created",
+      "payload": {
+        "goalId": "00000000-0000-4000-8000-000007goalId",
+        "taskId": null,
+        "actorId": "00000000-0000-4000-8000-000000actorI",
+        "eventId": "00000000-0000-4000-8000-000007eventI",
+        "entityId": "00000000-0000-4000-8000-000007goalId",
+        "goalName": "Launch MVP",
+        "createdAt": "2026-09-20T00:00:00+00:00",
+        "eventType": "goal_created",
+        "taskTitle": null,
+        "entityName": "Launch MVP",
+        "entityType": "goal",
+        "parentTitle": null,
+        "selfRemoved": false,
+        "workspaceId": "00000000-0000-4000-8000-000000worksp",
+        "blockerReason": null,
+        "recipientUserId": null,
+        "previousAssigneeId": null
+      }
+    },
+    {
+      "step": "goal task created",
+      "payload": {
+        "goalId": "00000000-0000-4000-8000-000007goalId",
+        "taskId": "00000000-0000-4000-8000-000008taskId",
+        "actorId": "00000000-0000-4000-8000-000000actorI",
+        "eventId": "00000000-0000-4000-8000-000008eventI",
+        "entityId": "00000000-0000-4000-8000-000008taskId",
+        "goalName": "Launch MVP",
+        "createdAt": "2026-09-20T00:00:00+00:00",
+        "eventType": "goal_task_created",
+        "taskTitle": "Build Authentication",
+        "entityName": null,
+        "entityType": "goal_task",
+        "parentTitle": null,
+        "selfRemoved": false,
+        "workspaceId": "00000000-0000-4000-8000-000000worksp",
+        "blockerReason": null,
+        "recipientUserId": null,
+        "previousAssigneeId": null
+      }
+    },
+    {
+      "step": "goal subtask created",
+      "payload": {
+        "goalId": "00000000-0000-4000-8000-000007goalId",
+        "taskId": "00000000-0000-4000-8000-000009taskId",
+        "actorId": "00000000-0000-4000-8000-000000actorI",
+        "eventId": "00000000-0000-4000-8000-000009eventI",
+        "entityId": "00000000-0000-4000-8000-000009taskId",
+        "goalName": "Launch MVP",
+        "createdAt": "2026-09-20T00:00:00+00:00",
+        "eventType": "goal_subtask_created",
+        "taskTitle": "Create OAuth callback",
+        "entityName": null,
+        "entityType": "goal_subtask",
+        "parentTitle": "Build Authentication",
+        "selfRemoved": false,
+        "workspaceId": "00000000-0000-4000-8000-000000worksp",
+        "blockerReason": null,
+        "recipientUserId": null,
+        "previousAssigneeId": null
+      }
+    },
+    {
+      "step": "goal task started",
+      "payload": {
+        "goalId": "00000000-0000-4000-8000-000007goalId",
+        "taskId": "00000000-0000-4000-8000-000008taskId",
+        "actorId": "00000000-0000-4000-8000-000000actorI",
+        "eventId": "00000000-0000-4000-8000-000010eventI",
+        "entityId": "00000000-0000-4000-8000-000008taskId",
+        "goalName": "Launch MVP",
+        "createdAt": "2026-09-20T00:00:00+00:00",
+        "eventType": "started",
+        "taskTitle": "Build Authentication",
+        "entityName": null,
+        "entityType": "goal_task",
+        "parentTitle": null,
+        "selfRemoved": false,
+        "workspaceId": "00000000-0000-4000-8000-000000worksp",
+        "blockerReason": null,
+        "recipientUserId": null,
+        "previousAssigneeId": null
+      }
+    },
+    {
+      "step": "goal task completed",
+      "payload": {
+        "goalId": "00000000-0000-4000-8000-000007goalId",
+        "taskId": "00000000-0000-4000-8000-000008taskId",
+        "actorId": "00000000-0000-4000-8000-000000actorI",
+        "eventId": "00000000-0000-4000-8000-000011eventI",
+        "entityId": "00000000-0000-4000-8000-000008taskId",
+        "goalName": "Launch MVP",
+        "createdAt": "2026-09-20T00:00:00+00:00",
+        "eventType": "completed",
+        "taskTitle": "Build Authentication",
+        "entityName": null,
+        "entityType": "goal_task",
+        "parentTitle": null,
+        "selfRemoved": false,
+        "workspaceId": "00000000-0000-4000-8000-000000worksp",
+        "blockerReason": null,
+        "recipientUserId": null,
+        "previousAssigneeId": null
+      }
+    },
+    {
+      "step": "goal subtask completed",
+      "payload": {
+        "goalId": "00000000-0000-4000-8000-000007goalId",
+        "taskId": "00000000-0000-4000-8000-000009taskId",
+        "actorId": "00000000-0000-4000-8000-000000actorI",
+        "eventId": "00000000-0000-4000-8000-000012eventI",
+        "entityId": "00000000-0000-4000-8000-000009taskId",
+        "goalName": "Launch MVP",
+        "createdAt": "2026-09-20T00:00:00+00:00",
+        "eventType": "completed",
+        "taskTitle": "Create OAuth callback",
+        "entityName": null,
+        "entityType": "goal_subtask",
+        "parentTitle": "Build Authentication",
+        "selfRemoved": false,
+        "workspaceId": "00000000-0000-4000-8000-000000worksp",
+        "blockerReason": null,
+        "recipientUserId": null,
+        "previousAssigneeId": null
+      }
+    },
+    {
+      "step": "task assigned",
+      "payload": {
+        "goalId": null,
+        "taskId": "00000000-0000-4000-8000-000000taskId",
+        "actorId": "00000000-0000-4000-8000-000000actorI",
+        "eventId": "00000000-0000-4000-8000-000013eventI",
+        "entityId": "00000000-0000-4000-8000-000000taskId",
+        "goalName": null,
+        "createdAt": "2026-09-20T00:00:00+00:00",
+        "eventType": "assigned",
+        "taskTitle": "OnTask Integration to Slack",
+        "entityName": null,
+        "entityType": "task",
+        "parentTitle": null,
+        "selfRemoved": false,
+        "workspaceId": "00000000-0000-4000-8000-000000worksp",
+        "blockerReason": null,
+        "recipientUserId": "00000000-0000-4000-8000-000004recipi",
+        "previousAssigneeId": null
+      }
+    },
+    {
+      "step": "task unassigned",
+      "payload": {
+        "goalId": null,
+        "taskId": "00000000-0000-4000-8000-000000taskId",
+        "actorId": "00000000-0000-4000-8000-000000actorI",
+        "eventId": "00000000-0000-4000-8000-000014eventI",
+        "entityId": "00000000-0000-4000-8000-000000taskId",
+        "goalName": null,
+        "createdAt": "2026-09-20T00:00:00+00:00",
+        "eventType": "unassigned",
+        "taskTitle": "OnTask Integration to Slack",
+        "entityName": null,
+        "entityType": "task",
+        "parentTitle": null,
+        "selfRemoved": false,
+        "workspaceId": "00000000-0000-4000-8000-000000worksp",
+        "blockerReason": null,
+        "recipientUserId": null,
+        "previousAssigneeId": "00000000-0000-4000-8000-000004recipi"
+      }
+    },
+    {
+      "step": "task reopened",
+      "payload": {
+        "goalId": null,
+        "taskId": "00000000-0000-4000-8000-000000taskId",
+        "actorId": "00000000-0000-4000-8000-000000actorI",
+        "eventId": "00000000-0000-4000-8000-000015eventI",
+        "entityId": "00000000-0000-4000-8000-000000taskId",
+        "goalName": null,
+        "createdAt": "2026-09-20T00:00:00+00:00",
+        "eventType": "reopened",
+        "taskTitle": "OnTask Integration to Slack",
+        "entityName": null,
+        "entityType": "task",
+        "parentTitle": null,
+        "selfRemoved": false,
+        "workspaceId": "00000000-0000-4000-8000-000000worksp",
+        "blockerReason": null,
+        "recipientUserId": null,
+        "previousAssigneeId": null
+      }
+    },
+    {
+      "step": "task skipped",
+      "payload": {
+        "goalId": null,
+        "taskId": "00000000-0000-4000-8000-000000taskId",
+        "actorId": "00000000-0000-4000-8000-000000actorI",
+        "eventId": "00000000-0000-4000-8000-000016eventI",
+        "entityId": "00000000-0000-4000-8000-000000taskId",
+        "goalName": null,
+        "createdAt": "2026-09-20T00:00:00+00:00",
+        "eventType": "skipped",
+        "taskTitle": "OnTask Integration to Slack",
+        "entityName": null,
+        "entityType": "task",
+        "parentTitle": null,
+        "selfRemoved": false,
+        "workspaceId": "00000000-0000-4000-8000-000000worksp",
+        "blockerReason": null,
+        "recipientUserId": null,
+        "previousAssigneeId": null
+      }
+    },
+    {
+      "step": "blocker created",
+      "payload": {
+        "goalId": null,
+        "taskId": "00000000-0000-4000-8000-000000taskId",
+        "actorId": "00000000-0000-4000-8000-000000actorI",
+        "eventId": "00000000-0000-4000-8000-000017eventI",
+        "entityId": "00000000-0000-4000-8000-000000taskId",
+        "goalName": null,
+        "createdAt": "2026-09-20T00:00:00+00:00",
+        "eventType": "blocker_created",
+        "taskTitle": "OnTask Integration to Slack",
+        "entityName": null,
+        "entityType": "task",
+        "parentTitle": null,
+        "selfRemoved": false,
+        "workspaceId": "00000000-0000-4000-8000-000000worksp",
+        "blockerReason": "Waiting for Stripe credentials",
+        "recipientUserId": null,
+        "previousAssigneeId": null
+      }
+    },
+    {
+      "step": "blocker mention",
+      "payload": {
+        "goalId": null,
+        "taskId": "00000000-0000-4000-8000-000000taskId",
+        "actorId": "00000000-0000-4000-8000-000000actorI",
+        "eventId": "00000000-0000-4000-8000-000018eventI",
+        "entityId": "00000000-0000-4000-8000-000000taskId",
+        "goalName": null,
+        "createdAt": "2026-09-20T00:00:00+00:00",
+        "eventType": "mentioned",
+        "taskTitle": "OnTask Integration to Slack",
+        "entityName": null,
+        "entityType": "task",
+        "parentTitle": null,
+        "selfRemoved": false,
+        "workspaceId": "00000000-0000-4000-8000-000000worksp",
+        "blockerReason": "Waiting for Stripe credentials",
+        "recipientUserId": "00000000-0000-4000-8000-000004recipi",
+        "previousAssigneeId": null
+      }
+    },
+    {
+      "step": "blocker resolved",
+      "payload": {
+        "goalId": null,
+        "taskId": "00000000-0000-4000-8000-000000taskId",
+        "actorId": "00000000-0000-4000-8000-000000actorI",
+        "eventId": "00000000-0000-4000-8000-000019eventI",
+        "entityId": "00000000-0000-4000-8000-000000taskId",
+        "goalName": null,
+        "createdAt": "2026-09-20T00:00:00+00:00",
+        "eventType": "blocker_resolved",
+        "taskTitle": "OnTask Integration to Slack",
+        "entityName": null,
+        "entityType": "task",
+        "parentTitle": null,
+        "selfRemoved": false,
+        "workspaceId": "00000000-0000-4000-8000-000000worksp",
+        "blockerReason": "Waiting for Stripe credentials",
+        "recipientUserId": null,
+        "previousAssigneeId": null
+      }
+    },
+    {
+      "step": "note added",
+      "payload": {
+        "goalId": null,
+        "taskId": "00000000-0000-4000-8000-000000taskId",
+        "actorId": "00000000-0000-4000-8000-000000actorI",
+        "eventId": "00000000-0000-4000-8000-000020eventI",
+        "entityId": "00000000-0000-4000-8000-000000taskId",
+        "goalName": null,
+        "createdAt": "2026-09-20T00:00:00+00:00",
+        "eventType": "note_added",
+        "taskTitle": "OnTask Integration to Slack",
+        "entityName": null,
+        "entityType": "task",
+        "parentTitle": null,
+        "selfRemoved": false,
+        "workspaceId": "00000000-0000-4000-8000-000000worksp",
+        "blockerReason": null,
+        "recipientUserId": null,
+        "previousAssigneeId": null
+      }
+    },
+    {
+      "step": "resource uploaded",
+      "payload": {
+        "goalId": null,
+        "taskId": null,
+        "actorId": "00000000-0000-4000-8000-000000actorI",
+        "eventId": "00000000-0000-4000-8000-000021eventI",
+        "entityId": "00000000-0000-4000-8000-000021entity",
+        "goalName": null,
+        "createdAt": "2026-09-20T00:00:00+00:00",
+        "eventType": "resource_added",
+        "taskTitle": null,
+        "entityName": "Architecture.pdf",
+        "entityType": "resource",
+        "parentTitle": null,
+        "selfRemoved": false,
+        "workspaceId": "00000000-0000-4000-8000-000000worksp",
+        "blockerReason": null,
+        "recipientUserId": null,
+        "previousAssigneeId": null
+      }
+    },
+    {
+      "step": "resource updated",
+      "payload": {
+        "goalId": null,
+        "taskId": null,
+        "actorId": "00000000-0000-4000-8000-000000actorI",
+        "eventId": "00000000-0000-4000-8000-000022eventI",
+        "entityId": "00000000-0000-4000-8000-000021entity",
+        "goalName": null,
+        "createdAt": "2026-09-20T00:00:00+00:00",
+        "eventType": "resource_updated",
+        "taskTitle": null,
+        "entityName": "Architecture.pdf",
+        "entityType": "resource",
+        "parentTitle": null,
+        "selfRemoved": false,
+        "workspaceId": "00000000-0000-4000-8000-000000worksp",
+        "blockerReason": null,
+        "recipientUserId": null,
+        "previousAssigneeId": null
+      }
+    },
+    {
+      "step": "resource deleted",
+      "payload": {
+        "goalId": null,
+        "taskId": null,
+        "actorId": "00000000-0000-4000-8000-000000actorI",
+        "eventId": "00000000-0000-4000-8000-000023eventI",
+        "entityId": "00000000-0000-4000-8000-000021entity",
+        "goalName": null,
+        "createdAt": "2026-09-20T00:00:00+00:00",
+        "eventType": "resource_deleted",
+        "taskTitle": null,
+        "entityName": "Architecture.pdf",
+        "entityType": "resource",
+        "parentTitle": null,
+        "selfRemoved": false,
+        "workspaceId": "00000000-0000-4000-8000-000000worksp",
+        "blockerReason": null,
+        "recipientUserId": null,
+        "previousAssigneeId": null
+      }
+    },
+    {
+      "step": "member invited",
+      "payload": {
+        "goalId": null,
+        "taskId": null,
+        "actorId": "00000000-0000-4000-8000-000024actorI",
+        "eventId": "00000000-0000-4000-8000-000024eventI",
+        "entityId": null,
+        "goalName": null,
+        "createdAt": "2026-09-20T00:00:00+00:00",
+        "eventType": "member_invited",
+        "taskTitle": null,
+        "entityName": "newcomer@example.com",
+        "entityType": "invitation",
+        "parentTitle": null,
+        "selfRemoved": false,
+        "workspaceId": "00000000-0000-4000-8000-000000worksp",
+        "blockerReason": null,
+        "recipientUserId": null,
+        "previousAssigneeId": null
+      }
+    },
+    {
+      "step": "member joined",
+      "payload": {
+        "goalId": null,
+        "taskId": null,
+        "actorId": "00000000-0000-4000-8000-000004recipi",
+        "eventId": "00000000-0000-4000-8000-000025eventI",
+        "entityId": "00000000-0000-4000-8000-000004recipi",
+        "goalName": null,
+        "createdAt": "2026-09-20T00:00:00+00:00",
+        "eventType": "member_joined",
+        "taskTitle": null,
+        "entityName": "Iqra Nadeem",
+        "entityType": "workspace_member",
+        "parentTitle": null,
+        "selfRemoved": false,
+        "workspaceId": "00000000-0000-4000-8000-000000worksp",
+        "blockerReason": null,
+        "recipientUserId": null,
+        "previousAssigneeId": null
+      }
+    },
+    {
+      "step": "member removed",
+      "payload": {
+        "goalId": null,
+        "taskId": null,
+        "actorId": "00000000-0000-4000-8000-000024actorI",
+        "eventId": "00000000-0000-4000-8000-000026eventI",
+        "entityId": "00000000-0000-4000-8000-000004recipi",
+        "goalName": null,
+        "createdAt": "2026-09-20T00:00:00+00:00",
+        "eventType": "member_removed",
+        "taskTitle": null,
+        "entityName": "Iqra Nadeem",
+        "entityType": "workspace_member",
+        "parentTitle": null,
+        "selfRemoved": false,
+        "workspaceId": "00000000-0000-4000-8000-000000worksp",
+        "blockerReason": null,
+        "recipientUserId": "00000000-0000-4000-8000-000004recipi",
+        "previousAssigneeId": null
+      }
+    },
+    {
+      "step": "goal completed",
+      "payload": {
+        "goalId": "00000000-0000-4000-8000-000007goalId",
+        "taskId": null,
+        "actorId": "00000000-0000-4000-8000-000000actorI",
+        "eventId": "00000000-0000-4000-8000-000027eventI",
+        "entityId": "00000000-0000-4000-8000-000007goalId",
+        "goalName": "Launch MVP",
+        "createdAt": "2026-09-20T00:00:00+00:00",
+        "eventType": "goal_completed",
+        "taskTitle": null,
+        "entityName": "Launch MVP",
+        "entityType": "goal",
+        "parentTitle": null,
+        "selfRemoved": false,
+        "workspaceId": "00000000-0000-4000-8000-000000worksp",
+        "blockerReason": null,
+        "recipientUserId": null,
+        "previousAssigneeId": null
+      }
+    },
+    {
+      "step": "goal archived",
+      "payload": {
+        "goalId": "00000000-0000-4000-8000-000007goalId",
+        "taskId": null,
+        "actorId": "00000000-0000-4000-8000-000000actorI",
+        "eventId": "00000000-0000-4000-8000-000028eventI",
+        "entityId": "00000000-0000-4000-8000-000007goalId",
+        "goalName": "Launch MVP",
+        "createdAt": "2026-09-20T00:00:00+00:00",
+        "eventType": "goal_archived",
+        "taskTitle": null,
+        "entityName": "Launch MVP",
+        "entityType": "goal",
+        "parentTitle": null,
+        "selfRemoved": false,
+        "workspaceId": "00000000-0000-4000-8000-000000worksp",
+        "blockerReason": null,
+        "recipientUserId": null,
+        "previousAssigneeId": null
+      }
+    },
+    {
+      "step": "goal deleted",
+      "payload": {
+        "goalId": "00000000-0000-4000-8000-000007goalId",
+        "taskId": null,
+        "actorId": "00000000-0000-4000-8000-000000actorI",
+        "eventId": "00000000-0000-4000-8000-000029eventI",
+        "entityId": "00000000-0000-4000-8000-000007goalId",
+        "goalName": null,
+        "createdAt": "2026-09-20T00:00:00+00:00",
+        "eventType": "goal_deleted",
+        "taskTitle": null,
+        "entityName": "Launch MVP",
+        "entityType": "goal",
+        "parentTitle": null,
+        "selfRemoved": false,
+        "workspaceId": "00000000-0000-4000-8000-000000worksp",
+        "blockerReason": null,
+        "recipientUserId": null,
+        "previousAssigneeId": null
+      }
+    },
+    {
+      "step": "daily report ready",
+      "payload": {
+        "eventId": "00000000-0000-4000-8000-000030eventI",
+        "entityId": "00000000-0000-4000-8000-000030eventI",
+        "reportId": "00000000-0000-4000-8000-000030eventI",
+        "eventType": "daily_report_ready",
+        "entityType": "daily_report",
+        "workspaceId": "00000000-0000-4000-8000-000000worksp"
+      }
+    }
+  ]
+}
