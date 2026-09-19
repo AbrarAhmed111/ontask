@@ -86,13 +86,158 @@ describe('buildSlackEventMessage', () => {
       workspaceSlug: 'devabby',
       eventType: 'daily_report_ready',
       reportId: 'report-789',
+      report: {
+        paragraphs: ['Abrar completed 4 tasks and logged 5h 20m of focus.'],
+        facts: ['5h 20m focused', '4 tasks completed'],
+        shortened: false,
+      },
     })
 
-    expect(message.fallbackText).toContain('Daily Report is ready')
+    expect(message.fallbackText).toContain(
+      'Abrar completed 4 tasks and logged 5h 20m of focus.',
+    )
     expect(JSON.stringify(message.blocks)).toContain('Daily Report')
     expect(JSON.stringify(message.blocks)).toContain(
       'http://localhost:3000/workspaces/devabby?report=report-789',
     )
+  })
+})
+
+/**
+ * The Daily Report message, which is the only one whose body is the thing it
+ * announces rather than a pointer to it. What matters in every case below is
+ * that the words came from the stored report: a message that reads well but was
+ * composed here would be a second, disagreeing report.
+ */
+describe('buildSlackEventMessage — the Daily Report', () => {
+  const NARRATION = [
+    'Abrar completed 4 tasks, spent 5h 20m focused on implementation work, and finished the authentication and Slack integration work.',
+    'The team also resolved 2 blockers during the period.',
+  ]
+  const base = {
+    workspaceName: 'Products & AI Solutions',
+    workspaceSlug: 'products-ai-solutions',
+    eventType: 'daily_report_ready',
+    reportId: 'report-789',
+  }
+  const digest = {
+    paragraphs: NARRATION,
+    facts: ['5h 20m focused', '4 tasks completed', '2 blockers resolved'],
+    shortened: true,
+  }
+
+  const blockText = (
+    message: ReturnType<typeof buildSlackEventMessage>,
+    type: string,
+  ) =>
+    (
+      message.blocks.find(b => (b as { type: string }).type === type) as
+        { text?: { text?: string } } | undefined
+    )?.text?.text ?? ''
+
+  it('puts the stored narration in the message, not a notice that a report exists', () => {
+    const message = buildSlackEventMessage({ ...base, report: digest })
+
+    expect(blockText(message, 'section')).toBe(NARRATION.join('\n\n'))
+    expect(JSON.stringify(message.blocks)).not.toContain('is ready')
+  })
+
+  it('names the workspace in the header', () => {
+    const message = buildSlackEventMessage({ ...base, report: digest })
+
+    expect(blockText(message, 'header')).toBe(
+      '📊 Daily Report — Products & AI Solutions',
+    )
+  })
+
+  it('carries the figures under the narration', () => {
+    const message = buildSlackEventMessage({ ...base, report: digest })
+    const context = message.blocks.find(
+      b => (b as { type: string }).type === 'context',
+    ) as { elements: { text: string }[] }
+
+    expect(context.elements[0].text).toBe(
+      '5h 20m focused · 4 tasks completed · 2 blockers resolved',
+    )
+  })
+
+  it('links the button to that exact report', () => {
+    const message = buildSlackEventMessage({ ...base, report: digest })
+    const button = (
+      message.blocks.find(b => (b as { type: string }).type === 'actions') as {
+        elements: { text: { text: string }; url: string }[]
+      }
+    ).elements[0]
+
+    expect(button.text.text).toBe('View Full Daily Report')
+    expect(button.url).toBe(
+      'http://localhost:3000/workspaces/products-ai-solutions?report=report-789',
+    )
+  })
+
+  it('gives the notification preview the opening of the report', () => {
+    const message = buildSlackEventMessage({ ...base, report: digest })
+
+    expect(message.fallbackText).toBe(
+      `[Products & AI Solutions] Daily Report: ${NARRATION[0]}`,
+    )
+  })
+
+  // Slack reads < and > as the start of a link and & as an entity, so a report
+  // that quotes a task called "<script> & co" must not be able to turn part of
+  // the channel into a broken link.
+  it('escapes Slack’s own markup out of the stored narration', () => {
+    const message = buildSlackEventMessage({
+      ...base,
+      report: {
+        paragraphs: [
+          'Abrar finished "<Payments> & billing" and left 5 < 6 tasks open.',
+        ],
+        facts: ['R&D: 2h 0m focused'],
+        shortened: false,
+      },
+    })
+
+    const body = blockText(message, 'section')
+    expect(body).toBe(
+      'Abrar finished "&lt;Payments&gt; &amp; billing" and left 5 &lt; 6 tasks open.',
+    )
+    expect(body).not.toContain('<Payments>')
+    expect(JSON.stringify(message.blocks)).toContain('R&amp;D')
+  })
+
+  it('sends the figures alone when a report stored no narration', () => {
+    const message = buildSlackEventMessage({
+      ...base,
+      report: { paragraphs: [], facts: ['3h 0m focused'], shortened: false },
+    })
+
+    expect(blockText(message, 'section')).toBe('*3h 0m focused*')
+    expect(message.fallbackText).toBe(
+      '[Products & AI Solutions] Daily Report: 3h 0m focused',
+    )
+  })
+
+  // Nothing on the real path reaches here: the dispatcher does not send a
+  // report it could not read. This is the builder staying total rather than
+  // throwing inside a notification.
+  it('falls back to a pointer when it was handed no report at all', () => {
+    const message = buildSlackEventMessage(base)
+
+    expect(message.fallbackText).toBe(
+      '[Products & AI Solutions] Daily Report is ready',
+    )
+    expect(blockText(message, 'section')).toContain('is ready')
+  })
+
+  it('keeps the header inside Slack’s limit for a long workspace name', () => {
+    const message = buildSlackEventMessage({
+      ...base,
+      workspaceName: 'W'.repeat(300),
+      report: digest,
+    })
+
+    expect(blockText(message, 'header').length).toBeLessThanOrEqual(150)
   })
 })
 

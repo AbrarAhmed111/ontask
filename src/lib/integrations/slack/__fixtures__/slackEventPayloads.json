@@ -689,5 +689,137 @@
         "workspaceId": "00000000-0000-4000-8000-000000worksp"
       }
     }
+  ],
+  "dailyReports": [
+    {
+      "id": "00000000-0000-4000-8000-000030eventI",
+      "workspace_id": "00000000-0000-4000-8000-000000worksp",
+      "generation_status": "completed",
+      "narrative": {
+        "members": [],
+        "highlights": [],
+        "overall_summary": "Products & AI Solutions logged 5h 30m of focused work over the previous 24 hours, nearly all of it on the Slack integration.\n\nAbrar Ahmed carried that work on \"OnTask Integration to Slack\", starting, pausing and resuming it through the period before handing it to Iqra Nadeem. The task was completed once inside the window and reopened afterwards, so it ends the period back in the queue rather than finished.\n\nThe single blocker raised during the period, waiting on Stripe credentials, was also resolved inside it once Iqra Nadeem was asked to help.\n\nAlongside that work two tasks were created, one was skipped and one was deleted, and the goal \"Launch MVP\" was completed and archived before being removed entirely.\n\nTwo invitations went out over the same period: one was accepted and one is still pending at the end of it.",
+        "workspace_changes_summary": ""
+      },
+      "structured_snapshot": {
+        "members": [
+          {
+            "events": [
+              {
+                "type": "completed",
+                "task_id": "00000000-0000-4000-8000-000000taskId",
+                "metadata": {
+                  "title": "OnTask Integration to Slack"
+                },
+                "timestamp": "2026-09-20T00:00:00+00:00",
+                "actor_name": "Abrar Ahmed",
+                "task_title": "OnTask Integration to Slack",
+                "parent_title": null,
+                "actor_user_id": "00000000-0000-4000-8000-000000actorI"
+              }
+            ],
+            "user_id": "00000000-0000-4000-8000-000000actorI",
+            "display_name": "Abrar Ahmed",
+            "task_activity": [
+              {
+                "title": "OnTask Integration to Slack",
+                "goal_id": null,
+                "task_id": "00000000-0000-4000-8000-000000taskId",
+                "goal_name": null,
+                "status_end": "completed",
+                "parent_title": null,
+                "progress_end": null,
+                "current_status": "completed",
+                "parent_task_id": null,
+                "progress_start": null,
+                "focused_seconds": 13200
+              }
+            ],
+            "focused_seconds": 13200
+          },
+          {
+            "events": [
+              {
+                "type": "invitation_sent",
+                "subject": "newcomer@example.com",
+                "task_id": null,
+                "metadata": {
+                  "status": "pending",
+                  "invited_email": "newcomer@example.com"
+                },
+                "timestamp": "2026-09-20T00:00:00+00:00",
+                "actor_name": "Workspace Owner",
+                "task_title": null,
+                "parent_title": null,
+                "actor_user_id": "00000000-0000-4000-8000-000024actorI"
+              }
+            ],
+            "user_id": "00000000-0000-4000-8000-000024actorI",
+            "display_name": "Workspace Owner",
+            "task_activity": [],
+            "focused_seconds": 6600
+          }
+        ],
+        "metrics": {
+          "tasks_completed": 1,
+          "tasks_worked_on": 3
+        },
+        "blockers": [
+          {
+            "reason": "Waiting for Stripe credentials",
+            "goal_id": null,
+            "task_id": "00000000-0000-4000-8000-000000taskId",
+            "goal_name": null,
+            "mentioned": [
+              {
+                "user_id": "00000000-0000-4000-8000-000004recipi",
+                "display_name": "Iqra Nadeem"
+              }
+            ],
+            "blocked_at": "2026-09-20T00:00:00+00:00",
+            "blocker_id": "00000000-0000-4000-8000-deep00000010",
+            "task_title": "OnTask Integration to Slack",
+            "resolved_at": "2026-09-20T00:00:00+00:00",
+            "parent_title": null,
+            "blocked_by_name": "Abrar Ahmed",
+            "blocked_seconds": 0,
+            "resolution_note": "Credentials arrived.",
+            "resolved_by_name": "Abrar Ahmed",
+            "blocked_by_user_id": "00000000-0000-4000-8000-000000actorI",
+            "resolved_by_user_id": "00000000-0000-4000-8000-000000actorI",
+            "still_blocked_at_report_end": false
+          }
+        ],
+        "timezone": "UTC",
+        "report_end": "2026-09-20T00:00:00+00:00",
+        "report_start": "2026-09-20T00:00:00+00:00",
+        "workspace_id": "00000000-0000-4000-8000-000000worksp",
+        "workspace_name": "Products & AI Solutions",
+        "workspace_type": "shared",
+        "workspace_changes": {
+          "invitations": [
+            {
+              "status": "pending",
+              "responded_at": null,
+              "invited_email": "newcomer@example.com",
+              "invited_by_name": "Workspace Owner",
+              "invited_by_user_id": "00000000-0000-4000-8000-000024actorI"
+            }
+          ],
+          "tasks_created": 2,
+          "tasks_deleted": 1,
+          "tasks_skipped": 1,
+          "members_joined": [
+            {
+              "user_id": "00000000-0000-4000-8000-000004recipi",
+              "display_name": "Iqra Nadeem"
+            }
+          ],
+          "members_removed": [],
+          "tasks_completed": 3
+        },
+        "total_focused_seconds": 19800
+      }
+    }
   ]
 }

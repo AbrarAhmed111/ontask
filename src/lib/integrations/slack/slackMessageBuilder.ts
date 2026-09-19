@@ -11,6 +11,7 @@ import {
   getGoalUrl,
   getResourcesUrl,
 } from './slackUrl'
+import type { DailyReportDigest } from '@/lib/dailyReportDigest'
 
 /**
  * What an event is about. The database decides this (see
@@ -55,6 +56,10 @@ export interface EventSlackPayload {
   selfRemoved?: boolean | null
   blockerReason?: string | null
   reportId?: string | null
+  /** The short form of the Daily Report this event announces, read out of the
+   *  stored report by the dispatcher. Absent means there was no report to read
+   *  — never "summarise it here instead". */
+  report?: DailyReportDigest | null
 }
 
 export interface SlackMessagePayload {
@@ -515,41 +520,85 @@ export function buildSlackEventMessage(
     }
 
     // ── Daily Report ─────────────────────────────────────────────────────
-    // Nothing from inside the report is repeated here and nothing is
-    // summarised again: the report itself is authoritative, and this is a
-    // pointer to it. Three blocks, no context row — it is about the workspace,
-    // so naming the workspace twice would be noise.
+    // The one event whose message IS what it announces. Every other message
+    // here describes a change and links to it; a Daily Report that only said
+    // "your report is ready" made a reader open the app to find out whether
+    // there was anything in it, which is the whole of what the report already
+    // knows.
+    //
+    // So this carries the report's own opening paragraphs and its own figures,
+    // read out of the stored row by the dispatcher (src/lib/dailyReportDigest.ts)
+    // and repeated verbatim — nothing is summarised, recounted or regenerated
+    // on the way to Slack. The rest of the report stays in OnTask, which is
+    // what the button is for.
     case 'daily_report_ready': {
-      return {
-        fallbackText: `[${workspaceName}] Daily Report is ready`,
-        blocks: [
-          {
-            type: 'header',
-            text: { type: 'plain_text', text: '📊 Daily Report', emoji: true },
+      const digest = payload.report ?? null
+      const narration = digest?.paragraphs.length
+        ? digest.paragraphs.map(escapeSlackText).join('\n\n')
+        : null
+      const factsText = digest?.facts.length ? digest.facts.join(' · ') : null
+      const facts = factsText ? escapeSlackText(factsText) : null
+
+      // A report with no stored narration still has its figures, and they are
+      // worth a message on their own. With neither (a caller that has not read
+      // the report at all) this stays the pointer it used to be rather than
+      // inventing a sentence to fill the space.
+      const body = narration ?? (facts ? `*${facts}*` : null)
+
+      const blocks: unknown[] = [
+        {
+          type: 'header',
+          text: {
+            type: 'plain_text',
+            // plain_text, so the workspace name goes in as it is written —
+            // "Products & AI Solutions" keeps its ampersand. Clamped because
+            // Slack rejects a header over 150 characters outright.
+            text: clampHeader(`📊 Daily Report — ${workspaceName}`),
+            emoji: true,
           },
+        },
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text:
+              body ??
+              `The Daily Report for *${escapeSlackText(workspaceName)}* is ready.`,
+          },
+        },
+      ]
+      // The figures sit under the prose, not inside it: the narration already
+      // says what happened in words, and this is the same day in numbers.
+      if (narration && facts) {
+        blocks.push({
+          type: 'context',
+          elements: [{ type: 'mrkdwn', text: facts }],
+        })
+      }
+      blocks.push({
+        type: 'actions',
+        elements: [
           {
-            type: 'section',
+            type: 'button',
             text: {
-              type: 'mrkdwn',
-              text: `The Daily Report for *${escapeSlackText(workspaceName)}* is ready.`,
+              type: 'plain_text',
+              text: 'View Full Daily Report',
+              emoji: true,
             },
-          },
-          {
-            type: 'actions',
-            elements: [
-              {
-                type: 'button',
-                text: {
-                  type: 'plain_text',
-                  text: 'View Daily Report',
-                  emoji: true,
-                },
-                url: reportUrl,
-                style: 'primary',
-              },
-            ],
+            url: reportUrl,
+            style: 'primary',
           },
         ],
+      })
+
+      // The notification preview, which renders no blocks: it gets the opening
+      // of the report rather than the fact that one exists.
+      const preview = digest?.paragraphs[0] ?? factsText
+      return {
+        fallbackText: preview
+          ? `[${workspaceName}] Daily Report: ${clampPreview(preview)}`
+          : `[${workspaceName}] Daily Report is ready`,
+        blocks,
       }
     }
 
@@ -587,4 +636,23 @@ export function buildSlackEventMessage(
 
 function escapeSlackText(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+// Slack's own limits, enforced here rather than discovered as an invalid_blocks
+// error with nothing delivered: a header is 150 characters, and a notification
+// preview longer than a line or two is truncated by the client anyway.
+const HEADER_LIMIT = 150
+const PREVIEW_LIMIT = 180
+
+function clampHeader(text: string): string {
+  return text.length <= HEADER_LIMIT
+    ? text
+    : `${text.slice(0, HEADER_LIMIT - 1).trimEnd()}…`
+}
+
+function clampPreview(text: string): string {
+  const oneLine = text.replace(/\s+/g, ' ').trim()
+  return oneLine.length <= PREVIEW_LIMIT
+    ? oneLine
+    : `${oneLine.slice(0, PREVIEW_LIMIT - 1).trimEnd()}…`
 }

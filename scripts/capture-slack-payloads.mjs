@@ -164,6 +164,20 @@ const { rows: people } = await db.query(`
   where not exists (select 1 from public.profiles p2 where p2.id = u.id)
 `)
 
+// The Daily Report the scenario stored. Its narration and its snapshot are
+// what the Slack message is MADE of, not just what it points at, so the test
+// needs the row itself rather than the payload that announced it. Read before
+// the cleanup, which cascades the workspace away with its users.
+const { rows: reports } = await db.query(`
+  select id, workspace_id, generation_status, narrative, structured_snapshot
+  from public.workspace_daily_summaries
+  order by report_end, id
+`)
+if (reports.length === 0) {
+  console.error('capture-slack-payloads: the scenario stored no Daily Report')
+  process.exit(2)
+}
+
 await db.exec(scenarioSql.slice(cleanupAt))
 
 // Ids are regenerated on every run, so they are normalised to stable
@@ -193,6 +207,38 @@ const captured = rows.map(({ step, payload }, index) => {
   return { step, payload: normalised }
 })
 
+// The stored report, normalised the same way but all the way down: its snapshot
+// carries ids and timestamps at every depth, and a fixture that changed on
+// every run would make --check permanently red. Ids already seen in a payload
+// keep that placeholder, so the report and the message announcing it still
+// agree about who is who. Timestamps become one fixed instant -- nothing
+// downstream reads them, and the alternative is a diff on every capture.
+const STAMP = /^\d{4}-\d{2}-\d{2}T[\d:.]+([+-]\d{2}:?\d{2}|Z)$/
+let deep = 0
+const normaliseDeep = value => {
+  if (Array.isArray(value)) return value.map(normaliseDeep)
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, inner]) => [key, normaliseDeep(inner)]),
+    )
+  }
+  if (typeof value === 'string' && UUID.test(value)) {
+    return placeholder(value, `deep${String(deep++).padStart(8, '0')}`)
+  }
+  if (typeof value === 'string' && STAMP.test(value)) {
+    return '2026-09-20T00:00:00+00:00'
+  }
+  return value
+}
+
+const capturedReports = reports.map(report => ({
+  id: normaliseDeep(report.id),
+  workspace_id: normaliseDeep(report.workspace_id),
+  generation_status: report.generation_status,
+  narrative: normaliseDeep(report.narrative),
+  structured_snapshot: normaliseDeep(report.structured_snapshot),
+}))
+
 const serialised =
   JSON.stringify(
     {
@@ -209,6 +255,7 @@ const serialised =
         }))
         .sort((a, b) => a.id.localeCompare(b.id)),
       events: captured,
+      dailyReports: capturedReports,
     },
     null,
     2,

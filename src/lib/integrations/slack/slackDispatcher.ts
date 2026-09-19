@@ -7,6 +7,8 @@ import { createServiceRoleClient } from '@/lib/supabase/service'
 import { postSlackMessage } from './slackClient'
 import { buildSlackEventMessage } from './slackMessageBuilder'
 import { isSlackEventEnabled } from './slackEventCategories'
+import { decideDailyReportForSlack } from '@/lib/dailyReportDigest'
+import type { DailyReportDigest } from '@/lib/dailyReportDigest'
 import type { SlackEntityType } from './slackMessageBuilder'
 
 export interface DispatchSlackEventParams {
@@ -31,6 +33,69 @@ export interface DispatchSlackEventParams {
   selfRemoved?: boolean
   blockerReason?: string
   reportId?: string
+}
+
+type DailyReportGate =
+  | { send: true; digest: DailyReportDigest }
+  | { send: false; outcome: string; success: boolean }
+
+/**
+ * Reads the Daily Report this event is about, straight out of the row the
+ * generator wrote, and decides whether it is one to announce.
+ *
+ * This is the only place the Slack path touches report content, and it only
+ * ever reads: the report was generated once, by the scheduler
+ * (src/app/api/cron/daily-reports) or by an explicit regeneration, and Slack
+ * repeats what that produced. No snapshot is aggregated here and ontask-llm is
+ * never called — a second narration of the same day would be a different report
+ * from the one the app shows.
+ */
+async function loadDailyReport(
+  supabase: ReturnType<typeof createServiceRoleClient>,
+  workspaceId: string,
+  reportId: string | undefined,
+): Promise<DailyReportGate> {
+  if (!reportId) {
+    // Every database from migration 0045 onwards sends reportId. Without one
+    // there is no report to read and nothing truthful to say.
+    return { send: false, outcome: 'report_not_identified', success: false }
+  }
+
+  const { data, error } = await supabase
+    .from('workspace_daily_summaries')
+    .select('generation_status, narrative, structured_snapshot')
+    .eq('id', reportId)
+    .eq('workspace_id', workspaceId)
+    .maybeSingle()
+
+  if (error || !data) {
+    console.error(
+      `[Slack Dispatcher] Daily Report ${reportId} could not be read:`,
+      error,
+    )
+    return { send: false, outcome: 'report_unavailable', success: false }
+  }
+
+  const decision = decideDailyReportForSlack({
+    generationStatus: data.generation_status,
+    narrative: data.narrative,
+    structuredSnapshot: data.structured_snapshot,
+  })
+  if (decision.send) return { send: true, digest: decision.digest }
+
+  // Not failures: a report still generating, one that failed, and a day with
+  // nothing on it are all reports Slack is meant to stay quiet about.
+  const outcome =
+    decision.reason === 'not_completed'
+      ? 'report_not_ready'
+      : decision.reason === 'no_activity'
+        ? 'report_has_no_activity'
+        : 'report_unreadable'
+  return {
+    send: false,
+    outcome,
+    success: decision.reason !== 'unreadable',
+  }
 }
 
 export async function dispatchSlackNotification(
@@ -66,7 +131,22 @@ export async function dispatchSlackNotification(
       return { success: false, outcome: 'client_not_supported' }
     }
 
-    // 1. Idempotency Check (Phase 11): Prevent duplicate notifications for same event_id
+    // 1. A Daily Report is read BEFORE the event id is claimed below. The id a
+    //    report event carries is the summary row's own id, so claiming it for a
+    //    report that turns out to be pending would make the real message — the
+    //    one sent when that same row finishes — look like a duplicate and drop
+    //    it. Deciding first means only a report that is actually announced ever
+    //    spends its id.
+    let reportDigest: DailyReportDigest | undefined
+    if (eventType === 'daily_report_ready') {
+      const gate = await loadDailyReport(supabase, workspaceId, reportId)
+      if (!gate.send) {
+        return { success: gate.success, outcome: gate.outcome }
+      }
+      reportDigest = gate.digest
+    }
+
+    // 2. Idempotency Check (Phase 11): Prevent duplicate notifications for same event_id
     if (eventId) {
       const { error: idempotencyError } = await supabase
         .from('workspace_slack_deliveries')
@@ -82,7 +162,7 @@ export async function dispatchSlackNotification(
       }
     }
 
-    // 2. Fetch Slack connection for workspace
+    // 3. Fetch Slack connection for workspace
     const { data: connection, error: connError } = await supabase
       .from('workspace_slack_connections')
       .select('*')
@@ -98,12 +178,12 @@ export async function dispatchSlackNotification(
       return { success: true, outcome: 'no_channel_configured' }
     }
 
-    // 3. Check notification preferences
+    // 4. Check notification preferences
     if (!isSlackEventEnabled(connection.notification_settings, eventType)) {
       return { success: true, outcome: 'notification_type_disabled' }
     }
 
-    // 4. Fetch workspace slug & name
+    // 5. Fetch workspace slug & name
     const { data: workspace } = await supabase
       .from('workspaces')
       .select('name, slug')
@@ -114,7 +194,7 @@ export async function dispatchSlackNotification(
       return { success: false, outcome: 'workspace_not_found' }
     }
 
-    // 5. Fetch display names for actor, recipient and (for an unassignment,
+    // 6. Fetch display names for actor, recipient and (for an unassignment,
     //    which has no recipient at all) whoever the task was taken from.
     const displayName = async (userId: string): Promise<string | undefined> => {
       const { data: profile } = await supabase
@@ -135,7 +215,7 @@ export async function dispatchSlackNotification(
       ? await displayName(previousAssigneeId)
       : undefined
 
-    // 6. Build message payload
+    // 7. Build message payload
     const messagePayload = buildSlackEventMessage({
       workspaceName: workspace.name,
       workspaceSlug: workspace.slug,
@@ -154,9 +234,10 @@ export async function dispatchSlackNotification(
       selfRemoved,
       blockerReason,
       reportId,
+      report: reportDigest,
     })
 
-    // 7. Post message to Slack
+    // 8. Post message to Slack
     const postResult = await postSlackMessage(
       connection.bot_access_token,
       connection.channel_id,

@@ -42,6 +42,13 @@ const WORKSPACE_NAME = 'Products & AI Solutions'
 const WORKSPACE_SLUG = 'products-ai-solutions'
 
 const deliveries: { workspace_id: string; event_id: string }[] = []
+// The stored Daily Report, captured from the same run as the payloads: the row
+// the scenario really wrote, narration and snapshot included. Reset per test.
+type StoredReportRow = (typeof fixture.dailyReports)[number]
+let reports: StoredReportRow[] = []
+const STORED_REPORT = fixture.dailyReports[0]
+const STORED_NARRATION = STORED_REPORT.narrative.overall_summary
+
 const connection: Row = {
   id: 'conn-1',
   workspace_id: WORKSPACE_ID,
@@ -97,6 +104,18 @@ function fakeClient() {
               ? { data: found, error: null }
               : { data: null, error: { code: 'PGRST116' } },
           )
+        },
+        // The Daily Report row the scenario stored, served exactly as the
+        // database holds it. `reports` is state a test can replace, because
+        // what the dispatcher does with a pending or empty report is as much
+        // part of the pipeline as what it does with a finished one.
+        maybeSingle() {
+          const found = reports.find(
+            report =>
+              report.id === filters.id &&
+              report.workspace_id === filters.workspace_id,
+          )
+          return Promise.resolve({ data: found ?? null, error: null })
         },
       }
       return builder
@@ -158,6 +177,7 @@ const buttonOf = (call: SlackCall) =>
 
 beforeEach(() => {
   deliveries.length = 0
+  reports = [STORED_REPORT]
   connection.notification_settings = {}
   createServiceRoleClient.mockReturnValue(fakeClient())
 })
@@ -509,17 +529,82 @@ describe('workspace membership', () => {
   })
 })
 
+/**
+ * The Daily Report, end to end on the row the scenario really stored.
+ *
+ * The payload only says WHICH report; the words come from the row. So these
+ * assertions compare the Slack message against the stored narration itself
+ * rather than against a string written here — the same narration the Daily
+ * Report card renders through narrativeParagraphs(). If the two ever come
+ * apart, this is where it shows.
+ */
 describe('the Daily Report', () => {
-  it('points at the report that was actually generated, and summarises nothing', async () => {
+  const dispatch = (payload: Record<string, unknown>) =>
+    POST(
+      new Request('http://localhost/api/integrations/slack/dispatch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }),
+    )
+
+  it('sends the narration the report actually stored', async () => {
+    const call = await deliver(payloadFor('daily report ready'))
+
+    // The opening of the stored report, whole paragraphs, with nothing changed
+    // but the three characters Slack reads as markup.
+    const stored = STORED_NARRATION.split('\n\n')
+    const forSlack = (text: string) =>
+      text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+    expect(bodyOf(call)).toBe(stored.slice(0, 3).map(forSlack).join('\n\n'))
+    // The preview renders no markup, so it carries the words as written.
+    expect(call.fallbackText).toBe(
+      `[${WORKSPACE_NAME}] Daily Report: ${stored[0]}`,
+    )
+    expect(JSON.stringify(call.blocks)).not.toContain('is ready')
+  })
+
+  it('is a shorter read than the report in the app', async () => {
+    const call = await deliver(payloadFor('daily report ready'))
+
+    expect(bodyOf(call).length).toBeLessThan(STORED_NARRATION.length)
+    expect(bodyOf(call).split('\n\n')).toHaveLength(3)
+    // The paragraphs it leaves out stay in OnTask.
+    expect(bodyOf(call)).not.toContain('Two invitations went out')
+  })
+
+  it('carries the report’s own figures, from its own snapshot', async () => {
+    const call = await deliver(payloadFor('daily report ready'))
+    const figures =
+      call.blocks.find(b => b.type === 'context')?.elements?.[0]?.text ?? ''
+
+    // 19800 stored seconds, metrics.tasks_completed = 1, two members with
+    // activity, one blocker that ended resolved -- every one of them read out
+    // of structured_snapshot, not recounted here.
+    expect(figures).toContain('5h 30m focused')
+    expect(figures).toContain('1 task completed')
+    expect(figures).toContain('2 members active')
+    expect(figures).toContain('1 blocker resolved')
+  })
+
+  it('escapes the workspace’s ampersand where Slack would read markup', async () => {
+    const call = await deliver(payloadFor('daily report ready'))
+
+    // The narration opens with the workspace's real name.
+    expect(bodyOf(call)).toContain('Products &amp; AI Solutions')
+    // ...while the header is plain_text, where it stays as written.
+    expect(headingOf(call)).toBe('📊 Daily Report — Products & AI Solutions')
+  })
+
+  it('points at the report that was actually generated', async () => {
     const payload = payloadFor('daily report ready')
     const call = await deliver(payload)
-    expect(call.fallbackText).toBe(`[${WORKSPACE_NAME}] Daily Report is ready`)
-    expect(buttonOf(call)?.text?.text).toBe('View Daily Report')
+
+    expect(buttonOf(call)?.text?.text).toBe('View Full Daily Report')
     expect(buttonOf(call)?.url).toBe(
       `http://localhost:3000/workspaces/${WORKSPACE_SLUG}?report=${payload.reportId}`,
     )
-    // The report is the authoritative document; this is a pointer to it.
-    expect(JSON.stringify(call.blocks)).not.toContain('A good day')
   })
 
   it('sends once, however often the scheduler runs', async () => {
@@ -528,15 +613,31 @@ describe('the Daily Report', () => {
     expect(postSlackMessage).toHaveBeenCalledTimes(1)
 
     postSlackMessage.mockClear()
-    const again = await POST(
-      new Request('http://localhost/api/integrations/slack/dispatch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      }),
-    )
+    const again = await dispatch(payload)
     expect(await again.json()).toMatchObject({
       outcome: 'duplicate_event_skipped',
+    })
+    expect(postSlackMessage).not.toHaveBeenCalled()
+  })
+
+  it('says nothing for a report that has not finished generating', async () => {
+    reports = [{ ...STORED_REPORT, generation_status: 'pending' }]
+
+    const response = await dispatch(payloadFor('daily report ready'))
+
+    expect(await response.json()).toMatchObject({
+      outcome: 'report_not_ready',
+    })
+    expect(postSlackMessage).not.toHaveBeenCalled()
+  })
+
+  it('says nothing for a report that failed', async () => {
+    reports = [{ ...STORED_REPORT, generation_status: 'failed' }]
+
+    const response = await dispatch(payloadFor('daily report ready'))
+
+    expect(await response.json()).toMatchObject({
+      outcome: 'report_not_ready',
     })
     expect(postSlackMessage).not.toHaveBeenCalled()
   })
