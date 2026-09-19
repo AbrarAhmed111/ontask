@@ -291,7 +291,7 @@ export function WorkspaceOverviewClient() {
     showSuccessToast('Task updated.')
   }
   const handleFinishTask = (task: WorkspaceTask) => {
-    finishTask(task, true)
+    finishTask(task)
     showSuccessToast(`${task.name} finished.`)
   }
   const handleReopenTask = (task: WorkspaceTask) => {

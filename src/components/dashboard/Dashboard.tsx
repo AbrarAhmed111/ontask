@@ -289,7 +289,7 @@ export function Dashboard() {
     showSuccessToast('Goal progress updated.')
   }
   const handleFinish = (task: Task) => {
-    finishTask(task, true)
+    finishTask(task)
     showSuccessToast(`${task.name} finished for today.`)
   }
   const handleDelete = (id: string) => {
