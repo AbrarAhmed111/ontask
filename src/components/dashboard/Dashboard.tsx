@@ -36,7 +36,7 @@ const WORKSPACES_LOGIN_PROMPT =
 
 const emptyForm: TaskFormValues = {
   name: '',
-  hours: '1',
+  hours: '0',
   minutes: '0',
   goal: '',
   progress: '0',
@@ -264,7 +264,7 @@ export function Dashboard() {
     if (!editingId) return
     const plannedMinutes =
       Number(form.hours || 0) * 60 + Number(form.minutes || 0)
-    if (!form.name.trim() || plannedMinutes <= 0) return
+    if (!form.name.trim() || plannedMinutes < 0) return
     updateTask(editingId, {
       name: form.name.trim(),
       plannedMinutes,

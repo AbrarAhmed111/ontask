@@ -37,7 +37,7 @@ type GoalWorkingTask = {
 
 const emptyTaskForm: TaskFormValues = {
   name: '',
-  hours: '1',
+  hours: '0',
   minutes: '0',
   goal: '',
   progress: '0',

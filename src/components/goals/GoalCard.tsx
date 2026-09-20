@@ -48,7 +48,7 @@ const STATUS_LABEL: Record<Goal['status'], string> = {
 
 const emptyTaskForm: TaskFormValues = {
   name: '',
-  hours: '1',
+  hours: '0',
   minutes: '0',
   goal: '',
   progress: '0',

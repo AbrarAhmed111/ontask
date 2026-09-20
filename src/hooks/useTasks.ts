@@ -132,7 +132,7 @@ export function useTasks(
     event.preventDefault()
     const plannedMinutes =
       Number(form.hours || 0) * 60 + Number(form.minutes || 0)
-    if (!form.name.trim() || plannedMinutes <= 0) return false
+    if (!form.name.trim() || plannedMinutes < 0) return false
     setTasks(current => [
       ...current,
       {

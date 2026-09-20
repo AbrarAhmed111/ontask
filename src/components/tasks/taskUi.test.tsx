@@ -11,7 +11,7 @@ import type { WorkspaceMember } from '@/types/workspace'
 
 const values: TaskFormValues = {
   name: '',
-  hours: '1',
+  hours: '0',
   minutes: '0',
   goal: '',
   progress: '0',
