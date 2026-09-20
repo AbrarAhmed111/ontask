@@ -5,6 +5,7 @@ export type WorkspaceTaskRow = {
   workspace_id: string
   parent_task_id: string | null
   goal_id: string | null
+  idea_id?: string | null
   created_by: string
   assigned_to: string | null
   title: string
@@ -24,6 +25,7 @@ export function rowToTask(row: WorkspaceTaskRow): WorkspaceTask {
     workspaceId: row.workspace_id,
     parentTaskId: row.parent_task_id,
     goalId: row.goal_id,
+    ideaId: row.idea_id ?? null,
     createdBy: row.created_by,
     assignedTo: row.assigned_to,
     name: row.title,

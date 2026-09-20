@@ -3,6 +3,8 @@
 import { FormEvent } from 'react'
 import { Button } from '@/components/ui/Button'
 import { GoalFormValues } from '@/hooks/useWorkspaceGoals'
+import { IdeaSelect } from '@/components/ideas/IdeaSelect'
+import type { Idea } from '@/types/workspace'
 
 export function GoalForm({
   values,
@@ -10,12 +12,14 @@ export function GoalForm({
   submitLabel,
   onSubmit,
   onCancel,
+  ideas,
 }: {
   values: GoalFormValues
   setValues: (values: GoalFormValues) => void
   submitLabel: string
   onSubmit: (event: FormEvent) => void
   onCancel: () => void
+  ideas?: Idea[]
 }) {
   const update = (key: keyof GoalFormValues, value: string) =>
     setValues({ ...values, [key]: value })
@@ -51,6 +55,13 @@ export function GoalForm({
           className="mt-2 w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm text-ink outline-none focus:border-sage focus:ring-4 focus:ring-sage/15"
         />
       </label>
+      {ideas && (
+        <IdeaSelect
+          ideas={ideas}
+          value={values.ideaId || ''}
+          onChange={ideaId => update('ideaId', ideaId)}
+        />
+      )}
       <div className="flex justify-end gap-2 border-t border-line pt-4">
         <Button type="button" variant="ghost" onClick={onCancel}>
           Cancel

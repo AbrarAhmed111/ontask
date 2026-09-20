@@ -105,6 +105,7 @@ export function useWorkspaceTaskActions({
     parentTaskId: string | null = null,
     assignedTo: string | null = null,
     goalId: string | null = null,
+    ideaId: string | null = null,
   ) => {
     event.preventDefault()
     if (!userId || !form.name.trim()) return false
@@ -125,6 +126,7 @@ export function useWorkspaceTaskActions({
     const progressPercentage = form.trackGoal
       ? Math.min(100, Math.max(0, Number(form.progress) || 0))
       : undefined
+    const effectiveIdeaId = form.ideaId || ideaId || null
 
     setTasks(current => [
       ...current,
@@ -133,6 +135,7 @@ export function useWorkspaceTaskActions({
         workspaceId,
         parentTaskId,
         goalId,
+        ideaId: effectiveIdeaId,
         createdBy: userId,
         assignedTo,
         name,
@@ -155,6 +158,7 @@ export function useWorkspaceTaskActions({
         workspace_id: workspaceId,
         parent_task_id: parentTaskId,
         goal_id: goalId,
+        idea_id: effectiveIdeaId,
         created_by: userId,
         assigned_to: assignedTo,
         title: name,
@@ -212,6 +216,7 @@ export function useWorkspaceTaskActions({
       row.progress_label = update.progressLabel ?? null
     if (update.progressPercentage !== undefined)
       row.progress_percentage = update.progressPercentage ?? null
+    if (update.ideaId !== undefined) row.idea_id = update.ideaId ?? null
     if (Object.keys(row).length === 0) return
     const supabase = createClient()
     void supabase

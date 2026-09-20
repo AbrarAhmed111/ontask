@@ -9,6 +9,7 @@ import { Goal, GoalStatus } from '@/types/workspace'
 type GoalRow = {
   id: string
   workspace_id: string
+  idea_id?: string | null
   name: string
   description: string | null
   status: GoalStatus
@@ -25,6 +26,7 @@ function rowToGoal(row: GoalRow): Goal {
   return {
     id: row.id,
     workspaceId: row.workspace_id,
+    ideaId: row.idea_id ?? null,
     name: row.name,
     description: row.description,
     status: row.status,
@@ -42,6 +44,7 @@ export type GoalFormValues = {
   name: string
   description: string
   targetDate: string
+  ideaId?: string
 }
 
 const NO_GOALS: Goal[] = []
@@ -165,12 +168,14 @@ export function useWorkspaceGoals(workspaceId: string, user: AuthUser | null) {
     const name = form.name.trim()
     const description = form.description.trim() || null
     const targetDate = form.targetDate || null
+    const ideaId = form.ideaId || null
 
     setGoals(current => [
       ...current,
       {
         id,
         workspaceId,
+        ideaId,
         name,
         description,
         status: 'active',
@@ -190,6 +195,7 @@ export function useWorkspaceGoals(workspaceId: string, user: AuthUser | null) {
       .insert({
         id,
         workspace_id: workspaceId,
+        idea_id: ideaId,
         name,
         description,
         created_by: userId,
@@ -208,7 +214,7 @@ export function useWorkspaceGoals(workspaceId: string, user: AuthUser | null) {
   const updateGoal = (
     id: string,
     update: Partial<
-      Pick<Goal, 'name' | 'description' | 'targetDate' | 'status'>
+      Pick<Goal, 'name' | 'description' | 'targetDate' | 'status' | 'ideaId'>
     >,
   ) => {
     if (!userId) return
@@ -220,6 +226,7 @@ export function useWorkspaceGoals(workspaceId: string, user: AuthUser | null) {
     if (update.description !== undefined) row.description = update.description
     if (update.targetDate !== undefined) row.target_date = update.targetDate
     if (update.status !== undefined) row.status = update.status
+    if (update.ideaId !== undefined) row.idea_id = update.ideaId
     if (Object.keys(row).length === 0) return
     const supabase = createClient()
     void supabase

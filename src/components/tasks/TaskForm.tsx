@@ -2,8 +2,9 @@
 
 import { FormEvent } from 'react'
 import { TaskFormValues } from '@/types'
-import { WorkspaceMember } from '@/types/workspace'
+import { Idea, WorkspaceMember } from '@/types/workspace'
 import { Button } from '@/components/ui/Button'
+import { IdeaSelect } from '@/components/ideas/IdeaSelect'
 
 // The one form for creating or editing a task — the guest's local tasks and
 // every kind of workspace task have the same fields. The only structural
@@ -17,6 +18,7 @@ export function TaskForm({
   onSubmit,
   onCancel,
   assignment,
+  ideas,
   targetLabel = "Today's target",
   namePlaceholder = 'e.g. Project Development',
 }: {
@@ -32,6 +34,7 @@ export function TaskForm({
     assignedTo: string
     onChange: (userId: string) => void
   }
+  ideas?: Idea[]
   targetLabel?: string
   namePlaceholder?: string
 }) {
@@ -76,6 +79,13 @@ export function TaskForm({
             ))}
           </select>
         </label>
+      )}
+      {ideas && (
+        <IdeaSelect
+          ideas={ideas}
+          value={values.ideaId || ''}
+          onChange={ideaId => update('ideaId', ideaId)}
+        />
       )}
       <label className="block text-xs font-semibold text-muted">
         {targetLabel}{' '}

@@ -86,6 +86,38 @@ const isGoal = isShape<Goal>({
   archivedAt: field.nullableString,
 })
 
+const isIdea = isShape<import('@/types/workspace').Idea>({
+  id: field.string,
+  workspaceId: field.string,
+  title: field.string,
+  description: field.nullableString,
+  type: field.oneOf(
+    'idea',
+    'important',
+    'improvement',
+    'experiment',
+    'opportunity',
+    'problem',
+    'research',
+    'reminder',
+    'question',
+  ),
+  status: field.oneOf(
+    'open',
+    'planned',
+    'in_progress',
+    'completed',
+    'archived',
+  ),
+  createdBy: field.string,
+  createdAt: field.string,
+  updatedAt: field.string,
+  archivedAt: field.nullableString,
+  creditedUserIds: field.array,
+  taskCount: field.number,
+  goalCount: field.number,
+})
+
 const isActivityEvent = isShape<ActivityEvent>({
   id: field.string,
   taskId: field.string,
@@ -192,6 +224,7 @@ export const SNAPSHOTS = {
   workspaceDetail: descriptor('workspace-detail', isWorkspaceDetail),
   tasks: descriptor('tasks', isArrayOf(isTask)),
   goals: descriptor('goals', isArrayOf(isGoal)),
+  ideas: descriptor('ideas', isArrayOf(isIdea)),
   activity: descriptor('activity', isArrayOf(isActivityEvent)),
   notifications: descriptor('notifications', isArrayOf(isNotification)),
   summaries: descriptor('daily-reports', isArrayOf(isSummary)),
