@@ -37,7 +37,8 @@ export type NotificationRow = {
 }
 
 // Where a notification leads. Always its workspace; for one about a task, also
-// that task, so the page can bring it into view (and open the Goal it's in).
+// that task, so the page can bring it into view (and open the Goal it's in);
+// for a Daily Update mention, the Daily Updates page.
 // Routing is slug-based -- the notification's workspaceSlug is already the
 // personal alias for a personal workspace.
 export function notificationHref(
@@ -47,6 +48,8 @@ export function notificationHref(
   >,
 ): string {
   const base = `/workspaces/${notification.workspaceSlug}`
+  // Being tagged in a Daily Update leads to the Daily Updates page.
+  if (notification.entityType === 'daily_update') return `${base}/daily-updates`
   return notification.entityType === 'task' && notification.entityId
     ? `${base}?task=${encodeURIComponent(notification.entityId)}`
     : base

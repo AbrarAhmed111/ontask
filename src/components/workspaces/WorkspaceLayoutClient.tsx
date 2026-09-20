@@ -35,12 +35,14 @@ import { showErrorToast } from '@/lib/toast'
 import type { TourId, TourOutcome } from '@/lib/tour/types'
 import { PERSONAL_WORKSPACE_SLUG } from '@/lib/workspaces'
 
-// The section a pathname like /workspaces/[slug], /workspaces/[slug]/members
-// or /workspaces/[slug]/settings maps to — derived from the URL (instead of
+// The section a pathname like /workspaces/[slug], /workspaces/[slug]/members,
+// /workspaces/[slug]/daily-updates or /workspaces/[slug]/settings maps to — derived from the URL (instead of
 // component state) so the sidebar, the URL bar, and a page refresh all agree
 // on which page is open.
 function sectionFromPathname(pathname: string): WorkspaceSection {
   if (pathname.endsWith('/members')) return 'members'
+  if (pathname.endsWith('/daily-updates')) return 'daily-updates'
+  if (pathname.endsWith('/ideas')) return 'ideas'
   if (pathname.endsWith('/settings')) return 'settings'
   return 'overview'
 }
@@ -169,13 +171,14 @@ export function WorkspaceLayout({
   )
 
   // A personal workspace has exactly one URL. Reaching it through its stored
-  // slug (an old link, a notification) or through the members page — which a
-  // personal workspace doesn't have — lands back on the canonical page.
+  // slug (an old link, a notification) or through the members or Daily Updates
+  // pages — which a personal workspace doesn't have — lands back on the
+  // canonical page.
   useEffect(() => {
     if (!workspace || workspace.type !== 'personal') return
     if (workspaceSlug !== PERSONAL_WORKSPACE_SLUG) {
       router.replace(`/workspaces/${PERSONAL_WORKSPACE_SLUG}`)
-    } else if (section === 'members') {
+    } else if (section === 'members' || section === 'daily-updates') {
       router.replace(`/workspaces/${PERSONAL_WORKSPACE_SLUG}`)
     }
   }, [workspace, workspaceSlug, section, router])

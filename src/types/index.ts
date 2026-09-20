@@ -26,6 +26,7 @@ export type TaskFormValues = {
   goal: string
   progress: string
   trackGoal: boolean
+  ideaId?: string
 }
 
 export type Settings = {

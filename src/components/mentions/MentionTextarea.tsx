@@ -2,6 +2,7 @@
 
 import {
   ChangeEvent,
+  ClipboardEvent,
   KeyboardEvent,
   useId,
   useLayoutEffect,
@@ -78,6 +79,8 @@ export function MentionTextarea({
   autoFocus,
   ariaLabel,
   onSubmitShortcut,
+  onKeyDown,
+  onPaste,
 }: {
   id?: string
   value: MentionValue
@@ -91,6 +94,11 @@ export function MentionTextarea({
   ariaLabel?: string
   // Ctrl/Cmd + Enter — submit without leaving the keyboard.
   onSubmitShortcut?: () => void
+  // Every other key, while the member list is NOT open (with it open, the arrow
+  // keys, Enter, Tab and Escape belong to the list). For a caller that wants
+  // its own keys -- Enter to start the next item, say.
+  onKeyDown?: (event: KeyboardEvent<HTMLTextAreaElement>) => void
+  onPaste?: (event: ClipboardEvent<HTMLTextAreaElement>) => void
 }) {
   const listId = useId()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -161,7 +169,10 @@ export function MentionTextarea({
       onSubmitShortcut()
       return
     }
-    if (!open) return
+    if (!open) {
+      onKeyDown?.(event)
+      return
+    }
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault()
       const step = event.key === 'ArrowDown' ? 1 : -1
@@ -213,6 +224,7 @@ export function MentionTextarea({
           value={value.text}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
+          onPaste={onPaste}
           onKeyUp={syncCaret}
           onClick={syncCaret}
           onSelect={syncCaret}

@@ -220,6 +220,36 @@ describe('notificationHref', () => {
       ),
     ).toBe('/workspaces/team-alpha?task=a%26b%3Dc%23d')
   })
+
+  it('opens the Daily Updates page for a Daily Update mention', () => {
+    expect(
+      notificationHref(
+        notification({
+          notificationType: 'daily_update_mention',
+          entityType: 'daily_update',
+          entityId: 'update-1',
+        }),
+      ),
+    ).toBe('/workspaces/team-alpha/daily-updates')
+  })
+
+  it('carries a Daily Update mention through with who asked and where', () => {
+    const mention = rowToNotification(
+      row({
+        notification_type: 'daily_update_mention',
+        entity_type: 'daily_update',
+        entity_id: 'update-1',
+        title: 'Abrar Ahmed mentioned you in a Daily Update',
+        body: 'Waiting for Stripe credentials from @Iqra Nadeem',
+      }),
+    )!
+    expect(mention.notificationType).toBe('daily_update_mention')
+    expect(mention.entityType).toBe('daily_update')
+    expect(mention.workspaceSlug).toBe('team-alpha')
+    expect(notificationHref(mention)).toBe(
+      '/workspaces/team-alpha/daily-updates',
+    )
+  })
 })
 
 describe('notificationScopeFor', () => {

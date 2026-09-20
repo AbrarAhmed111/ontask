@@ -81,6 +81,9 @@ export type WorkspaceTask = {
   // goalId may have a parentTaskId (subtasks exist only inside Goals) — see
   // supabase/migrations/0021_workspace_goals.sql.
   goalId: string | null
+  // The workspace Idea this task references, if any — see
+  // supabase/migrations/0050_ideas_and_things_to_remember.sql.
+  ideaId?: string | null
   createdBy: string
   assignedTo: string | null
   name: string
@@ -103,6 +106,7 @@ export type GoalStatus = 'active' | 'completed' | 'archived'
 export type Goal = {
   id: string
   workspaceId: string
+  ideaId?: string | null
   name: string
   description: string | null
   status: GoalStatus
@@ -113,6 +117,43 @@ export type Goal = {
   updatedAt: string
   completedAt: string | null
   archivedAt: string | null
+}
+
+export type IdeaType =
+  | 'idea'
+  | 'important'
+  | 'improvement'
+  | 'experiment'
+  | 'opportunity'
+  | 'problem'
+  | 'research'
+  | 'reminder'
+  | 'question'
+
+export type IdeaStatus =
+  'open' | 'planned' | 'in_progress' | 'completed' | 'archived'
+
+export type IdeaCredit = {
+  id: string
+  ideaId: string
+  userId: string
+  createdAt: string
+}
+
+export type Idea = {
+  id: string
+  workspaceId: string
+  title: string
+  description: string | null
+  type: IdeaType
+  status: IdeaStatus
+  createdBy: string
+  createdAt: string
+  updatedAt: string
+  archivedAt: string | null
+  creditedUserIds: string[]
+  taskCount: number
+  goalCount: number
 }
 
 export type TaskDependency = {
@@ -155,6 +196,56 @@ export type TaskNote = {
   updatedAt: string
 }
 
+// ── Daily Updates ───────────────────────────────────────────────────────────
+// What a member explicitly reports before standup: what is done, any blocker,
+// what's next. A reporting layer -- distinct from Activity (what happened) and
+// from the Daily Report (the AI summary of it). See
+// supabase/migrations/0049_daily_updates.sql.
+
+export type DailyUpdateItemType = 'done' | 'blocker' | 'next'
+
+// What a referenced task is, in OnTask's own terms: an ordinary flat task, or
+// (inside a Goal) a Goal task or one of its subtasks. All three are
+// workspace_tasks rows; the kind only decides how the reference reads.
+export type DailyUpdateTaskKind = 'task' | 'goal_task' | 'goal_subtask'
+
+// A referenced task as resolved when the update is read (title, state and Goal
+// are the task's own, never text the member typed).
+export type DailyUpdateTaskRef = {
+  id: string
+  title: string
+  status: WorkspaceTaskStatus
+  kind: DailyUpdateTaskKind
+  goalId: string | null
+  goalName: string | null
+  parentTaskId: string | null
+  parentTitle: string | null
+}
+
+export type DailyUpdateItem = {
+  id: string
+  type: DailyUpdateItemType
+  content: string
+  position: number
+  // Set while the item references a task, even after that task was deleted.
+  taskId: string | null
+  // null when there is no reference, or when the task no longer exists
+  // (`taskId` set and `task` null: "Referenced task no longer available").
+  task: DailyUpdateTaskRef | null
+  mentionedUserIds: string[]
+}
+
+export type DailyUpdate = {
+  id: string
+  userId: string
+  reportDate: string
+  // The first submission -- never moves.
+  submittedAt: string
+  // Set once it was changed after submitting.
+  editedAt: string | null
+  items: DailyUpdateItem[]
+}
+
 export type NotificationType =
   | 'assigned'
   | 'reassigned'
@@ -174,9 +265,12 @@ export type NotificationType =
   // resolved a blocker on a task this member is assigned to.
   | 'blocker_mention'
   | 'blocker_resolved'
+  // Tagged in a member's Daily Update (once per update, however often it is
+  // edited -- supabase/migrations/0049_daily_updates.sql).
+  | 'daily_update_mention'
 
 export type NotificationEntityType =
-  'task' | 'goal' | 'resource' | 'note' | 'workspace'
+  'task' | 'goal' | 'resource' | 'note' | 'workspace' | 'daily_update'
 
 export type WorkspaceNotification = {
   id: string
@@ -354,6 +448,30 @@ export type StructuredSnapshotMetrics = {
   tasks_completed: number
 }
 
+// A member's Daily Update as the snapshot carries it to the AI narrative
+// (migration 0049): what they EXPLICITLY reported, with the referenced task's
+// title, Goal and state resolved in SQL. Member-authored context -- recorded
+// activity stays the authority, so nothing here is a fact about a task.
+export type StructuredSnapshotDailyUpdateItem = {
+  type: DailyUpdateItemType
+  content: string
+  task_id: string | null
+  task_title: string | null
+  parent_title: string | null
+  goal_name: string | null
+  task_status: string | null
+  mentioned: { user_id: string; display_name: string }[]
+}
+
+export type StructuredSnapshotDailyUpdate = {
+  user_id: string
+  display_name: string
+  report_date: string
+  submitted_at: string
+  edited_at: string | null
+  items: StructuredSnapshotDailyUpdateItem[]
+}
+
 export type WorkspaceStructuredSnapshot = {
   workspace_id: string
   workspace_name: string
@@ -368,6 +486,9 @@ export type WorkspaceStructuredSnapshot = {
   workspace_changes: StructuredSnapshotWorkspaceChanges
   // Absent on reports generated before task blockers existed.
   blockers?: StructuredSnapshotBlocker[]
+  // Absent when nobody submitted a Daily Update in the window (and on every
+  // report from before migration 0049).
+  daily_updates?: StructuredSnapshotDailyUpdate[]
 }
 
 export type SummaryMemberNarrative = {

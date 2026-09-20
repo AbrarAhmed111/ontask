@@ -5,9 +5,11 @@ import Link from 'next/link'
 import {
   ArrowLeft,
   ChevronDown,
+  ClipboardList,
   Clock,
   LayoutDashboard,
   LayoutGrid,
+  Lightbulb,
   Lock,
   Settings2,
   UserPlus,
@@ -23,7 +25,8 @@ import type { CachedWorkspaceIdentity } from '@/lib/redux/workspaceCacheSlice'
 import type { AuthUser } from '@/hooks/useAuth'
 import { Workspace, WorkspaceMember, WorkspaceRole } from '@/types/workspace'
 
-export type WorkspaceSection = 'overview' | 'members' | 'settings'
+export type WorkspaceSection =
+  'overview' | 'daily-updates' | 'ideas' | 'members' | 'settings'
 
 const NAV_ITEMS: {
   id: WorkspaceSection
@@ -37,6 +40,19 @@ const NAV_ITEMS: {
   tour?: TourAnchor
 }[] = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+  // What each member reports before standup. A personal workspace has nobody to
+  // report to, so it has no such page.
+  {
+    id: 'daily-updates',
+    label: 'Daily Updates',
+    icon: ClipboardList,
+    sharedOnly: true,
+  },
+  {
+    id: 'ideas',
+    label: 'Ideas',
+    icon: Lightbulb,
+  },
   {
     id: 'members',
     label: 'Members',
@@ -113,7 +129,7 @@ function MemberChip({
 // Full-bleed app-style shell for a single workspace: a workspace-context top
 // bar (WORKSPACES link back to the hub, greeting, workspace detail line,
 // member preview, quick invite, account menu) plus a collapsible icon rail
-// for Overview/Members/Settings — this is meant to feel like a dedicated
+// for Overview/Daily Updates/Members/Settings — this is meant to feel like a dedicated
 // workspace, not another page of the app. It's used for both shared
 // workspaces and the user's Personal Workspace; `isPersonal` swaps the
 // collaboration-only parts (members, invite, avatars) for a "Private • Only
