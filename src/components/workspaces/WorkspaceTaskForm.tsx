@@ -2,7 +2,7 @@
 
 import { FormEvent } from 'react'
 import { TaskFormValues } from '@/types'
-import { WorkspaceMember } from '@/types/workspace'
+import { Idea, WorkspaceMember } from '@/types/workspace'
 import { TaskForm } from '@/components/tasks/TaskForm'
 
 // The workspace flavour of TaskForm: workspace wording, plus the "Assign to"
@@ -18,6 +18,7 @@ export function WorkspaceTaskForm({
   submitLabel,
   onSubmit,
   onCancel,
+  ideas,
 }: {
   values: TaskFormValues
   setValues: (values: TaskFormValues) => void
@@ -28,6 +29,7 @@ export function WorkspaceTaskForm({
   submitLabel: string
   onSubmit: (event: FormEvent) => void
   onCancel: () => void
+  ideas?: Idea[]
 }) {
   return (
     <TaskForm
@@ -38,6 +40,7 @@ export function WorkspaceTaskForm({
       onCancel={onCancel}
       targetLabel="Planned time"
       namePlaceholder="e.g. Design the homepage"
+      ideas={ideas}
       assignment={
         isPersonal
           ? undefined

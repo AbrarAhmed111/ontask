@@ -1,6 +1,7 @@
 import { FormEvent } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { notifyTaskCompletion } from '@/lib/notifications'
+import { markIdeaPlannedFromExecution } from '@/lib/ideas/status'
 import { WorkspaceMember, WorkspaceTask } from '@/types/workspace'
 import { TaskFormValues } from '@/types'
 import { getWorkspaceLiveSeconds } from '@/lib/tasks/workspaceMappers'
@@ -171,7 +172,13 @@ export function useWorkspaceTaskActions({
         if (insertError) {
           setError("Couldn't add the task.")
           setTasks(current => current.filter(task => task.id !== id))
+          return
         }
+        void markIdeaPlannedFromExecution(
+          supabase,
+          effectiveIdeaId,
+          workspaceId,
+        )
       })
 
     return true
@@ -230,6 +237,13 @@ export function useWorkspaceTaskActions({
           if (reopens && before) restoreTasks([before])
           setError("Couldn't save your changes.")
           return
+        }
+        if (update.ideaId !== undefined) {
+          void markIdeaPlannedFromExecution(
+            supabase,
+            update.ideaId,
+            workspaceId,
+          )
         }
         const parentTitle = before?.parentTaskId
           ? tasks.find(t => t.id === before.parentTaskId)?.name

@@ -6,7 +6,7 @@ import { ErrorBanner } from '@/components/ui/ErrorBanner'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { GoalCard } from '@/components/goals/GoalCard'
 import { tourAnchor } from '@/lib/tourAnchors'
-import { Goal, WorkspaceMember, WorkspaceTask } from '@/types/workspace'
+import { Goal, Idea, WorkspaceMember, WorkspaceTask } from '@/types/workspace'
 import type { AuthUser } from '@/hooks/useAuth'
 
 export function WorkspaceGoalsSection({
@@ -24,6 +24,7 @@ export function WorkspaceGoalsSection({
   onWorkingTasksChange,
   onBlockedTasksChange,
   onAddGoal,
+  ideas,
 }: {
   ready: boolean
   error?: string | null
@@ -40,7 +41,7 @@ export function WorkspaceGoalsSection({
   updateGoal: (
     id: string,
     update: Partial<
-      Pick<Goal, 'name' | 'description' | 'targetDate' | 'status'>
+      Pick<Goal, 'name' | 'description' | 'targetDate' | 'status' | 'ideaId'>
     >,
   ) => void
   setGoalStatus: (id: string, status: Goal['status']) => void
@@ -49,6 +50,7 @@ export function WorkspaceGoalsSection({
   // The goal's blocked tasks, for the overview's "Blocked" panel.
   onBlockedTasksChange?: (goalId: string, tasks: WorkspaceTask[]) => void
   onAddGoal: () => void
+  ideas?: Idea[]
 }) {
   const [showArchived, setShowArchived] = useState(false)
   const archivedCount = goals.filter(goal => goal.status === 'archived').length
@@ -121,6 +123,7 @@ export function WorkspaceGoalsSection({
               deleteGoal={deleteGoal}
               onWorkingTasksChange={onWorkingTasksChange}
               onBlockedTasksChange={onBlockedTasksChange}
+              ideas={ideas}
             />
           ))}
         </div>

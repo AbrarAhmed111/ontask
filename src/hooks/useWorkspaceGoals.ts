@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useWorkspaceSnapshot } from '@/hooks/useWorkspaceSnapshot'
 import { useFetchStatus } from '@/hooks/useFetchStatus'
 import { SNAPSHOTS } from '@/lib/cache/workspaceSnapshots'
+import { markIdeaPlannedFromExecution } from '@/lib/ideas/status'
 import type { AuthUser } from '@/hooks/useAuth'
 import { Goal, GoalStatus } from '@/types/workspace'
 
@@ -205,7 +206,9 @@ export function useWorkspaceGoals(workspaceId: string, user: AuthUser | null) {
         if (insertError) {
           setError("Couldn't create the goal.")
           setGoals(current => current.filter(goal => goal.id !== id))
+          return
         }
+        void markIdeaPlannedFromExecution(supabase, ideaId, workspaceId)
       })
 
     return true
@@ -235,6 +238,12 @@ export function useWorkspaceGoals(workspaceId: string, user: AuthUser | null) {
       .eq('id', id)
       .then(({ error: updateError }) => {
         if (updateError) setError("Couldn't save the goal.")
+        else if (update.ideaId !== undefined)
+          void markIdeaPlannedFromExecution(
+            supabase,
+            update.ideaId,
+            workspaceId,
+          )
       })
   }
 

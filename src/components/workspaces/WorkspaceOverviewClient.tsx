@@ -22,6 +22,7 @@ import { useSettings } from '@/hooks/useSettings'
 import { useWorkspaceTour } from '@/hooks/useWorkspaceTour'
 import { useWorkspaceTasks } from '@/hooks/useWorkspaceTasks'
 import { useWorkspaceGoals, GoalFormValues } from '@/hooks/useWorkspaceGoals'
+import { useWorkspaceIdeas } from '@/hooks/useWorkspaceIdeas'
 import { useWorkspaceResources } from '@/hooks/useWorkspaceResources'
 import { useWorkspaceActivity } from '@/hooks/useWorkspaceActivity'
 import { useWorkspaceSummary } from '@/hooks/useWorkspaceSummary'
@@ -97,6 +98,8 @@ export function WorkspaceOverviewClient() {
     setGoalStatus,
     deleteGoal,
   } = useWorkspaceGoals(workspaceId, user)
+  const { ideas } = useWorkspaceIdeas(workspaceId, user)
+  const linkableIdeas = ideas.filter(idea => idea.status !== 'archived')
   const {
     resources,
     ready: resourcesReady,
@@ -250,6 +253,7 @@ export function WorkspaceOverviewClient() {
       goal: task.progressLabel || '',
       progress: String(task.progressPercentage || 0),
       trackGoal: Boolean(task.progressLabel),
+      ideaId: task.ideaId ?? '',
     })
     setTaskAssignee(task.assignedTo ?? '')
     setTaskModal('edit')
@@ -280,6 +284,7 @@ export function WorkspaceOverviewClient() {
       progressPercentage: taskForm.trackGoal
         ? Math.min(100, Math.max(0, Number(taskForm.progress) || 0))
         : undefined,
+      ideaId: taskForm.ideaId || null,
     })
     if (
       taskAssignee !==
@@ -372,6 +377,7 @@ export function WorkspaceOverviewClient() {
         onWorkingTasksChange={handleWorkingTasksChange}
         onBlockedTasksChange={handleBlockedTasksChange}
         onAddGoal={openAddGoal}
+        ideas={linkableIdeas}
       />
 
       <WorkspaceResourcesSection
@@ -415,6 +421,7 @@ export function WorkspaceOverviewClient() {
             submitLabel="Add task"
             onSubmit={handleAddTask}
             onCancel={closeTaskModal}
+            ideas={linkableIdeas}
           />
         </Modal>
       )}
@@ -434,6 +441,7 @@ export function WorkspaceOverviewClient() {
             submitLabel="Save changes"
             onSubmit={handleEditTask}
             onCancel={closeTaskModal}
+            ideas={linkableIdeas}
           />
         </Modal>
       )}
@@ -449,6 +457,7 @@ export function WorkspaceOverviewClient() {
             submitLabel="Create goal"
             onSubmit={handleAddGoal}
             onCancel={() => setGoalModalOpen(false)}
+            ideas={linkableIdeas}
           />
         </Modal>
       )}

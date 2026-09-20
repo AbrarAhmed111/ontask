@@ -57,6 +57,7 @@ export function useGoalDetail(
   members: WorkspaceMember[],
   onComplete?: (task: WorkspaceTask) => void,
   isPersonal = false,
+  ideaId: string | null = null,
 ) {
   const userId = user?.id
   // Held with its origin, so the completion below only ever sees data the
@@ -282,7 +283,7 @@ export function useGoalDetail(
     form: Parameters<typeof addTaskAction>[1],
     parentTaskId: string | null = null,
     assignedTo: string | null = null,
-  ) => addTaskAction(event, form, parentTaskId, assignedTo, goalId)
+  ) => addTaskAction(event, form, parentTaskId, assignedTo, goalId, ideaId)
 
   // Same auto-complete-on-planned-time behavior as flat tasks (useWorkspaceTasks.ts) —
   // goal tasks use the identical execution model, and now the identical code.

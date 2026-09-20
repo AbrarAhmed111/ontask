@@ -32,7 +32,7 @@ import { useCompletionAlert } from '@/hooks/useCompletionAlert'
 import { useGoalDetail } from '@/hooks/useGoalDetail'
 import { GoalFormValues } from '@/hooks/useWorkspaceGoals'
 import type { AuthUser } from '@/hooks/useAuth'
-import { Goal, WorkspaceMember, WorkspaceTask } from '@/types/workspace'
+import { Goal, Idea, WorkspaceMember, WorkspaceTask } from '@/types/workspace'
 import { TaskFormValues } from '@/types'
 
 const STATUS_STYLES: Record<Goal['status'], string> = {
@@ -72,6 +72,7 @@ export function GoalCard({
   deleteGoal,
   onWorkingTasksChange,
   onBlockedTasksChange,
+  ideas,
 }: {
   goal: Goal
   workspaceId: string
@@ -85,13 +86,14 @@ export function GoalCard({
   updateGoal: (
     id: string,
     update: Partial<
-      Pick<Goal, 'name' | 'description' | 'targetDate' | 'status'>
+      Pick<Goal, 'name' | 'description' | 'targetDate' | 'status' | 'ideaId'>
     >,
   ) => void
   setGoalStatus: (id: string, status: Goal['status']) => void
   deleteGoal?: (id: string) => void
   onWorkingTasksChange: (goalId: string, tasks: WorkspaceTask[]) => void
   onBlockedTasksChange?: (goalId: string, tasks: WorkspaceTask[]) => void
+  ideas?: Idea[]
 }) {
   const [expanded, setExpanded] = useState(false)
   const [pendingDeleteGoal, setPendingDeleteGoal] = useState(false)
@@ -123,6 +125,7 @@ export function GoalCard({
     members,
     completionAlert.notify,
     isPersonal,
+    goal.ideaId ?? null,
   )
 
   const [taskModal, setTaskModal] = useState<'add' | 'edit' | null>(null)
@@ -235,6 +238,7 @@ export function GoalCard({
       goal: task.progressLabel || '',
       progress: String(task.progressPercentage || 0),
       trackGoal: Boolean(task.progressLabel),
+      ideaId: task.ideaId ?? '',
     })
     setTaskAssignee(task.assignedTo ?? '')
     setTaskModal('edit')
@@ -265,6 +269,7 @@ export function GoalCard({
       progressPercentage: taskForm.trackGoal
         ? Math.min(100, Math.max(0, Number(taskForm.progress) || 0))
         : undefined,
+      ideaId: taskForm.ideaId || null,
     })
     if (
       taskAssignee !==
@@ -325,6 +330,7 @@ export function GoalCard({
       name: goal.name,
       description: goal.description ?? '',
       targetDate: goal.targetDate ?? '',
+      ideaId: goal.ideaId ?? '',
     })
     setEditingGoal(true)
   }
@@ -335,6 +341,7 @@ export function GoalCard({
       name: goalForm.name.trim(),
       description: goalForm.description.trim() || null,
       targetDate: goalForm.targetDate || null,
+      ideaId: goalForm.ideaId || null,
     })
     setEditingGoal(false)
     showSuccessToast('Goal updated.')
@@ -511,6 +518,7 @@ export function GoalCard({
             submitLabel={pendingParentId ? 'Add subtask' : 'Add task'}
             onSubmit={handleAddTask}
             onCancel={closeTaskModal}
+            ideas={ideas}
           />
         </Modal>
       )}
@@ -530,6 +538,7 @@ export function GoalCard({
             submitLabel="Save changes"
             onSubmit={handleEditTask}
             onCancel={closeTaskModal}
+            ideas={ideas}
           />
         </Modal>
       )}
@@ -545,6 +554,7 @@ export function GoalCard({
             submitLabel="Save changes"
             onSubmit={handleEditGoal}
             onCancel={() => setEditingGoal(false)}
+            ideas={ideas}
           />
         </Modal>
       )}
