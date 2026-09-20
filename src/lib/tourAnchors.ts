@@ -21,6 +21,10 @@ export const TOUR_ANCHORS = [
   'working-now',
   'task-notes',
   'activity',
+  'work-session',
+  'page-overview',
+  'page-daily-updates',
+  'page-ideas',
 ] as const
 
 export type TourAnchor = (typeof TOUR_ANCHORS)[number]

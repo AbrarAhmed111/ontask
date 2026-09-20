@@ -61,6 +61,8 @@ describe('personal workspace tour', () => {
       'working-now',
       'task-notes',
       'activity',
+      'work-session',
+      'page-daily-updates',
     ]
     for (const step of personal.steps) {
       expect(collaborative).not.toContain(step.target)
@@ -71,6 +73,11 @@ describe('personal workspace tour', () => {
 describe('shared workspace tour', () => {
   it('covers collaboration, following the order of the page', () => {
     expect(shared.steps.map(step => step.target)).toEqual([
+      'page-overview',
+      'page-daily-updates',
+      'page-ideas',
+      'settings',
+      'work-session',
       'workspace-members',
       'working-now',
       'today-tasks',
@@ -79,6 +86,32 @@ describe('shared workspace tour', () => {
       'resources',
       'activity',
     ])
+  })
+
+  it('explains the session control and member avatar statuses', () => {
+    const session = shared.steps.find(step => step.target === 'work-session')
+    expect(session?.description).toMatch(/start work/i)
+    expect(session?.hint).toMatch(/separate from task timers/i)
+
+    const members = shared.steps.find(step => step.target === 'workspace-members')
+    expect(members?.hint).toMatch(/gray is offline/i)
+    expect(members?.hint).toMatch(/yellow break/i)
+    expect(members?.hint).toMatch(/orange blocked/i)
+  })
+
+  it('introduces the main workspace pages', () => {
+    expect(
+      shared.steps
+        .filter(step =>
+          [
+            'page-overview',
+            'page-daily-updates',
+            'page-ideas',
+            'settings',
+          ].includes(step.target),
+        )
+        .map(step => step.title),
+    ).toEqual(['Overview', 'Daily Updates', 'Ideas', 'Settings'])
   })
 
   it('never implies ordinary tasks can have subtasks; only Goals do', () => {

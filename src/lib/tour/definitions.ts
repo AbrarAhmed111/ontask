@@ -57,11 +57,43 @@ const SHARED_WORKSPACE_TOUR: TourDefinition = {
   label: 'Shared Workspace tour',
   steps: [
     {
+      target: 'page-overview',
+      title: 'Overview',
+      description:
+        'Start here for the live workspace: tasks, goals, resources, activity, and who is working now.',
+    },
+    {
+      target: 'page-daily-updates',
+      title: 'Daily Updates',
+      description:
+        'Use this page before standup to share what is done, what is next, and where you are blocked.',
+    },
+    {
+      target: 'page-ideas',
+      title: 'Ideas',
+      description:
+        'Capture opportunities, improvements, reminders, and questions before turning the best ones into work.',
+    },
+    {
+      target: 'settings',
+      title: 'Settings',
+      description:
+        'Manage workspace preferences here, including accent color, report settings, and integrations.',
+      prefer: 'right',
+    },
+    {
+      target: 'work-session',
+      title: 'Work Session',
+      description:
+        'Use this compact control to start work, take a break, resume, or end your work session.',
+      hint: 'This is separate from task timers; it tells teammates whether you are working.',
+    },
+    {
       target: 'workspace-members',
       title: 'Members',
       description:
-        "Here you can see the members of this workspace and who's part of the team.",
-      hint: 'A green dot means they have the workspace open right now.',
+        "See who is on the team and read each avatar's live status at a glance.",
+      hint: 'Gray is offline, green online or working, yellow break, and orange blocked.',
     },
     {
       target: 'working-now',
