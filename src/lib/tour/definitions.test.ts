@@ -93,7 +93,9 @@ describe('shared workspace tour', () => {
     expect(session?.description).toMatch(/start work/i)
     expect(session?.hint).toMatch(/separate from task timers/i)
 
-    const members = shared.steps.find(step => step.target === 'workspace-members')
+    const members = shared.steps.find(
+      step => step.target === 'workspace-members',
+    )
     expect(members?.hint).toMatch(/gray is offline/i)
     expect(members?.hint).toMatch(/yellow break/i)
     expect(members?.hint).toMatch(/orange blocked/i)
