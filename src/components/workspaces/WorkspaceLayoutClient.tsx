@@ -103,6 +103,7 @@ export function WorkspaceLayout({
     syncError,
     updateWorkspace,
     removeMember,
+    updateMemberAvailability,
   } = useWorkspace(workspaceSlug, user)
   // A failed refresh leaves the last copy on screen (it never replaces the page,
   // unlike `error`); say so once, so an out-of-date view isn't mistaken for a
@@ -222,6 +223,7 @@ export function WorkspaceLayout({
     error,
     updateWorkspace,
     removeMember,
+    updateMemberAvailability,
     onlineUserIds,
     invitations,
     invitationsReady,

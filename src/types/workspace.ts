@@ -41,6 +41,25 @@ export type WorkspaceMember = {
   fullName: string | null
   email: string | null
   avatarUrl: string | null
+  workingHoursStart?: string | null
+  workingHoursEnd?: string | null
+  workingTimezone?: string | null
+  workingDays?: number[]
+  standupAvailabilityStart?: string | null
+  standupAvailabilityEnd?: string | null
+  standupAvailabilityDays?: number[]
+  minimumWorkingMinutes?: number | null
+}
+
+export type MemberAvailabilityPatch = {
+  workingHoursStart: string | null
+  workingHoursEnd: string | null
+  workingTimezone: string | null
+  workingDays: number[]
+  standupAvailabilityStart: string | null
+  standupAvailabilityEnd: string | null
+  standupAvailabilityDays: number[]
+  minimumWorkingMinutes: number | null
 }
 
 export type InvitationStatus =

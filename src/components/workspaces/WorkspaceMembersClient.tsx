@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { showErrorToast, showSuccessToast } from '@/lib/toast'
 import { WorkspaceMembersSection } from '@/components/workspaces/WorkspaceMembersSection'
+import { MemberAvailabilityModal } from '@/components/workspaces/MemberAvailabilityModal'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
 import { useWorkspaceDetail } from '@/components/workspaces/WorkspaceDetailContext'
 import { WorkspaceMember } from '@/types/workspace'
@@ -26,8 +27,11 @@ export function WorkspaceMembersClient() {
     cancelInvitation,
     deleteInvitation,
     openInvite,
+    updateMemberAvailability,
   } = useWorkspaceDetail()
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null)
+  const [editingAvailability, setEditingAvailability] =
+    useState<WorkspaceMember | null>(null)
   const [memberActionError, setMemberActionError] = useState<string | null>(
     null,
   )
@@ -83,6 +87,19 @@ export function WorkspaceMembersClient() {
     }
   }
 
+  const handleUpdateAvailability: typeof updateMemberAvailability = async (
+    memberId,
+    patch,
+  ) => {
+    const result = await updateMemberAvailability(memberId, patch)
+    if (result.success) {
+      showSuccessToast('Availability updated.')
+    } else {
+      showErrorToast(result.error || 'Failed to update availability.')
+    }
+    return result
+  }
+
   // A personal workspace has no members page (the layout also redirects away
   // from it) — never render member/invitation controls for one.
   if (isPersonal) return null
@@ -97,6 +114,7 @@ export function WorkspaceMembersClient() {
         onlineUserIds={onlineUserIds}
         isOwner={isOwner}
         onRemoveMember={member => openMemberAction({ type: 'remove', member })}
+        onEditAvailability={setEditingAvailability}
         invitationsReady={invitationsReady}
         invitations={invitations}
         onInvite={openInvite}
@@ -104,6 +122,14 @@ export function WorkspaceMembersClient() {
         onDeleteInvitation={handleDeleteInvitation}
         onLeave={() => openMemberAction({ type: 'leave' })}
       />
+
+      {editingAvailability && (
+        <MemberAvailabilityModal
+          member={editingAvailability}
+          onSave={handleUpdateAvailability}
+          onClose={() => setEditingAvailability(null)}
+        />
+      )}
 
       {pendingAction?.type === 'remove' && (
         <ConfirmModal

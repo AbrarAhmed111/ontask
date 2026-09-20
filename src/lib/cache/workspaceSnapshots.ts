@@ -44,6 +44,14 @@ const isMember = isShape<WorkspaceMember>({
   fullName: field.nullableString,
   email: field.nullableString,
   avatarUrl: field.nullableString,
+  workingHoursStart: { kind: 'string', optional: true, nullable: true },
+  workingHoursEnd: { kind: 'string', optional: true, nullable: true },
+  workingTimezone: { kind: 'string', optional: true, nullable: true },
+  workingDays: { kind: 'array', optional: true },
+  standupAvailabilityStart: { kind: 'string', optional: true, nullable: true },
+  standupAvailabilityEnd: { kind: 'string', optional: true, nullable: true },
+  standupAvailabilityDays: { kind: 'array', optional: true },
+  minimumWorkingMinutes: { kind: 'number', optional: true, nullable: true },
 })
 
 const isTask = isShape<WorkspaceTask>({

@@ -3,7 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { AuthUser } from '@/hooks/useAuth'
-import { Workspace, WorkspaceMember, WorkspaceRole } from '@/types/workspace'
+import type {
+  MemberAvailabilityPatch,
+  Workspace,
+  WorkspaceMember,
+  WorkspaceRole,
+} from '@/types/workspace'
 import { useAppDispatch } from '@/lib/redux/hooks'
 import {
   toCachedWorkspaceIdentity,
@@ -32,6 +37,14 @@ type WorkspaceMemberRow = {
   user_id: string
   role: WorkspaceRole
   joined_at: string
+  working_hours_start: string | null
+  working_hours_end: string | null
+  working_timezone: string | null
+  working_days: number[] | null
+  standup_availability_start: string | null
+  standup_availability_end: string | null
+  standup_availability_days: number[] | null
+  minimum_working_minutes: number | null
   profiles: {
     full_name: string | null
     email: string | null
@@ -49,6 +62,14 @@ function rowToMember(row: WorkspaceMemberRow): WorkspaceMember {
     fullName: row.profiles?.full_name ?? null,
     email: row.profiles?.email ?? null,
     avatarUrl: row.profiles?.avatar_url ?? null,
+    workingHoursStart: row.working_hours_start ?? null,
+    workingHoursEnd: row.working_hours_end ?? null,
+    workingTimezone: row.working_timezone ?? null,
+    workingDays: row.working_days ?? [],
+    standupAvailabilityStart: row.standup_availability_start ?? null,
+    standupAvailabilityEnd: row.standup_availability_end ?? null,
+    standupAvailabilityDays: row.standup_availability_days ?? [],
+    minimumWorkingMinutes: row.minimum_working_minutes ?? null,
   }
 }
 
@@ -368,6 +389,38 @@ export function useWorkspace(workspaceSlug: string, user: AuthUser | null) {
     return { success: true as const }
   }
 
+  const updateMemberAvailability = async (
+    memberId: string,
+    patch: MemberAvailabilityPatch,
+  ) => {
+    if (!workspace) return { success: false as const, error: 'Not loaded.' }
+    const supabase = createClient()
+    const { error: updateError } = await supabase
+      .from('workspace_members')
+      .update({
+        working_hours_start: patch.workingHoursStart,
+        working_hours_end: patch.workingHoursEnd,
+        working_timezone: patch.workingTimezone,
+        working_days: patch.workingDays,
+        standup_availability_start: patch.standupAvailabilityStart,
+        standup_availability_end: patch.standupAvailabilityEnd,
+        standup_availability_days: patch.standupAvailabilityDays,
+        minimum_working_minutes: patch.minimumWorkingMinutes,
+      })
+      .eq('workspace_id', workspace.id)
+      .eq('id', memberId)
+    if (updateError) {
+      return { success: false as const, error: updateError.message }
+    }
+    setDetail(current => ({
+      ...current,
+      members: current.members.map(member =>
+        member.id === memberId ? { ...member, ...patch } : member,
+      ),
+    }))
+    return { success: true as const }
+  }
+
   return {
     workspace,
     members,
@@ -377,5 +430,6 @@ export function useWorkspace(workspaceSlug: string, user: AuthUser | null) {
     syncError,
     updateWorkspace,
     removeMember,
+    updateMemberAvailability,
   }
 }

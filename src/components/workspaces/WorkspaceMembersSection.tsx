@@ -1,4 +1,16 @@
-import { LogOut, Mail, Trash2, UserMinus, UserPlus, X } from 'lucide-react'
+import type { ReactNode } from 'react'
+import {
+  CalendarDays,
+  Clock,
+  Edit3,
+  LogOut,
+  Mail,
+  Timer,
+  Trash2,
+  UserMinus,
+  UserPlus,
+  X,
+} from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { ErrorBanner } from '@/components/ui/ErrorBanner'
@@ -14,6 +26,40 @@ const INVITATION_STATUS_STYLE: Record<string, string> = {
   rejected: 'bg-coral/10 text-coral',
   expired: 'bg-slate-100 text-muted',
   cancelled: 'bg-slate-100 text-muted',
+}
+
+const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+function formatTime(value: string | null) {
+  if (!value) return null
+  const [hour = '0', minute = '0'] = value.split(':')
+  return new Intl.DateTimeFormat('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(2024, 0, 1, Number(hour), Number(minute)))
+}
+
+function formatRange(start: string | null, end: string | null) {
+  const formattedStart = formatTime(start)
+  const formattedEnd = formatTime(end)
+  if (!formattedStart || !formattedEnd) return 'Not set'
+  return `${formattedStart} - ${formattedEnd}`
+}
+
+function formatDays(days: number[]) {
+  if (days.length === 0) return 'Days not set'
+  return days
+    .map(day => DAY_LABELS[day])
+    .filter(Boolean)
+    .join(', ')
+}
+
+function formatMinimum(minutes: number | null) {
+  if (minutes === null) return 'Not set'
+  if (minutes === 0) return '0h/day'
+  const hours = Math.floor(minutes / 60)
+  const remainder = minutes % 60
+  return remainder === 0 ? `${hours}h/day` : `${hours}h ${remainder}m/day`
 }
 
 function MemberRowSkeleton() {
@@ -37,6 +83,7 @@ export function WorkspaceMembersSection({
   onlineUserIds,
   isOwner,
   onRemoveMember,
+  onEditAvailability,
   invitationsReady,
   invitations,
   onInvite,
@@ -51,6 +98,7 @@ export function WorkspaceMembersSection({
   onlineUserIds: Set<string>
   isOwner: boolean
   onRemoveMember: (member: WorkspaceMember) => void
+  onEditAvailability: (member: WorkspaceMember) => void
   invitationsReady: boolean
   invitations: WorkspaceInvitation[]
   onInvite: () => void
@@ -95,49 +143,99 @@ export function WorkspaceMembersSection({
           ) : (
             members.map(member => {
               const online = onlineUserIds.has(member.userId)
+              const canEditAvailability =
+                isOwner || member.userId === currentUserId
               return (
                 <div
                   key={member.id}
-                  className="flex items-center gap-3 px-5 py-3.5"
+                  className="flex flex-col gap-3 px-5 py-3.5 sm:flex-row sm:items-start"
                 >
-                  <div className="relative h-9 w-9 shrink-0">
-                    <Avatar
-                      person={member}
-                      className="h-full w-full border border-line text-xs"
-                    />
-                    <PresenceDot online={online} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-bold text-ink">
-                      {member.fullName || member.email || 'Member'}
-                      {member.userId === currentUserId && (
-                        <span className="ml-1.5 font-normal text-muted">
-                          (you)
+                  <div className="flex min-w-0 flex-1 items-start gap-3">
+                    <div className="relative h-9 w-9 shrink-0">
+                      <Avatar
+                        person={member}
+                        className="h-full w-full border border-line text-xs"
+                      />
+                      <PresenceDot online={online} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="truncate text-xs font-bold text-ink">
+                          {member.fullName || member.email || 'Member'}
+                          {member.userId === currentUserId && (
+                            <span className="ml-1.5 font-normal text-muted">
+                              (you)
+                            </span>
+                          )}
+                        </p>
+                        <span
+                          className={`rounded-full px-2.5 py-1 font-mono text-[9px] uppercase ${member.role === 'owner' ? 'bg-[var(--ws-accent-soft,#e9f0ec)] text-[var(--ws-accent,#375b4b)]' : 'bg-slate-100 text-muted'}`}
+                        >
+                          {member.role}
                         </span>
-                      )}
-                    </p>
-                    <p className="truncate text-[10px] text-muted">
-                      {online ? (
-                        <span className="text-emerald-600">Online now</span>
-                      ) : (
-                        member.email || 'Offline'
-                      )}
-                    </p>
+                      </div>
+                      <p className="mt-0.5 truncate text-[10px] text-muted">
+                        {online ? (
+                          <span className="text-emerald-600">Online now</span>
+                        ) : (
+                          member.email || 'Offline'
+                        )}
+                      </p>
+                      <div className="mt-3 grid gap-2 text-[11px] text-muted sm:grid-cols-3">
+                        <AvailabilityItem
+                          icon={<Clock size={13} />}
+                          label="Working"
+                          value={formatRange(
+                            member.workingHoursStart ?? null,
+                            member.workingHoursEnd ?? null,
+                          )}
+                          detail={
+                            member.workingTimezone
+                              ? `${formatDays(member.workingDays ?? [])} · ${member.workingTimezone}`
+                              : formatDays(member.workingDays ?? [])
+                          }
+                        />
+                        <AvailabilityItem
+                          icon={<CalendarDays size={13} />}
+                          label="Standup"
+                          value={formatRange(
+                            member.standupAvailabilityStart ?? null,
+                            member.standupAvailabilityEnd ?? null,
+                          )}
+                          detail={formatDays(
+                            member.standupAvailabilityDays ?? [],
+                          )}
+                        />
+                        <AvailabilityItem
+                          icon={<Timer size={13} />}
+                          label="Minimum"
+                          value={formatMinimum(
+                            member.minimumWorkingMinutes ?? null,
+                          )}
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <span
-                    className={`rounded-full px-2.5 py-1 font-mono text-[9px] uppercase ${member.role === 'owner' ? 'bg-[var(--ws-accent-soft,#e9f0ec)] text-[var(--ws-accent,#375b4b)]' : 'bg-slate-100 text-muted'}`}
-                  >
-                    {member.role}
-                  </span>
-                  {isOwner && member.role !== 'owner' && (
-                    <button
-                      aria-label={`Remove ${member.fullName || member.email}`}
-                      onClick={() => onRemoveMember(member)}
-                      className="rounded-lg p-2 text-muted transition hover:bg-coral/10 hover:text-coral"
-                    >
-                      <UserMinus size={15} />
-                    </button>
-                  )}
+                  <div className="flex shrink-0 justify-end gap-1 sm:pt-0.5">
+                    {canEditAvailability && (
+                      <button
+                        aria-label={`Edit availability for ${member.fullName || member.email}`}
+                        onClick={() => onEditAvailability(member)}
+                        className="rounded-lg p-2 text-muted transition hover:bg-slate-100 hover:text-ink"
+                      >
+                        <Edit3 size={15} />
+                      </button>
+                    )}
+                    {isOwner && member.role !== 'owner' && (
+                      <button
+                        aria-label={`Remove ${member.fullName || member.email}`}
+                        onClick={() => onRemoveMember(member)}
+                        className="rounded-lg p-2 text-muted transition hover:bg-coral/10 hover:text-coral"
+                      >
+                        <UserMinus size={15} />
+                      </button>
+                    )}
+                  </div>
                 </div>
               )
             })
@@ -213,6 +311,29 @@ export function WorkspaceMembersSection({
           </Button>
         </div>
       )}
+    </div>
+  )
+}
+
+function AvailabilityItem({
+  icon,
+  label,
+  value,
+  detail,
+}: {
+  icon: ReactNode
+  label: string
+  value: string
+  detail?: string
+}) {
+  return (
+    <div className="min-w-0 rounded-lg bg-paper/70 px-3 py-2">
+      <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase text-muted">
+        {icon}
+        {label}
+      </div>
+      <p className="mt-1 truncate font-semibold text-ink">{value}</p>
+      {detail && <p className="mt-0.5 truncate text-[10px]">{detail}</p>}
     </div>
   )
 }

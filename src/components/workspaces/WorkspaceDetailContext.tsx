@@ -32,6 +32,9 @@ export type WorkspaceDetailContextValue = {
   error: string | null
   updateWorkspace: ReturnType<typeof useWorkspace>['updateWorkspace']
   removeMember: ReturnType<typeof useWorkspace>['removeMember']
+  updateMemberAvailability: ReturnType<
+    typeof useWorkspace
+  >['updateMemberAvailability']
   onlineUserIds: Set<string>
   invitations: ReturnType<typeof useWorkspaceInvitations>['invitations']
   invitationsReady: boolean
