@@ -28,6 +28,8 @@ export function WorkspaceMembersClient() {
     deleteInvitation,
     openInvite,
     updateMemberAvailability,
+    workSessionsByUserId,
+    activeTasksByUserId,
   } = useWorkspaceDetail()
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null)
   const [editingAvailability, setEditingAvailability] =
@@ -112,6 +114,8 @@ export function WorkspaceMembersClient() {
         members={members}
         currentUserId={user.id}
         onlineUserIds={onlineUserIds}
+        workSessionsByUserId={workSessionsByUserId}
+        activeTasksByUserId={activeTasksByUserId}
         isOwner={isOwner}
         onRemoveMember={member => openMemberAction({ type: 'remove', member })}
         onEditAvailability={setEditingAvailability}

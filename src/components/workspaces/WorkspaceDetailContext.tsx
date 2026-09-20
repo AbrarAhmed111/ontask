@@ -8,8 +8,10 @@ import type { useWorkspaceSlack } from '@/hooks/useWorkspaceSlack'
 import type { SlackChannel } from '@/lib/integrations/slack/slackClient'
 import type {
   SlackStatusData,
+  WorkSession,
   Workspace,
   WorkspaceMember,
+  WorkspaceTask,
   WorkspaceRole,
 } from '@/types/workspace'
 
@@ -36,6 +38,20 @@ export type WorkspaceDetailContextValue = {
     typeof useWorkspace
   >['updateMemberAvailability']
   onlineUserIds: Set<string>
+  workSessionsByUserId: Map<string, WorkSession>
+  activeTasksByUserId: Map<string, WorkspaceTask>
+  startWork: () => Promise<
+    { success: true; session: WorkSession } | { success: false; error: string }
+  >
+  takeBreak: () => Promise<
+    { success: true; session: WorkSession } | { success: false; error: string }
+  >
+  resumeWork: () => Promise<
+    { success: true; session: WorkSession } | { success: false; error: string }
+  >
+  endWork: () => Promise<
+    { success: true; session: WorkSession } | { success: false; error: string }
+  >
   invitations: ReturnType<typeof useWorkspaceInvitations>['invitations']
   invitationsReady: boolean
   inviteByEmail: ReturnType<typeof useWorkspaceInvitations>['inviteByEmail']

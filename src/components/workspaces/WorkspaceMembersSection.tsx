@@ -11,12 +11,16 @@ import {
   UserPlus,
   X,
 } from 'lucide-react'
-import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { ErrorBanner } from '@/components/ui/ErrorBanner'
 import { Skeleton } from '@/components/ui/Skeleton'
-import { PresenceDot } from '@/components/workspaces/PresenceDot'
-import { WorkspaceInvitation, WorkspaceMember } from '@/types/workspace'
+import { MemberPresenceAvatar } from '@/components/workspaces/MemberPresenceAvatar'
+import {
+  WorkSession,
+  WorkspaceInvitation,
+  WorkspaceMember,
+  WorkspaceTask,
+} from '@/types/workspace'
 
 const THEMED_INVITATION_STATUS_STYLE =
   'bg-[var(--ws-accent-soft,#e9f0ec)] text-[var(--ws-accent,#375b4b)]'
@@ -65,7 +69,7 @@ function formatMinimum(minutes: number | null) {
 function MemberRowSkeleton() {
   return (
     <div className="flex items-center gap-3 px-5 py-3.5">
-      <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
+      <Skeleton className="h-11 w-11 shrink-0 rounded-full" />
       <div className="min-w-0 flex-1">
         <Skeleton className="h-3 w-1/3" />
         <Skeleton className="mt-1.5 h-2.5 w-1/2" />
@@ -81,6 +85,8 @@ export function WorkspaceMembersSection({
   members,
   currentUserId,
   onlineUserIds,
+  workSessionsByUserId,
+  activeTasksByUserId,
   isOwner,
   onRemoveMember,
   onEditAvailability,
@@ -96,6 +102,8 @@ export function WorkspaceMembersSection({
   members: WorkspaceMember[]
   currentUserId: string
   onlineUserIds: Set<string>
+  workSessionsByUserId: Map<string, WorkSession>
+  activeTasksByUserId: Map<string, WorkspaceTask>
   isOwner: boolean
   onRemoveMember: (member: WorkspaceMember) => void
   onEditAvailability: (member: WorkspaceMember) => void
@@ -151,12 +159,14 @@ export function WorkspaceMembersSection({
                   className="flex flex-col gap-3 px-5 py-3.5 sm:flex-row sm:items-start"
                 >
                   <div className="flex min-w-0 flex-1 items-start gap-3">
-                    <div className="relative h-9 w-9 shrink-0">
-                      <Avatar
-                        person={member}
-                        className="h-full w-full border border-line text-xs"
+                    <div className="relative h-11 w-11 shrink-0">
+                      <MemberPresenceAvatar
+                        member={member}
+                        online={online}
+                        session={workSessionsByUserId.get(member.userId)}
+                        activeTask={activeTasksByUserId.get(member.userId)}
+                        className="h-full w-full text-xs"
                       />
-                      <PresenceDot online={online} />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">

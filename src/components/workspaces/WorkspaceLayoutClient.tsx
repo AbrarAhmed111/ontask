@@ -8,6 +8,8 @@ import { useAuthGuard } from '@/hooks/useAuthGuard'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { useWorkspaceInvitations } from '@/hooks/useWorkspaceInvitations'
 import { useWorkspacePresence } from '@/hooks/useWorkspacePresence'
+import { useWorkSessions } from '@/hooks/useWorkSessions'
+import { useWorkspaceActiveTasks } from '@/hooks/useWorkspaceActiveTasks'
 import { usePersonalWelcome } from '@/hooks/usePersonalWelcome'
 import { useWorkspaceSlack } from '@/hooks/useWorkspaceSlack'
 import { InviteMemberModal } from '@/components/workspaces/InviteMemberModal'
@@ -153,6 +155,11 @@ export function WorkspaceLayout({
     deleteInvitation,
   } = useWorkspaceInvitations(collaborationWorkspaceId, user)
   const onlineUserIds = useWorkspacePresence(collaborationWorkspaceId, user)
+  const workSessions = useWorkSessions(collaborationWorkspaceId, user)
+  const activeTasksByUserId = useWorkspaceActiveTasks(
+    collaborationWorkspaceId,
+    user,
+  )
   const [inviting, setInviting] = useState(false)
   const welcome = usePersonalWelcome({ user, workspace, updateWorkspace })
   const slack = useWorkspaceSlack(workspaceId, user, isPersonal)
@@ -225,6 +232,12 @@ export function WorkspaceLayout({
     removeMember,
     updateMemberAvailability,
     onlineUserIds,
+    workSessionsByUserId: workSessions.byUserId,
+    activeTasksByUserId,
+    startWork: workSessions.startWork,
+    takeBreak: workSessions.takeBreak,
+    resumeWork: workSessions.resumeWork,
+    endWork: workSessions.endWork,
     invitations,
     invitationsReady,
     inviteByEmail,
@@ -265,6 +278,12 @@ export function WorkspaceLayout({
             ready={ready}
             user={user}
             onlineUserIds={onlineUserIds}
+            workSessionsByUserId={workSessions.byUserId}
+            activeTasksByUserId={activeTasksByUserId}
+            startWork={workSessions.startWork}
+            takeBreak={workSessions.takeBreak}
+            resumeWork={workSessions.resumeWork}
+            endWork={workSessions.endWork}
             section={section}
             onSectionChange={handleSectionChange}
             isPersonal={isPersonal}

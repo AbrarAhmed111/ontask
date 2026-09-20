@@ -501,10 +501,16 @@ describe('navigation', () => {
           avatarUrl: null,
         }}
         onlineUserIds={new Set()}
+        workSessionsByUserId={new Map()}
+        activeTasksByUserId={new Map()}
         section="daily-updates"
         onSectionChange={() => {}}
         isPersonal={isPersonal}
         onLogout={() => {}}
+        startWork={async () => ({ success: false, error: 'test' })}
+        takeBreak={async () => ({ success: false, error: 'test' })}
+        resumeWork={async () => ({ success: false, error: 'test' })}
+        endWork={async () => ({ success: false, error: 'test' })}
       >
         <p>page</p>
       </WorkspaceShell>,

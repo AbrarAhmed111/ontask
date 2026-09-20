@@ -62,6 +62,21 @@ export type MemberAvailabilityPatch = {
   minimumWorkingMinutes: number | null
 }
 
+export type WorkSessionStatus = 'working' | 'break'
+
+export type WorkSession = {
+  id: string
+  workspaceId: string
+  userId: string
+  status: WorkSessionStatus
+  startedAt: string
+  endedAt: string | null
+  currentBreakStartedAt: string | null
+  totalBreakSeconds: number
+  createdAt: string
+  updatedAt: string
+}
+
 export type InvitationStatus =
   'pending' | 'accepted' | 'rejected' | 'expired' | 'cancelled'
 

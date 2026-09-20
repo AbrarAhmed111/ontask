@@ -7,10 +7,13 @@ import {
   ChevronDown,
   ClipboardList,
   Clock,
+  CircleStop,
   LayoutDashboard,
   LayoutGrid,
   Lightbulb,
   Lock,
+  Pause,
+  Play,
   Settings2,
   UserPlus,
   Users,
@@ -18,12 +21,23 @@ import {
 import { Skeleton } from '@/components/ui/Skeleton'
 import { Avatar } from '@/components/ui/Avatar'
 import { AccountMenu } from '@/components/layout/AccountMenu'
-import { PresenceDot } from '@/components/workspaces/PresenceDot'
+import { MemberPresenceAvatar } from '@/components/workspaces/MemberPresenceAvatar'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
+import {
+  formatElapsedSeconds,
+  workSessionActiveSeconds,
+  workSessionBreakSeconds,
+} from '@/lib/memberPresence'
 import { TourAnchor, tourAnchor, tourInset } from '@/lib/tourAnchors'
 import type { CachedWorkspaceIdentity } from '@/lib/redux/workspaceCacheSlice'
 import type { AuthUser } from '@/hooks/useAuth'
-import { Workspace, WorkspaceMember, WorkspaceRole } from '@/types/workspace'
+import {
+  WorkSession,
+  Workspace,
+  WorkspaceMember,
+  WorkspaceRole,
+  WorkspaceTask,
+} from '@/types/workspace'
 
 export type WorkspaceSection =
   'overview' | 'daily-updates' | 'ideas' | 'members' | 'settings'
@@ -39,7 +53,12 @@ const NAV_ITEMS: {
   // displayed (see lib/tourAnchors).
   tour?: TourAnchor
 }[] = [
-  { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+  {
+    id: 'overview',
+    label: 'Overview',
+    icon: LayoutDashboard,
+    tour: 'page-overview',
+  },
   // What each member reports before standup. A personal workspace has nobody to
   // report to, so it has no such page.
   {
@@ -47,11 +66,13 @@ const NAV_ITEMS: {
     label: 'Daily Updates',
     icon: ClipboardList,
     sharedOnly: true,
+    tour: 'page-daily-updates',
   },
   {
     id: 'ideas',
     label: 'Ideas',
     icon: Lightbulb,
+    tour: 'page-ideas',
   },
   {
     id: 'members',
@@ -78,23 +99,128 @@ const RAIL_WIDTH = 'w-14 sm:w-[68px]'
 const BACK_LINK_CLASS =
   'inline-flex h-9 items-center gap-1.5 rounded-lg border border-line bg-white/60 px-2.5 text-[10px] font-bold uppercase tracking-[0.12em] text-muted transition hover:border-[var(--ws-accent,#375b4b)] hover:text-[var(--ws-accent,#375b4b)] sm:px-3'
 
+function WorkSessionControl({
+  session,
+  onStart,
+  onBreak,
+  onResume,
+  onEnd,
+}: {
+  session: WorkSession | null
+  onStart: () => Promise<unknown>
+  onBreak: () => Promise<unknown>
+  onResume: () => Promise<unknown>
+  onEnd: () => Promise<unknown>
+}) {
+  const [busy, setBusy] = useState(false)
+  const [now, setNow] = useState(Date.now())
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 30000)
+    return () => window.clearInterval(id)
+  }, [])
+
+  const run = async (action: () => Promise<unknown>) => {
+    if (busy) return
+    setBusy(true)
+    try {
+      await action()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (!session) {
+    return (
+      <button
+        type="button"
+        title="Start Work Session"
+        aria-label="Start Work Session"
+        {...tourAnchor('work-session')}
+        disabled={busy}
+        onClick={() => void run(onStart)}
+        className="grid h-8 w-8 place-items-center rounded-full border border-line bg-white/60 text-[var(--ws-accent,#375b4b)] transition hover:border-[var(--ws-accent,#375b4b)] disabled:opacity-60"
+      >
+        <Play size={14} fill="currentColor" />
+      </button>
+    )
+  }
+
+  const onBreakState = session.status === 'break'
+  const label = onBreakState
+    ? `Break · ${formatElapsedSeconds(workSessionBreakSeconds(session, now))}`
+    : formatElapsedSeconds(workSessionActiveSeconds(session, now))
+
+  return (
+    <div className="group relative">
+      <button
+        type="button"
+        {...tourAnchor('work-session')}
+        aria-label={onBreakState ? `On break, ${label}` : `Working, ${label}`}
+        className="flex h-8 items-center gap-1.5 rounded-full border border-[var(--ws-accent,#375b4b)] bg-white/70 px-2.5 text-[11px] font-bold text-ink shadow-sm"
+      >
+        <span
+          className={`h-2 w-2 rounded-full ${onBreakState ? 'bg-amber-400' : 'bg-emerald-500'}`}
+        />
+        <span className="hidden tabular-nums sm:inline">{label}</span>
+      </button>
+      <div className="invisible absolute right-0 top-full z-40 mt-2 w-52 rounded-lg border border-line bg-white p-2 opacity-0 shadow-lg transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+        <p className="px-2 py-1 text-[11px] font-bold text-ink">
+          {onBreakState ? 'On Break' : 'Working'} · {label}
+        </p>
+        <p className="px-2 pb-2 text-[10px] text-muted">
+          Started{' '}
+          {new Date(session.startedAt).toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+          })}
+        </p>
+        <div className="flex gap-1">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void run(onBreakState ? onResume : onBreak)}
+            className="flex flex-1 items-center justify-center gap-1 rounded-md bg-slate-100 px-2 py-1.5 text-[10px] font-bold text-ink transition hover:bg-slate-200 disabled:opacity-60"
+          >
+            {onBreakState ? <Play size={12} /> : <Pause size={12} />}
+            {onBreakState ? 'Resume' : 'Break'}
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void run(onEnd)}
+            className="flex flex-1 items-center justify-center gap-1 rounded-md bg-coral/10 px-2 py-1.5 text-[10px] font-bold text-coral transition hover:bg-coral/15 disabled:opacity-60"
+          >
+            <CircleStop size={12} />
+            End
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function MemberAvatar({
   member,
   online,
-  className = 'h-7 w-7 text-[9px]',
+  session,
+  activeTask,
+  className = 'h-8 w-8 text-[10px]',
 }: {
   member: WorkspaceMember
   online: boolean
+  session?: WorkSession | null
+  activeTask?: WorkspaceTask | null
   className?: string
 }) {
   return (
-    <div
-      title={member.fullName || member.email || 'Member'}
-      className={`relative shrink-0 ${className}`}
-    >
-      <Avatar person={member} className="h-full w-full border-2 border-paper" />
-      <PresenceDot online={online} />
-    </div>
+    <MemberPresenceAvatar
+      member={member}
+      online={online}
+      session={session}
+      activeTask={activeTask}
+      className={className}
+    />
   )
 }
 
@@ -104,9 +230,13 @@ function MemberAvatar({
 function MemberChip({
   member,
   online,
+  session,
+  activeTask,
 }: {
   member: WorkspaceMember
   online: boolean
+  session?: WorkSession | null
+  activeTask?: WorkspaceTask | null
 }) {
   const firstName = (member.fullName || member.email || 'Member').split(' ')[0]
   return (
@@ -114,7 +244,9 @@ function MemberChip({
       <MemberAvatar
         member={member}
         online={online}
-        className="h-6 w-6 text-[9px]"
+        session={session}
+        activeTask={activeTask}
+        className="h-7 w-7 text-[10px]"
       />
       <span
         title={member.fullName || member.email || 'Member'}
@@ -146,11 +278,17 @@ export function WorkspaceShell({
   ready,
   user,
   onlineUserIds,
+  workSessionsByUserId,
+  activeTasksByUserId,
   section,
   onSectionChange,
   isPersonal = false,
   onInvite,
   onLogout,
+  startWork,
+  takeBreak,
+  resumeWork,
+  endWork,
   children,
 }: {
   workspaceId: string
@@ -167,11 +305,25 @@ export function WorkspaceShell({
   ready: boolean
   user: AuthUser
   onlineUserIds: Set<string>
+  workSessionsByUserId: Map<string, WorkSession>
+  activeTasksByUserId: Map<string, WorkspaceTask>
   section: WorkspaceSection
   onSectionChange: (section: WorkspaceSection) => void
   isPersonal?: boolean
   onInvite?: () => void
   onLogout: () => void
+  startWork: () => Promise<
+    { success: true; session: WorkSession } | { success: false; error: string }
+  >
+  takeBreak: () => Promise<
+    { success: true; session: WorkSession } | { success: false; error: string }
+  >
+  resumeWork: () => Promise<
+    { success: true; session: WorkSession } | { success: false; error: string }
+  >
+  endWork: () => Promise<
+    { success: true; session: WorkSession } | { success: false; error: string }
+  >
   children: ReactNode
 }) {
   const [now, setNow] = useState<Date | null>(null)
@@ -192,6 +344,10 @@ export function WorkspaceShell({
   const headerOverflow = members.length - headerPreview.length
   const compactPreview = members.slice(0, COMPACT_PREVIEW_COUNT)
   const compactOverflow = members.length - compactPreview.length
+  const allMembersWorking =
+    showMembers &&
+    members.every(member => workSessionsByUserId.has(member.userId))
+  const currentSession = workSessionsByUserId.get(user.id) ?? null
   const workspaceTime =
     displayTimezone && now
       ? new Intl.DateTimeFormat('en-US', {
@@ -254,13 +410,19 @@ export function WorkspaceShell({
                 {...tourAnchor('workspace-members')}
                 onClick={() => onSectionChange('members')}
                 aria-label="View all members"
-                className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 items-center justify-center gap-1 rounded-full border border-line bg-white/60 px-2 py-1.5 shadow-sm transition hover:border-[var(--ws-accent,#375b4b)] hover:bg-white/90 lg:flex"
+                className={`absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 items-center justify-center gap-1 rounded-full border bg-white/60 px-2 py-1.5 shadow-sm transition hover:border-[var(--ws-accent,#375b4b)] hover:bg-white/90 lg:flex ${
+                  allMembersWorking
+                    ? 'border-[var(--ws-accent,#375b4b)]'
+                    : 'border-line'
+                }`}
               >
                 {headerPreview.map(member => (
                   <MemberChip
                     key={member.id}
                     member={member}
                     online={onlineUserIds.has(member.userId)}
+                    session={workSessionsByUserId.get(member.userId)}
+                    activeTask={activeTasksByUserId.get(member.userId)}
                   />
                 ))}
                 {headerOverflow > 0 && (
@@ -285,13 +447,15 @@ export function WorkspaceShell({
                         key={member.id}
                         member={member}
                         online={onlineUserIds.has(member.userId)}
+                        session={workSessionsByUserId.get(member.userId)}
+                        activeTask={activeTasksByUserId.get(member.userId)}
                       />
                     ))}
                   </div>
                   {compactOverflow > 0 && (
                     <span
                       title={`${compactOverflow} more ${compactOverflow === 1 ? 'member' : 'members'}`}
-                      className="-ml-2 grid h-7 w-7 place-items-center rounded-full border-2 border-paper bg-slate-200 font-mono text-[10px] font-bold text-muted"
+                      className="-ml-2 grid h-8 w-8 place-items-center rounded-full border-2 border-paper bg-slate-200 font-mono text-[10px] font-bold text-muted"
                     >
                       &hellip;
                     </span>
@@ -309,6 +473,15 @@ export function WorkspaceShell({
                   />
                   <span className="tabular-nums">{workspaceTime}</span>
                 </div>
+              )}
+              {!isPersonal && (
+                <WorkSessionControl
+                  session={currentSession}
+                  onStart={startWork}
+                  onBreak={takeBreak}
+                  onResume={resumeWork}
+                  onEnd={endWork}
+                />
               )}
               {isOwner && !isPersonal && onInvite && (
                 <button
