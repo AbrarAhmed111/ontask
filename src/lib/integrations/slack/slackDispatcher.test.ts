@@ -320,6 +320,40 @@ describe('dispatchSlackNotification', () => {
     )
   })
 
+  it('announces work-session login with the actual action, not the generic fallback', async () => {
+    const result = await dispatchSlackNotification({
+      workspaceId: 'ws-a',
+      eventType: 'work_session_start',
+      eventId: 'session-event-1',
+      entityType: 'work_session',
+      actorId: 'user-1',
+    })
+
+    expect(result).toEqual({ success: true, outcome: 'delivered' })
+    const [, , fallback, blocks] = postSlackMessage.mock.calls[0]
+    expect(fallback).toBe('[DevAbby] Abrar logged in for work')
+    expect(JSON.stringify(blocks)).toContain('Work Session Started')
+    expect(JSON.stringify(blocks)).not.toContain('made a change to something')
+    expect(db.deliveries[0].event_type).toBe('work_session_started')
+  })
+
+  it('announces work-session logout with the actual action, not the generic fallback', async () => {
+    const result = await dispatchSlackNotification({
+      workspaceId: 'ws-a',
+      eventType: ' work_session_end ',
+      eventId: 'session-event-2',
+      entityType: 'work_session',
+      actorId: 'user-1',
+    })
+
+    expect(result).toEqual({ success: true, outcome: 'delivered' })
+    const [, , fallback, blocks] = postSlackMessage.mock.calls[0]
+    expect(fallback).toBe('[DevAbby] Abrar logged out from work')
+    expect(JSON.stringify(blocks)).toContain('Work Session Ended')
+    expect(JSON.stringify(blocks)).not.toContain('made a change to something')
+    expect(db.deliveries[0].event_type).toBe('work_session_ended')
+  })
+
   it('sends the Daily Report that was actually stored, and nothing it made up', async () => {
     const result = await dispatchSlackNotification({
       workspaceId: 'ws-a',

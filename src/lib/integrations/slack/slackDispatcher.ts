@@ -39,6 +39,24 @@ type DailyReportGate =
   | { send: true; digest: DailyReportDigest }
   | { send: false; outcome: string; success: boolean }
 
+function normalizeSlackEventType(eventType: string): string {
+  const normalized = eventType.trim()
+  switch (normalized) {
+    case 'work_session_start':
+    case 'work_session_logged_in':
+    case 'work_session_login':
+    case 'start_work_session':
+      return 'work_session_started'
+    case 'work_session_end':
+    case 'work_session_logged_out':
+    case 'work_session_logout':
+    case 'end_work_session':
+      return 'work_session_ended'
+    default:
+      return normalized
+  }
+}
+
 /**
  * Reads the Daily Report this event is about, straight out of the row the
  * generator wrote, and decides whether it is one to announce.
@@ -104,7 +122,7 @@ export async function dispatchSlackNotification(
   try {
     const {
       workspaceId,
-      eventType,
+      eventType: rawEventType,
       eventId,
       entityType,
       entityId,
@@ -121,6 +139,11 @@ export async function dispatchSlackNotification(
       blockerReason,
       reportId,
     } = params
+
+    const eventType =
+      typeof rawEventType === 'string'
+        ? normalizeSlackEventType(rawEventType)
+        : rawEventType
 
     if (!workspaceId || !eventType) {
       return { success: false, outcome: 'invalid_params' }
