@@ -21,7 +21,9 @@ export function IdeaCreditsPicker({
   const [activeIndex, setActiveIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const creditedMembers = members.filter(m => creditedUserIds.includes(m.userId))
+  const creditedMembers = members.filter(m =>
+    creditedUserIds.includes(m.userId),
+  )
   const filtered = filterMembers(members, query.replace(/^@/, ''), {
     exclude: creditedUserIds,
   })
@@ -67,7 +69,10 @@ export function IdeaCreditsPicker({
   return (
     <div className="space-y-2">
       <label className="block text-xs font-semibold text-muted">
-        Credits To <span className="font-normal text-muted/80">(who came up with this idea?)</span>
+        Credits To{' '}
+        <span className="font-normal text-muted/80">
+          (who came up with this idea?)
+        </span>
       </label>
 
       {/* Selected Member Chips */}

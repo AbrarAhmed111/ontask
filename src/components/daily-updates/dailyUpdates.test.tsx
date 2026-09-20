@@ -345,9 +345,9 @@ describe('the Daily Updates page', () => {
     expect(past).toContain('Yesterday')
     expect(past).toContain('>Today<')
     expect(past).not.toMatch(/aria-label="Next day"[^>]*disabled=""/)
-    expect(board({ day: '2026-09-19', isToday: false, isYesterday: true }, [])).toContain(
-      'Nobody submitted an update for yesterday.',
-    )
+    expect(
+      board({ day: '2026-09-19', isToday: false, isYesterday: true }, []),
+    ).toContain('Nobody submitted an update for yesterday.')
   })
 })
 
