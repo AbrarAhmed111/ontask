@@ -27,6 +27,7 @@ export type SlackEntityType =
   | 'resource'
   | 'workspace_member'
   | 'invitation'
+  | 'work_session'
   | 'daily_report'
 
 export interface EventSlackPayload {
@@ -519,6 +520,28 @@ export function buildSlackEventMessage(
       })
     }
 
+    // ── work sessions ────────────────────────────────────────────────────
+    case 'work_session_started': {
+      return message({
+        heading: '▶️ Work Session Started',
+        body: `*${actor}* logged in for work in *${escapeSlackText(workspaceName)}*.`,
+        fallback: `${actorName} logged in for work`,
+        url: workspaceUrl,
+        buttonText: 'Open Workspace',
+        style: 'primary',
+      })
+    }
+
+    case 'work_session_ended': {
+      return message({
+        heading: '⏹️ Work Session Ended',
+        body: `*${actor}* logged out from work in *${escapeSlackText(workspaceName)}*.`,
+        fallback: `${actorName} logged out from work`,
+        url: workspaceUrl,
+        buttonText: 'Open Workspace',
+      })
+    }
+
     // ── Daily Report ─────────────────────────────────────────────────────
     // The one event whose message IS what it announces. Every other message
     // here describes a change and links to it; a Daily Report that only said
@@ -611,7 +634,12 @@ export function buildSlackEventMessage(
     // lives rather than assuming a task.
     default: {
       const named =
-        entityName ?? (taskId || entityType === undefined ? taskTitle : null)
+        entityName ??
+        (entityType === 'work_session'
+          ? 'work session'
+          : taskId || entityType === undefined
+            ? taskTitle
+            : null)
       const where =
         entityType === 'goal'
           ? goalUrl

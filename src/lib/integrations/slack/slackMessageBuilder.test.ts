@@ -547,6 +547,44 @@ describe('buildSlackEventMessage — workspace membership', () => {
   })
 })
 
+describe('buildSlackEventMessage — work sessions', () => {
+  const base = {
+    workspaceName: 'DevAbby',
+    workspaceSlug: 'devabby',
+    actorName: 'Abrar',
+    entityType: 'work_session' as const,
+  }
+
+  it('announces when a member logs in for work', () => {
+    const message = buildSlackEventMessage({
+      ...base,
+      eventType: 'work_session_started',
+    })
+
+    expect(message.fallbackText).toBe('[DevAbby] Abrar logged in for work')
+    expect(JSON.stringify(message.blocks)).toContain('Work Session Started')
+    expect(JSON.stringify(message.blocks)).toContain(
+      '*Abrar* logged in for work in *DevAbby*.',
+    )
+    expect(JSON.stringify(message.blocks)).toContain(
+      'http://localhost:3000/workspaces/devabby',
+    )
+  })
+
+  it('announces when a member logs out from work', () => {
+    const message = buildSlackEventMessage({
+      ...base,
+      eventType: 'work_session_ended',
+    })
+
+    expect(message.fallbackText).toBe('[DevAbby] Abrar logged out from work')
+    expect(JSON.stringify(message.blocks)).toContain('Work Session Ended')
+    expect(JSON.stringify(message.blocks)).toContain(
+      '*Abrar* logged out from work in *DevAbby*.',
+    )
+  })
+})
+
 describe('buildSlackEventMessage — escaping', () => {
   it('escapes Slack control characters in every name it is handed', () => {
     const message = buildSlackEventMessage({

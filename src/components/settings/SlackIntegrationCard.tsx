@@ -43,6 +43,7 @@ const NOTIFICATION_TYPES: { key: SlackPreferenceKey; label: string }[] = [
   { key: 'mentions', label: 'Mentions in blockers' },
   { key: 'resources', label: 'Resources added, updated & removed' },
   { key: 'members', label: 'Invitations & membership changes' },
+  { key: 'work_sessions', label: 'Work sessions started & ended' },
   { key: 'daily_reports', label: 'Daily Reports' },
 ]
 
@@ -359,7 +360,7 @@ export function SlackIntegrationCard({
               <p className="text-xs leading-5 text-muted">
                 Connect your Slack workspace to receive automatic OnTask
                 notifications for task assignments, completions, blockers, and
-                Daily Reports directly inside your Slack channel.
+                work-session updates directly inside your Slack channel.
               </p>
 
               {/* Feature highlights */}
@@ -385,6 +386,12 @@ export function SlackIntegrationCard({
                       ✓
                     </span>
                     <span>Blocker creation & resolution notifications</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-[9px] font-bold text-emerald-600 dark:text-emerald-400">
+                      âœ“
+                    </span>
+                    <span>Work session login & logout updates</span>
                   </li>
                 </ul>
               </div>

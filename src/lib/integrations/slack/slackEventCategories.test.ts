@@ -38,6 +38,8 @@ const DISPATCHED_EVENT_TYPES = [
   'member_invited',
   'member_joined',
   'member_removed',
+  'work_session_started',
+  'work_session_ended',
   'daily_report_ready',
 ]
 
@@ -68,6 +70,8 @@ describe('slackPreferenceKeyFor', () => {
     expect(slackPreferenceKeyFor('blocker_resolved')).toBe('resolutions')
     expect(slackPreferenceKeyFor('task_unblocked')).toBe('resolutions')
     expect(slackPreferenceKeyFor('mentioned')).toBe('mentions')
+    expect(slackPreferenceKeyFor('work_session_started')).toBe('work_sessions')
+    expect(slackPreferenceKeyFor('work_session_ended')).toBe('work_sessions')
     expect(slackPreferenceKeyFor('daily_report_ready')).toBe('daily_reports')
   })
 
@@ -105,6 +109,13 @@ describe('isSlackEventEnabled', () => {
     expect(isSlackEventEnabled(settings, 'goal_completed')).toBe(false)
     expect(isSlackEventEnabled(settings, 'completed')).toBe(true)
     expect(isSlackEventEnabled(settings, 'blocker_created')).toBe(true)
+  })
+
+  it('lets teams switch work session login/logout updates off together', () => {
+    const settings = { work_sessions: false }
+    expect(isSlackEventEnabled(settings, 'work_session_started')).toBe(false)
+    expect(isSlackEventEnabled(settings, 'work_session_ended')).toBe(false)
+    expect(isSlackEventEnabled(settings, 'started')).toBe(true)
   })
 
   it('lets an unmapped event through rather than dropping it silently', () => {

@@ -30,6 +30,7 @@ export const SLACK_PREFERENCE_KEYS = [
   'mentions',
   'resources',
   'members',
+  'work_sessions',
   'daily_reports',
 ] as const
 
@@ -84,6 +85,9 @@ const CATEGORY_BY_EVENT: Record<string, SlackPreferenceKey> = {
   member_invited: 'members',
   member_joined: 'members',
   member_removed: 'members',
+
+  work_session_started: 'work_sessions',
+  work_session_ended: 'work_sessions',
 
   daily_report_ready: 'daily_reports',
 }
