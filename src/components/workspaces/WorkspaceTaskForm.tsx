@@ -19,6 +19,7 @@ export function WorkspaceTaskForm({
   onSubmit,
   onCancel,
   ideas,
+  showReferenceIdea = true,
 }: {
   values: TaskFormValues
   setValues: (values: TaskFormValues) => void
@@ -30,6 +31,7 @@ export function WorkspaceTaskForm({
   onSubmit: (event: FormEvent) => void
   onCancel: () => void
   ideas?: Idea[]
+  showReferenceIdea?: boolean
 }) {
   return (
     <TaskForm
@@ -40,7 +42,7 @@ export function WorkspaceTaskForm({
       onCancel={onCancel}
       targetLabel="Planned time"
       namePlaceholder="e.g. Design the homepage"
-      ideas={ideas}
+      ideas={showReferenceIdea ? ideas : undefined}
       assignment={
         isPersonal
           ? undefined

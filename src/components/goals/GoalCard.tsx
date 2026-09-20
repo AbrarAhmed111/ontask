@@ -519,6 +519,7 @@ export function GoalCard({
             onSubmit={handleAddTask}
             onCancel={closeTaskModal}
             ideas={ideas}
+            showReferenceIdea={false}
           />
         </Modal>
       )}
@@ -539,6 +540,7 @@ export function GoalCard({
             onSubmit={handleEditTask}
             onCancel={closeTaskModal}
             ideas={ideas}
+            showReferenceIdea={false}
           />
         </Modal>
       )}
