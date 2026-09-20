@@ -103,6 +103,59 @@ describe('POST /api/workspace-summaries/generate', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
+  it('regenerates from the snapshot the database built -- Daily Updates included -- with one AI call', async () => {
+    const supabase = fakeSupabase({
+      workspace: { daily_reports_enabled: true },
+    })
+    const withUpdates = {
+      ...snapshot(),
+      daily_updates: [
+        {
+          user_id: 'user-abrar',
+          display_name: 'Abrar Ahmed',
+          report_date: '2026-09-19',
+          submitted_at: '2026-09-19T09:42:00Z',
+          edited_at: null,
+          items: [
+            {
+              type: 'next',
+              content: 'Test Slack notifications',
+              task_id: 'task-test',
+              task_title: 'Slack Notification Testing',
+              parent_title: null,
+              goal_name: null,
+              task_status: 'queued',
+              mentioned: [],
+            },
+          ],
+        },
+      ],
+    }
+    const original = supabase.rpc.getMockImplementation()!
+    supabase.rpc.mockImplementation(async (name, args) =>
+      name === 'generate_workspace_daily_snapshot'
+        ? { data: withUpdates, error: null }
+        : original(name, args),
+    )
+    createClient.mockResolvedValue(supabase)
+
+    const response = await POST(request())
+
+    expect(response.status).toBe(200)
+    expect(fetchMock).toHaveBeenCalledTimes(1) // no extra call for the Daily Updates
+    const sent = JSON.parse(fetchMock.mock.calls[0][1].body as string)
+    expect(sent.snapshot.daily_updates[0].items[0].task_title).toBe(
+      'Slack Notification Testing',
+    )
+    const saved = supabase.rpc.mock.calls.find(
+      ([name]) => name === 'regenerate_workspace_daily_report',
+    )!
+    expect(
+      (saved[1] as { p_structured_snapshot: { daily_updates: unknown[] } })
+        .p_structured_snapshot.daily_updates,
+    ).toHaveLength(1)
+  })
+
   it('regenerates as before when Daily Reports are on', async () => {
     const supabase = fakeSupabase({
       workspace: { daily_reports_enabled: true },

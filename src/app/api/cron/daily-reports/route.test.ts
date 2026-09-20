@@ -146,6 +146,111 @@ describe('POST /api/cron/daily-reports', () => {
     expect(called(supabase.rpc, 'finish_daily_report')).toHaveLength(1)
   })
 
+  it('sends the Daily Updates to the AI inside the SAME single call, and stores the AI report', async () => {
+    const withUpdates = {
+      ...snapshot(),
+      daily_updates: [
+        {
+          user_id: 'user-abrar',
+          display_name: 'Abrar Ahmed',
+          report_date: '2026-09-19',
+          submitted_at: '2026-09-19T09:42:00Z',
+          edited_at: null,
+          items: [
+            {
+              type: 'done',
+              content: 'Finished the Slack integration',
+              task_id: 'task-slack',
+              task_title: 'Slack Integration',
+              parent_title: null,
+              goal_name: null,
+              task_status: 'completed',
+              mentioned: [],
+            },
+            {
+              type: 'blocker',
+              content: 'Waiting for production credentials',
+              task_id: 'task-pay',
+              task_title: 'Payment Integration',
+              parent_title: null,
+              goal_name: null,
+              task_status: 'queued',
+              mentioned: [
+                { user_id: 'user-iqra', display_name: 'Iqra Nadeem' },
+              ],
+            },
+            {
+              type: 'next',
+              content: 'Test Slack notifications',
+              task_id: 'task-test',
+              task_title: 'Slack Notification Testing',
+              parent_title: null,
+              goal_name: null,
+              task_status: 'queued',
+              mentioned: [],
+            },
+          ],
+        },
+      ],
+    }
+    const supabase = fakeSupabase()
+    const original = supabase.rpc.getMockImplementation()!
+    supabase.rpc.mockImplementation(async (name, args) =>
+      name === 'generate_workspace_daily_snapshot'
+        ? { data: withUpdates, error: null }
+        : original(name, args),
+    )
+    createServiceRoleClient.mockReturnValue(supabase)
+
+    await POST(request())
+
+    // ONE model call for the report -- none for the Daily Updates
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const sent = JSON.parse(fetchMock.mock.calls[0][1].body as string)
+    // the recorded activity and the members' updates travel together
+    expect(sent.snapshot.members.length).toBeGreaterThan(0)
+    expect(sent.snapshot.metrics).toEqual({
+      tasks_worked_on: 2,
+      tasks_completed: 1,
+    })
+    expect(sent.snapshot.daily_updates).toHaveLength(1)
+    expect(
+      sent.snapshot.daily_updates[0].items.map(
+        (item: { type: string }) => item.type,
+      ),
+    ).toEqual(['done', 'blocker', 'next'])
+    expect(sent.snapshot.daily_updates[0].items[1].task_title).toBe(
+      'Payment Integration',
+    )
+    // the stored report is that one call's result, saved once
+    const finished = called(supabase.rpc, 'finish_daily_report')
+    expect(finished).toHaveLength(1)
+    const args = finished[0][1] as unknown as {
+      p_narrative: { overall_summary: string }
+      p_structured_snapshot: { daily_updates: unknown[] }
+    }
+    expect(args.p_narrative.overall_summary).toContain(EVO)
+    // and the snapshot kept beside it is the recorded one plus what was reported
+    expect(args.p_structured_snapshot.daily_updates).toHaveLength(1)
+  })
+
+  it('does not touch Slack itself: the stored report is the only thing that reaches it', async () => {
+    const supabase = fakeSupabase()
+    createServiceRoleClient.mockReturnValue(supabase)
+
+    await POST(request())
+
+    // No other network call is made for the report -- Slack is fed by the
+    // database trigger on the stored summary (0045), not from here.
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(String(fetchMock.mock.calls[0][0])).toBe(
+      'http://llm.test/api/summary/generate',
+    )
+    for (const [name] of supabase.rpc.mock.calls) {
+      expect(name).not.toMatch(/daily_update|slack/i)
+    }
+  })
+
   it('still finishes the report from the deterministic facts when the AI is unreachable', async () => {
     const supabase = fakeSupabase()
     createServiceRoleClient.mockReturnValue(supabase)

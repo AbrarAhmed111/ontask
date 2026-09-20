@@ -270,3 +270,66 @@ describe('decideDailyReportForSlack', () => {
     })
   })
 })
+
+describe('Daily Updates and Slack', () => {
+  const updates: NonNullable<WorkspaceStructuredSnapshot['daily_updates']> = [
+    {
+      user_id: 'user-abrar',
+      display_name: 'Abrar Ahmed',
+      report_date: '2026-09-19',
+      submitted_at: '2026-09-19T09:42:00Z',
+      edited_at: null,
+      items: [
+        {
+          type: 'blocker',
+          content: 'Waiting for production credentials',
+          task_id: 'task-pay',
+          task_title: 'Payment Integration',
+          parent_title: null,
+          goal_name: null,
+          task_status: 'queued',
+          mentioned: [{ user_id: 'user-iqra', display_name: 'Iqra Nadeem' }],
+        },
+      ],
+    },
+  ]
+
+  it('sends exactly what it would have sent without them: Slack reads the stored report only', () => {
+    const without = stored(NARRATION)
+    const withUpdates = stored(NARRATION, {
+      ...snapshot(),
+      daily_updates: updates,
+    })
+
+    expect(buildDailyReportDigest(withUpdates)).toEqual(
+      buildDailyReportDigest(without),
+    )
+    expect(decideDailyReportForSlack(withUpdates)).toEqual(
+      decideDailyReportForSlack(without),
+    )
+  })
+
+  it('never puts what a member wrote into the message', () => {
+    const digest = buildDailyReportDigest(
+      stored(NARRATION, { ...snapshot(), daily_updates: updates }),
+    )
+    const text = JSON.stringify(digest)
+    expect(text).not.toContain('production credentials')
+    expect(text).not.toContain('Payment Integration')
+    expect(text).not.toContain('Iqra')
+  })
+
+  it('does not count a Daily Update as activity: a quiet day stays quiet', () => {
+    const quiet = stored(
+      'No significant workspace activity was recorded during the previous 24 hours.',
+      snapshot({
+        members: [abrar({ focused_seconds: 0, events: [], task_activity: [] })],
+        daily_updates: updates,
+      }),
+    )
+    expect(decideDailyReportForSlack(quiet)).toEqual({
+      send: false,
+      reason: 'no_activity',
+    })
+  })
+})
