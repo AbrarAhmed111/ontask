@@ -35,7 +35,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 /project_document
-/supabase/migrations
+# supabase/migrations and supabase/tests are tracked: the schema, its RLS and the
+# tests that check them have to be reproducible from the repository.
 /supabase/.temp
 /ontask-llm
+/supabase/migrations
 /supabase/tests
