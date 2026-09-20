@@ -5,6 +5,21 @@ import { IdeaSelect } from '@/components/ideas/IdeaSelect'
 import { IdeaFormModal } from '@/components/ideas/IdeaFormModal'
 import type { Idea, WorkspaceMember } from '@/types/workspace'
 
+vi.mock('@/components/ui/Modal', () => ({
+  Modal: ({
+    title,
+    children,
+  }: {
+    title: string
+    children: React.ReactNode
+  }) => (
+    <section>
+      <h2>{title}</h2>
+      {children}
+    </section>
+  ),
+}))
+
 const makeIdea = (overrides: Partial<Idea> = {}): Idea => ({
   id: 'idea-1',
   workspaceId: 'ws-1',
