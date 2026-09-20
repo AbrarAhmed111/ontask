@@ -652,7 +652,7 @@ export function buildSlackEventMessage(
                 : workspaceUrl
       const describe = named ? `*${escapeSlackText(named)}*` : 'something'
       return message({
-        heading: '🔔 OnTask Update',
+        heading: '',
         body: `*${actor}* made a change to ${describe} in *${escapeSlackText(workspaceName)}*.`,
         fallback: `${actorName} made a change to ${named ? `"${named}"` : 'something'} in ${workspaceName}`,
         url: where,
