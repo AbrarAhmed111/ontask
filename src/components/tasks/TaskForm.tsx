@@ -254,7 +254,7 @@ export function TaskForm({
           </div>
         )}
       </div>
-      <div className="mt-4 flex shrink-0 justify-end gap-2 border-t border-line pt-4">
+      <div className="mt-4 flex shrink-0 justify-end gap-2 border-t border-line pb-6 pt-4">
         <Button type="button" variant="ghost" onClick={onCancel}>
           Cancel
         </Button>
