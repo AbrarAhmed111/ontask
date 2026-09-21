@@ -40,5 +40,7 @@ export function workspaceThemeVars(theme: WorkspaceTheme): CSSProperties {
   return {
     '--ws-accent': theme.strong,
     '--ws-accent-soft': theme.soft,
+    '--scrollbar-thumb': theme.strong,
+    '--scrollbar-thumb-hover': theme.strong,
   } as CSSProperties
 }

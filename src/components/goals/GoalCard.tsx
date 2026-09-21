@@ -539,6 +539,7 @@ export function GoalCard({
           eyebrow={pendingParentId ? 'New subtask' : 'New task'}
           title={pendingParentId ? 'Add a subtask' : 'Add a task'}
           onClose={closeTaskModal}
+          fill
         >
           <WorkspaceTaskForm
             values={taskForm}
@@ -560,6 +561,7 @@ export function GoalCard({
           eyebrow="Edit task"
           title="Refine this task"
           onClose={closeTaskModal}
+          fill
         >
           <WorkspaceTaskForm
             values={taskForm}

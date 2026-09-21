@@ -502,6 +502,7 @@ export function Dashboard() {
           eyebrow={pendingParentId ? 'New subtask' : 'New focus'}
           title={pendingParentId ? 'Add a subtask' : 'Add a task to your day'}
           onClose={closeModal}
+          fill
         >
           <TaskForm
             values={form}
@@ -517,6 +518,7 @@ export function Dashboard() {
           eyebrow="Edit task"
           title="Refine today's task"
           onClose={closeModal}
+          fill
         >
           <TaskForm
             values={form}

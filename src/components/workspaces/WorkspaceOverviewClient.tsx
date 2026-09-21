@@ -434,7 +434,12 @@ export function WorkspaceOverviewClient() {
       />
 
       {taskModal === 'add' && (
-        <Modal eyebrow="New task" title="Add a task" onClose={closeTaskModal}>
+        <Modal
+          eyebrow="New task"
+          title="Add a task"
+          onClose={closeTaskModal}
+          fill
+        >
           <WorkspaceTaskForm
             values={taskForm}
             setValues={setTaskForm}
@@ -454,6 +459,7 @@ export function WorkspaceOverviewClient() {
           eyebrow="Edit task"
           title="Refine this task"
           onClose={closeTaskModal}
+          fill
         >
           <WorkspaceTaskForm
             values={taskForm}
