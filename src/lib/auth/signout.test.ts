@@ -120,8 +120,22 @@ describe('clientSignout', () => {
       'rpc:pause_my_running_workspace_tasks',
       'update:personal_tasks:id:personal-1',
       'update:personal_tasks:id:personal-2',
-      'clearAllCache',
       'signOut',
+      'clearAllCache',
     ])
+  })
+
+  it('does not end the session when running workspace tasks could not be paused', async () => {
+    rpc.mockResolvedValueOnce({
+      error: { message: 'pause failed' },
+    })
+
+    await expect(clientSignout()).resolves.toEqual({
+      success: false,
+      error: 'Failed to sign out',
+    })
+
+    expect(signOut).not.toHaveBeenCalled()
+    expect(clearAllCache).not.toHaveBeenCalled()
   })
 })

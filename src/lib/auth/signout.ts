@@ -7,7 +7,7 @@ type PauseClient = {
   rpc: (
     name: string,
     args: Record<string, unknown>,
-  ) => PromiseLike<{ error: unknown }>
+  ) => PromiseLike<{ error: { message?: string } | null }>
 }
 
 type PersonalTaskRow = {
@@ -67,7 +67,10 @@ function isQueryBuilder(value: unknown): value is {
     }
   }
   update: (values: Record<string, unknown>) => {
-    eq: (column: string, value: unknown) => PromiseLike<{ error: unknown }>
+    eq: (
+      column: string,
+      value: unknown,
+    ) => PromiseLike<{ error: { message?: string } | null }>
   }
 } {
   return Boolean(value && typeof value === 'object')
@@ -84,11 +87,11 @@ async function pauseRunningPersonalTasks(supabase: unknown): Promise<void> {
     .eq('completed', false)
 
   if (error || !data) {
-    console.warn(
-      'Could not find running personal tasks before sign-out:',
-      error,
+    throw new Error(
+      error instanceof Error
+        ? error.message
+        : 'Could not find running personal tasks before sign-out.',
     )
-    return
   }
 
   const now = Date.now()
@@ -109,9 +112,9 @@ async function pauseRunningPersonalTasks(supabase: unknown): Promise<void> {
   )
   const failed = results.filter(result => result.error)
   if (failed.length > 0) {
-    console.warn(
-      `Could not pause ${failed.length} running personal task(s) before sign-out.`,
-      failed.map(result => result.error),
+    throw new Error(
+      failed[0].error?.message ??
+        `Could not pause ${failed.length} running personal task(s) before sign-out.`,
     )
   }
 }
@@ -120,9 +123,9 @@ async function pauseRunningWorkspaceTasks(supabase: unknown): Promise<void> {
   const client = supabase as PauseClient
   const { error } = await client.rpc('pause_my_running_workspace_tasks', {})
   if (error) {
-    console.warn(
-      'Could not pause running workspace tasks before sign-out:',
-      error,
+    throw new Error(
+      error.message ??
+        'Could not pause running workspace tasks before sign-out.',
     )
   }
 }
@@ -135,6 +138,11 @@ export async function clientSignout() {
       pauseRunningPersonalTasks(supabase),
       pauseRunningWorkspaceTasks(supabase),
     ])
+    const { error } = await supabase.auth.signOut()
+    if (error) {
+      console.error('Error signing out from Supabase:', error)
+      return { success: false, error: error.message }
+    }
     await clearBrowserStorage()
     // The signed-in user's cached workspaces/tasks are theirs alone: they don't
     // outlive the session on a device someone else may sign in on next.
@@ -142,11 +150,6 @@ export async function clientSignout() {
     // Prevent Google One Tap from silently re-selecting the same account on
     // the next page load right after an explicit sign-out.
     window.google?.accounts.id.disableAutoSelect()
-    const { error } = await supabase.auth.signOut()
-    if (error) {
-      console.error('Error signing out from Supabase:', error)
-      return { success: false, error: error.message }
-    }
     return { success: true }
   } catch (error) {
     console.error('Error in clientSignout:', error)
