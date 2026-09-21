@@ -1,10 +1,20 @@
 'use client'
 
 import { FormEvent } from 'react'
+import { Check, UserRound, X } from 'lucide-react'
 import { TaskFormValues } from '@/types'
 import { Idea, WorkspaceMember } from '@/types/workspace'
 import { Button } from '@/components/ui/Button'
+import { Avatar } from '@/components/ui/Avatar'
 import { IdeaSelect } from '@/components/ideas/IdeaSelect'
+
+function memberName(member: WorkspaceMember) {
+  return member.fullName || member.email || 'Member'
+}
+
+function selectedAssignmentIds(assignedTo: string | string[]) {
+  return Array.isArray(assignedTo) ? assignedTo : assignedTo ? [assignedTo] : []
+}
 
 // The one form for creating or editing a task — the guest's local tasks and
 // every kind of workspace task have the same fields. The only structural
@@ -66,41 +76,97 @@ export function TaskForm({
       </label>
       {assignment && (
         <div className="block text-xs font-semibold text-muted">
-          Assign to
+          <div className="flex items-center justify-between gap-3">
+            <span>Assign to</span>
+            {assignment.multiple &&
+              selectedAssignmentIds(assignment.assignedTo).length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => assignment.onChange([])}
+                  className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[10px] font-bold text-muted transition hover:bg-slate-100 hover:text-coral"
+                >
+                  <X size={11} /> Clear
+                </button>
+              )}
+          </div>
           {assignment.multiple ? (
-            <div className="mt-2 grid gap-2 rounded-lg border border-line bg-white p-2">
-              {assignment.members.map(member => {
-                const selected = Array.isArray(assignment.assignedTo)
-                  ? assignment.assignedTo.includes(member.userId)
-                  : assignment.assignedTo === member.userId
-                return (
-                  <label
-                    key={member.userId}
-                    className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-semibold text-ink transition hover:bg-slate-50"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selected}
-                      onChange={event => {
-                        const current = Array.isArray(assignment.assignedTo)
-                          ? assignment.assignedTo
-                          : assignment.assignedTo
-                            ? [assignment.assignedTo]
-                            : []
+            <div className="mt-2 rounded-lg border border-line bg-white p-2">
+              <div className="grid max-h-52 gap-1 overflow-y-auto pr-1 sm:grid-cols-2">
+                {assignment.members.map(member => {
+                  const current = selectedAssignmentIds(assignment.assignedTo)
+                  const selected = current.includes(member.userId)
+                  return (
+                    <button
+                      type="button"
+                      key={member.userId}
+                      onClick={() =>
                         assignment.onChange(
-                          event.target.checked
-                            ? [...current, member.userId]
-                            : current.filter(id => id !== member.userId),
+                          selected
+                            ? current.filter(id => id !== member.userId)
+                            : [...current, member.userId],
                         )
-                      }}
-                      className="h-4 w-4 accent-forest"
-                    />
-                    <span className="truncate">
-                      {member.fullName || member.email || 'Member'}
-                    </span>
-                  </label>
-                )
-              })}
+                      }
+                      className={`flex min-w-0 items-center gap-2 rounded-lg border px-2 py-2 text-left transition ${
+                        selected
+                          ? 'border-[var(--ws-accent,#375b4b)] bg-[var(--ws-accent-soft,#e9f0ec)] text-[var(--ws-accent,#375b4b)] shadow-sm'
+                          : 'border-transparent text-ink hover:border-line hover:bg-slate-50'
+                      }`}
+                    >
+                      <Avatar
+                        person={member}
+                        className="h-7 w-7 shrink-0 text-[10px]"
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-xs font-bold">
+                          {memberName(member)}
+                        </span>
+                        {member.email && member.fullName && (
+                          <span className="block truncate text-[10px] font-medium text-muted">
+                            {member.email}
+                          </span>
+                        )}
+                      </span>
+                      <span
+                        className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border ${
+                          selected
+                            ? 'border-[var(--ws-accent,#375b4b)] bg-[var(--ws-accent,#375b4b)] text-white'
+                            : 'border-line text-transparent'
+                        }`}
+                      >
+                        <Check size={12} />
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+              {assignment.members.length === 0 && (
+                <div className="flex items-center gap-2 rounded-lg border border-dashed border-line px-3 py-3 text-xs text-muted">
+                  <UserRound size={14} />
+                  No members yet
+                </div>
+              )}
+              {selectedAssignmentIds(assignment.assignedTo).length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5 border-t border-line/70 pt-2">
+                  {assignment.members
+                    .filter(member =>
+                      selectedAssignmentIds(assignment.assignedTo).includes(
+                        member.userId,
+                      ),
+                    )
+                    .map(member => (
+                      <span
+                        key={member.userId}
+                        className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-slate-100 py-1 pl-1 pr-2 text-[10px] font-bold text-ink"
+                      >
+                        <Avatar
+                          person={member}
+                          className="h-5 w-5 text-[8px]"
+                        />
+                        <span className="truncate">{memberName(member)}</span>
+                      </span>
+                    ))}
+                </div>
+              )}
             </div>
           ) : (
             <select
