@@ -5,6 +5,7 @@ import { Download, Eye, Loader2, Trash2 } from 'lucide-react'
 import { ResourcePreview } from '@/components/resources/ResourcePreview'
 import {
   formatFileSize,
+  resourcePreviewUrl,
   resourceTypeLabel,
   SignedUrlGetter,
 } from '@/lib/resources'
@@ -58,7 +59,10 @@ export function ResourceCard({
       return
     }
     const link = document.createElement('a')
-    link.href = url
+    link.href =
+      mode === 'preview'
+        ? resourcePreviewUrl(url, resource.fileName, resource.fileType)
+        : url
     if (mode === 'download') link.download = resource.fileName
     else link.target = '_blank'
     link.rel = 'noreferrer'

@@ -10,7 +10,7 @@ import {
 } from '@/components/resources/ResourcePreview'
 import { ResourcesPanel } from '@/components/resources/ResourcesModal'
 import { UploadQueue } from '@/components/resources/UploadQueue'
-import { IMAGE_PREVIEW_MAX_BYTES } from '@/lib/resources'
+import { IMAGE_PREVIEW_MAX_BYTES, resourcePreviewUrl } from '@/lib/resources'
 import { UploadItem } from '@/lib/resourceUploads'
 import { WorkspaceResource } from '@/types/workspace'
 
@@ -147,6 +147,22 @@ describe('ResourceCard actions', () => {
     )
     expect(html).toContain('PPTX')
     expect(html).toContain('2.4 MB')
+  })
+
+  it('opens Office documents through a document viewer instead of the raw download URL', () => {
+    const signed =
+      'https://storage.example.test/object/sign/ws/report.docx?token=abc'
+    const preview = resourcePreviewUrl(
+      signed,
+      'report.docx',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    )
+
+    expect(preview).toContain('view.officeapps.live.com')
+    expect(preview).toContain(encodeURIComponent(signed))
+    expect(resourcePreviewUrl(signed, 'spec.pdf', 'application/pdf')).toBe(
+      signed,
+    )
   })
 })
 

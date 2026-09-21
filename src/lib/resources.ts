@@ -92,6 +92,20 @@ export function getPreviewKind(
   return 'other'
 }
 
+const DOCUMENT_VIEWER_BASE = 'https://view.officeapps.live.com/op/view.aspx'
+
+export function resourcePreviewUrl(
+  signedUrl: string,
+  fileName: string,
+  fileType: string,
+): string {
+  const kind = getPreviewKind(fileName, fileType)
+  if (kind === 'word' || kind === 'excel' || kind === 'powerpoint') {
+    return `${DOCUMENT_VIEWER_BASE}?src=${encodeURIComponent(signedUrl)}`
+  }
+  return signedUrl
+}
+
 // Short uppercase label for the metadata line and the type badge ("DOCX").
 export function resourceTypeLabel(fileName: string): string {
   const extension = fileExtension(fileName)
