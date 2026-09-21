@@ -409,6 +409,7 @@ export function useWorkspaceTaskActions({
               status: 'queued' as const,
               startedAt: null,
               completedAt: null,
+              completedClearedAt: null,
             }
           : t,
       ),
@@ -420,6 +421,38 @@ export function useWorkspaceTaskActions({
         if (!rpcError) return
         restoreTasks([task])
         setError(timerErrorMessage(rpcError, "Couldn't reopen task."))
+      })
+  }
+
+  const clearCompletedTasks = (goalId: string | null = null) => {
+    if (!userId) return
+    const completed = tasks.filter(
+      task =>
+        task.goalId === goalId &&
+        task.completedClearedAt == null &&
+        (task.status === 'completed' || task.status === 'skipped'),
+    )
+    if (completed.length === 0) return
+
+    const clearedAt = Date.now()
+    setTasks(current =>
+      current.map(task =>
+        completed.some(done => done.id === task.id)
+          ? { ...task, completedClearedAt: clearedAt }
+          : task,
+      ),
+    )
+
+    const supabase = createClient()
+    void supabase
+      .rpc('clear_completed_workspace_tasks', {
+        p_workspace_id: workspaceId,
+        p_goal_id: goalId,
+      })
+      .then(({ error: rpcError }) => {
+        if (!rpcError) return
+        restoreTasks(completed)
+        setError("Couldn't clear completed tasks.")
       })
   }
 
@@ -587,6 +620,7 @@ export function useWorkspaceTaskActions({
     emergencyStopTask,
     finishTask,
     reopenTask,
+    clearCompletedTasks,
     deleteTask,
     moveTask,
     reassignTask,

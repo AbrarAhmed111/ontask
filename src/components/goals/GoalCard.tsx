@@ -21,6 +21,7 @@ import { Skeleton } from '@/components/ui/Skeleton'
 import { WorkspaceTaskList } from '@/components/workspaces/WorkspaceTaskList'
 import { WorkspaceTaskForm } from '@/components/workspaces/WorkspaceTaskForm'
 import { CompletionModal } from '@/components/tasks/CompletionModal'
+import { ClearCompletedButton } from '@/components/tasks/ClearCompletedButton'
 import { DeleteParentModal } from '@/components/tasks/DeleteParentModal'
 import { GoalDetailHeader } from '@/components/goals/GoalDetailHeader'
 import { GoalForm } from '@/components/goals/GoalForm'
@@ -107,6 +108,7 @@ export function GoalCard({
     emergencyStopTask,
     finishTask,
     reopenTask,
+    clearCompletedTasks,
     addTask,
     updateTask,
     deleteTask,
@@ -193,6 +195,8 @@ export function GoalCard({
   }, [goalFocus, goal.id])
   const totalTasks = tasks.length
   const completedTasks = tasks.filter(isDone).length
+  const visibleTasks = tasks.filter(task => task.completedClearedAt == null)
+  const visibleCompletedTasks = visibleTasks.filter(isDone)
   const focusedSeconds = Math.round(
     tasks.reduce((total, task) => total + getLiveSeconds(task), 0),
   )
@@ -467,15 +471,22 @@ export function GoalCard({
                 <Skeleton className="h-20 rounded-2xl" />
                 <Skeleton className="h-20 rounded-2xl" />
               </div>
-            ) : tasks.length === 0 ? (
+            ) : visibleTasks.length === 0 ? (
               <EmptyState size="sm">
-                No tasks in this goal yet — add one to start breaking down the
-                work.
+                {tasks.length === 0
+                  ? 'No tasks in this goal yet - add one to start breaking down the work.'
+                  : 'No visible tasks in this goal.'}
               </EmptyState>
             ) : (
               <TaskBlockerActionsContext.Provider value={blockerActions}>
+                <div className="mb-3 flex justify-end">
+                  <ClearCompletedButton
+                    count={visibleCompletedTasks.length}
+                    onClear={() => clearCompletedTasks(goal.id)}
+                  />
+                </div>
                 <WorkspaceTaskList
-                  tasks={tasks}
+                  tasks={visibleTasks}
                   members={members}
                   user={user}
                   getWorkedSeconds={getLiveSeconds}

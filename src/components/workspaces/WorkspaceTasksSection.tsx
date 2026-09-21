@@ -4,6 +4,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { ErrorBanner } from '@/components/ui/ErrorBanner'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { WorkspaceTaskList } from '@/components/workspaces/WorkspaceTaskList'
+import { ClearCompletedButton } from '@/components/tasks/ClearCompletedButton'
 import {
   BlockedNowItem,
   BlockedNowPanel,
@@ -82,6 +83,7 @@ export function WorkspaceTasksSection({
   onReopen,
   onEdit,
   onDelete,
+  onClearCompleted,
   onReassign,
   onReorder,
   onAddSubtask,
@@ -117,6 +119,7 @@ export function WorkspaceTasksSection({
   onReopen?: (task: WorkspaceTask) => void
   onEdit: (task: WorkspaceTask) => void
   onDelete: (id: string) => void
+  onClearCompleted?: () => void
   onReassign: (id: string, userId: string | null) => void
   onReorder: (fromIndex: number, toIndex: number) => void
   onAddSubtask?: (parentId: string) => void
@@ -287,12 +290,20 @@ export function WorkspaceTasksSection({
 
       {ready && completedTasks.length > 0 && (
         <div className="mt-8">
-          <h2 className="mb-4 text-sm font-bold tracking-tight text-ink">
-            Completed{' '}
-            <span className="font-mono text-xs font-normal text-muted">
-              {completedTasks.filter(task => !task.parentTaskId).length}
-            </span>
-          </h2>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="text-sm font-bold tracking-tight text-ink">
+              Completed{' '}
+              <span className="font-mono text-xs font-normal text-muted">
+                {completedTasks.filter(task => !task.parentTaskId).length}
+              </span>
+            </h2>
+            {onClearCompleted && (
+              <ClearCompletedButton
+                count={completedTasks.length}
+                onClear={onClearCompleted}
+              />
+            )}
+          </div>
           <WorkspaceTaskList
             tasks={completedTasks}
             members={members}

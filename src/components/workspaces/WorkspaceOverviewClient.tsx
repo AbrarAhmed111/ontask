@@ -70,6 +70,7 @@ export function WorkspaceOverviewClient() {
     emergencyStopTask,
     finishTask,
     reopenTask,
+    clearCompletedTasks,
     addTask,
     updateTask,
     deleteTask,
@@ -168,8 +169,9 @@ export function WorkspaceOverviewClient() {
   // Ordinary tasks are permanently flat now (hierarchy only exists inside
   // Goals — see supabase/migrations/0021_workspace_goals.sql), so the queue
   // and completed lists are a plain status split with no parent grouping.
-  const queueTasks = tasks.filter(task => !isDone(task))
-  const completedTasks = tasks.filter(isDone)
+  const visibleTasks = tasks.filter(task => task.completedClearedAt == null)
+  const queueTasks = visibleTasks.filter(task => !isDone(task))
+  const completedTasks = visibleTasks.filter(isDone)
   const workingGoalTasks = Object.values(goalWorkingTasks).flat()
   const handleWorkingTasksChange = useCallback(
     (goalId: string, workingTasks: WorkspaceTask[]) => {
@@ -357,6 +359,7 @@ export function WorkspaceOverviewClient() {
           onReopen={handleReopenTask}
           onEdit={openEditTask}
           onDelete={handleDeleteTask}
+          onClearCompleted={() => clearCompletedTasks(null)}
           onReassign={reassignTask}
           onReorder={reorderTasks}
         />
