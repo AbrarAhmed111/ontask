@@ -254,7 +254,7 @@ describe('POST /api/cron/daily-reports', () => {
     }
   })
 
-  it('still finishes the report from the deterministic facts when the AI is unreachable', async () => {
+  it('fails explicitly and leaves retry available when AI narration is unavailable', async () => {
     const supabase = fakeSupabase()
     createServiceRoleClient.mockReturnValue(supabase)
     fetchMock.mockRejectedValue(new Error('ECONNREFUSED'))
@@ -262,16 +262,46 @@ describe('POST /api/cron/daily-reports', () => {
 
     const body = await (await POST(request())).json()
 
-    expect(body).toMatchObject({ completed: 1, failed: 0 })
-    const args = called(
-      supabase.rpc,
-      'finish_daily_report',
-    )[0][1] as unknown as {
-      p_narrative: { overall_summary: string }
-      p_meta: { used_fallback_template: boolean }
+    expect(body).toMatchObject({ completed: 0, failed: 1 })
+    expect(called(supabase.rpc, 'finish_daily_report')).toHaveLength(0)
+    const args = called(supabase.rpc, 'fail_daily_report')[0][1] as unknown as {
+      p_error_message: string
     }
-    expect(args.p_meta.used_fallback_template).toBe(true)
-    expect(args.p_narrative.overall_summary).toContain(`"${EVO}"`)
-    expect(args.p_narrative.overall_summary).not.toMatch(/\ba task\b/)
+    expect(args.p_error_message).toContain('AI summary service unreachable')
+  })
+
+  it('fails explicitly when the LLM service returns its deterministic fallback', async () => {
+    const supabase = fakeSupabase()
+    createServiceRoleClient.mockReturnValue(supabase)
+    fetchMock.mockImplementation(
+      async () =>
+        new Response(
+          JSON.stringify({
+            narrative: {
+              members: [
+                {
+                  user_id: 'user-abrar',
+                  narrative: `Abrar worked on "${EVO}".`,
+                },
+              ],
+              summary: `Abrar worked on "${EVO}".`,
+            },
+            meta: {
+              used_fallback_template: true,
+              validation_warnings: ['provider output failed validation'],
+            },
+          }),
+        ),
+    )
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    const body = await (await POST(request())).json()
+
+    expect(body).toMatchObject({ completed: 0, failed: 1 })
+    expect(called(supabase.rpc, 'finish_daily_report')).toHaveLength(0)
+    const args = called(supabase.rpc, 'fail_daily_report')[0][1] as unknown as {
+      p_error_message: string
+    }
+    expect(args.p_error_message).toBe('provider output failed validation')
   })
 })

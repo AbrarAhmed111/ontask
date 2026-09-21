@@ -103,17 +103,26 @@ async function processCandidate(
   })
 
   if (
+    snapshot &&
     (meta as { used_fallback_template?: boolean } | null)
       ?.used_fallback_template
   ) {
-    console.warn(
-      `[daily-reports] AI narrative fell back to the deterministic template ` +
-        `workspace_id=${candidate.workspace_id} report_end=${candidate.report_end} ` +
-        `validation_failure_reason=${JSON.stringify(
-          (meta as { validation_warnings?: string[] })?.validation_warnings ??
-            [],
-        )}`,
+    const warnings =
+      (meta as { validation_warnings?: string[] })?.validation_warnings ?? []
+    const message =
+      warnings[0] ||
+      'AI narrative generation failed; deterministic fallback was refused'
+    console.error(
+      `[daily-reports] AI narrative generation failed for workspace ` +
+        `${candidate.workspace_id} report_end=${candidate.report_end}: ` +
+        JSON.stringify(warnings),
     )
+    await supabase.rpc('fail_daily_report', {
+      p_workspace_id: candidate.workspace_id,
+      p_report_end: candidate.report_end,
+      p_error_message: message,
+    })
+    return 'failed'
   }
 
   try {

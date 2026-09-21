@@ -17,6 +17,8 @@ export type DailyReportWorkContextTask = {
   goal_id: string | null
   goal_name: string | null
   focused_seconds: number
+  participation_status: string | null
+  overall_status: string
   status: string
   completed_in_period: boolean
 }
@@ -188,6 +190,8 @@ export function buildDailyReportWorkContext(
         goal_id: task.goal_id,
         goal_name: task.goal_name,
         focused_seconds: task.focused_seconds,
+        participation_status: task.participation_status ?? null,
+        overall_status: reportTaskStatus(task),
         status: reportTaskStatus(task),
         completed_in_period: completedInPeriod(member, task),
       }))

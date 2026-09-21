@@ -57,6 +57,11 @@ describe('buildDailyReportWorkContext', () => {
     const text = JSON.stringify(context)
 
     expect(context.members[0].tasks_worked_on).toHaveLength(2)
+    expect(context.members[0].tasks_worked_on[0]).toMatchObject({
+      title: 'Working on OnTask Evolution',
+      participation_status: null,
+      overall_status: 'completed',
+    })
     expect(text).toContain('Working on OnTask Evolution')
     expect(text).not.toContain('"events"')
     expect(text).not.toContain('"created"')
@@ -99,5 +104,40 @@ describe('buildDailyReportWorkContext', () => {
         task => task.title === 'Calendar Booking System',
       ),
     ).toBe(false)
+  })
+
+  it('keeps collaborative participation status separate from overall task status', () => {
+    const context = buildDailyReportWorkContext(
+      snapshot({
+        members: [
+          abrar({
+            task_activity: [
+              {
+                task_id: 'task-architecture',
+                title: 'Understand the Architecture',
+                parent_task_id: null,
+                parent_title: null,
+                goal_id: null,
+                goal_name: null,
+                focused_seconds: 7800,
+                progress_start: null,
+                progress_end: null,
+                status_end: 'in_progress',
+                current_status: 'working',
+                participation_status: 'completed',
+                overall_status: 'working',
+              },
+            ],
+          }),
+        ],
+      }),
+    )
+
+    expect(context.members[0].tasks_worked_on[0]).toMatchObject({
+      title: 'Understand the Architecture',
+      participation_status: 'completed',
+      overall_status: 'working',
+      status: 'working',
+    })
   })
 })

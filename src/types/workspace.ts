@@ -421,6 +421,10 @@ export type StructuredSnapshotTaskActivity = {
   status_end: SummaryTaskStatus
   // Absent on snapshots from before migration 0042 (status_end is all they have).
   current_status?: SummaryCurrentStatus | null
+  // Absent on snapshots before collaborative tasks; this is the member's own
+  // status on the task, distinct from current_status/overall_status.
+  participation_status?: WorkspaceTaskStatus | null
+  overall_status?: SummaryCurrentStatus | null
 }
 
 export type StructuredSnapshotMember = {
