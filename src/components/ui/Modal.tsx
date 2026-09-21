@@ -19,14 +19,15 @@ const FOCUSABLE_SELECTOR =
 
 const SIZE_CLASSES = { md: 'max-w-md', lg: 'max-w-4xl' }
 
-// `fill`: the dialog is capped to the viewport and lays its children out as a
-// column, so a child can pin a header/toolbar and scroll only its own list
-// (see ResourcesModal). Without it the dialog is exactly the plain block it
-// always was -- modals that host absolutely-positioned popovers (assignee
-// picker, dropdowns) must not get an overflow container that would clip them.
-// `100dvh` follows mobile browser chrome; plain `100vh` is the fallback.
+// The dialog is capped to the viewport so form actions never end up below the
+// visible screen on short viewports. `fill` lets a child own the internal
+// scrolling/pinning (see ResourcesModal); the default path scrolls the modal
+// body while keeping the title row reachable.
+// `100dvh` follows mobile/browser chrome; plain `100vh` is the fallback.
 const FILL_CLASSES =
   'flex max-h-[calc(100vh-2rem)] flex-col overflow-hidden pb-0 supports-[height:100dvh]:max-h-[calc(100dvh-2rem)]'
+const DIALOG_CLASSES =
+  'flex max-h-[calc(100vh-2rem)] flex-col overflow-hidden supports-[height:100dvh]:max-h-[calc(100dvh-2rem)]'
 
 // Open modals, oldest first. Only the topmost answers Escape and Tab, so a
 // confirmation opened over another dialog closes by itself instead of taking
@@ -164,7 +165,7 @@ function ModalDialog({
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className={`w-full ${SIZE_CLASSES[size]} rounded-2xl border border-line bg-panel p-6 shadow-2xl outline-none animate-[modalIn_220ms_ease-out] ${fill ? FILL_CLASSES : ''}`}
+        className={`w-full ${SIZE_CLASSES[size]} rounded-2xl border border-line bg-panel p-6 shadow-2xl outline-none animate-[modalIn_220ms_ease-out] ${fill ? FILL_CLASSES : DIALOG_CLASSES}`}
       >
         <div className="mb-6 flex shrink-0 items-start justify-between gap-4">
           <div className="min-w-0">
@@ -191,7 +192,9 @@ function ModalDialog({
         {fill ? (
           <div className="flex min-h-0 flex-1 flex-col">{children}</div>
         ) : (
-          children
+          <div className="-mx-1 min-h-0 flex-1 overflow-y-auto px-1 pb-1">
+            {children}
+          </div>
         )}
       </section>
     </div>

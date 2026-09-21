@@ -252,7 +252,7 @@ export function TaskForm({
           </label>
         </div>
       )}
-      <div className="flex justify-end gap-2 border-t border-line pt-4">
+      <div className="sticky bottom-0 z-10 -mx-1 flex justify-end gap-2 border-t border-line bg-panel px-1 pt-4">
         <Button type="button" variant="ghost" onClick={onCancel}>
           Cancel
         </Button>
