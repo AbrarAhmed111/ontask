@@ -7,7 +7,10 @@ import { useTaskAutoCompletion } from '@/hooks/useTaskAutoCompletion'
 import { SNAPSHOTS } from '@/lib/cache/workspaceSnapshots'
 import {
   WorkspaceTaskRow,
+  TaskCollaboratorRow,
+  attachTaskCollaborators,
   getWorkspaceLiveSeconds,
+  rowToTaskCollaborator,
   rowToTask,
 } from '@/lib/tasks/workspaceMappers'
 import {
@@ -93,21 +96,34 @@ export function useGoalDetail(
 
     const fetchTasks = (showLoading: boolean) => {
       if (showLoading) setReady(false)
-      supabase
-        .from('workspace_tasks')
-        .select('*')
-        .eq('goal_id', goalId)
-        .order('position', { ascending: true })
-        .then(({ data, error: fetchError }) => {
-          if (cancelled) return
-          if (fetchError) {
-            setError("Couldn't load this goal's tasks.")
-            setReady(true)
-            return
-          }
-          confirm(((data ?? []) as WorkspaceTaskRow[]).map(rowToTask))
+      Promise.all([
+        supabase
+          .from('workspace_tasks')
+          .select('*')
+          .eq('goal_id', goalId)
+          .order('position', { ascending: true }),
+        supabase
+          .from('task_collaborators')
+          .select('*')
+          .eq('workspace_id', workspaceId)
+          .is('removed_at', null),
+      ]).then(([tasksResult, collaboratorsResult]) => {
+        if (cancelled) return
+        if (tasksResult.error || collaboratorsResult.error) {
+          setError("Couldn't load this goal's tasks.")
           setReady(true)
-        })
+          return
+        }
+        confirm(
+          attachTaskCollaborators(
+            ((tasksResult.data ?? []) as WorkspaceTaskRow[]).map(rowToTask),
+            ((collaboratorsResult.data ?? []) as TaskCollaboratorRow[]).map(
+              rowToTaskCollaborator,
+            ),
+          ),
+        )
+        setReady(true)
+      })
     }
 
     fetchTasks(true)
@@ -147,14 +163,30 @@ export function useGoalDetail(
         },
       )
       .subscribe()
+    const collaboratorChannel = supabase
+      .channel(`goal-task-collaborators-${goalId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'task_collaborators',
+          filter: `workspace_id=eq.${workspaceId}`,
+        },
+        () => {
+          if (!cancelled) fetchTasks(false)
+        },
+      )
+      .subscribe()
 
     return () => {
       cancelled = true
       window.removeEventListener('online', handleReconnect)
       document.removeEventListener('visibilitychange', handleVisibility)
       supabase.removeChannel(channel)
+      supabase.removeChannel(collaboratorChannel)
     }
-  }, [userId, goalId, confirm, setTasks])
+  }, [userId, goalId, workspaceId, confirm, setTasks])
 
   useEffect(() => {
     if (!userId || !goalId) {

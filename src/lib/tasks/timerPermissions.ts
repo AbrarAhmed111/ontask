@@ -19,16 +19,21 @@ export type TimerActor = {
 }
 
 export function canControlTimer(
-  task: Pick<WorkspaceTask, 'assignedTo'>,
+  task: Pick<WorkspaceTask, 'assignedTo' | 'collaborators'>,
   actor: Pick<TimerActor, 'userId' | 'isPersonal'>,
 ): boolean {
   if (!actor.userId) return false
+  if (task.collaborators && task.collaborators.length > 0) {
+    return task.collaborators.some(
+      collaborator => collaborator.userId === actor.userId,
+    )
+  }
   if (task.assignedTo === null) return true
   return task.assignedTo === actor.userId
 }
 
 export function canReopenTask(
-  task: Pick<WorkspaceTask, 'assignedTo' | 'status'>,
+  task: Pick<WorkspaceTask, 'assignedTo' | 'status' | 'collaborators'>,
   actor: Pick<TimerActor, 'userId' | 'isPersonal'>,
 ): boolean {
   if (task.status !== 'completed' && task.status !== 'skipped') return false
@@ -39,7 +44,7 @@ export function canReopenTask(
 // stop: an owner who isn't the assignee never gets start/resume, since that
 // would book the work to the wrong person.
 export function canEmergencyStop(
-  task: Pick<WorkspaceTask, 'assignedTo' | 'status'>,
+  task: Pick<WorkspaceTask, 'assignedTo' | 'status' | 'collaborators'>,
   actor: TimerActor,
 ): boolean {
   return (
@@ -49,9 +54,11 @@ export function canEmergencyStop(
 
 // Why the timer is locked for this actor, or null when they can use it.
 export function timerLockReason(
-  task: Pick<WorkspaceTask, 'assignedTo'>,
+  task: Pick<WorkspaceTask, 'assignedTo' | 'collaborators'>,
   actor: Pick<TimerActor, 'userId' | 'isPersonal'>,
 ): string | null {
   if (canControlTimer(task, actor)) return null
-  return 'Only the assigned member can work or complete this task'
+  return task.collaborators && task.collaborators.length > 1
+    ? 'Only collaborators can work or complete their part of this task'
+    : 'Only the assigned member can work or complete this task'
 }

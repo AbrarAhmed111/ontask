@@ -8,7 +8,10 @@ import { useTaskAutoCompletion } from '@/hooks/useTaskAutoCompletion'
 import { SNAPSHOTS } from '@/lib/cache/workspaceSnapshots'
 import {
   WorkspaceTaskRow,
+  TaskCollaboratorRow,
+  attachTaskCollaborators,
   getWorkspaceLiveSeconds,
+  rowToTaskCollaborator,
   rowToTask,
 } from '@/lib/tasks/workspaceMappers'
 import type { AuthUser } from '@/hooks/useAuth'
@@ -70,26 +73,39 @@ export function useWorkspaceTasks(
     const supabase = createClient()
 
     const fetchTasks = () => {
-      supabase
-        .from('workspace_tasks')
-        .select('*')
-        .eq('workspace_id', workspaceId)
-        // Ordinary workspace tasks only — goal-scoped tasks/subtasks are
-        // fetched separately by useGoalDetail, since hierarchy only exists
-        // inside Goals now.
-        .is('goal_id', null)
-        .order('position', { ascending: true })
-        .then(({ data, error: fetchError }) => {
-          if (cancelled) return
-          if (fetchError) {
-            // Whatever is already shown (cached) stays: a failed refresh must
-            // not blank the list, and must not pretend it is current.
-            markFailed()
-            return
-          }
-          confirm(((data ?? []) as WorkspaceTaskRow[]).map(rowToTask))
-          markSucceeded()
-        })
+      Promise.all([
+        supabase
+          .from('workspace_tasks')
+          .select('*')
+          .eq('workspace_id', workspaceId)
+          // Ordinary workspace tasks only — goal-scoped tasks/subtasks are
+          // fetched separately by useGoalDetail, since hierarchy only exists
+          // inside Goals now.
+          .is('goal_id', null)
+          .order('position', { ascending: true }),
+        supabase
+          .from('task_collaborators')
+          .select('*')
+          .eq('workspace_id', workspaceId)
+          .is('removed_at', null),
+      ]).then(([tasksResult, collaboratorsResult]) => {
+        if (cancelled) return
+        if (tasksResult.error || collaboratorsResult.error) {
+          // Whatever is already shown (cached) stays: a failed refresh must
+          // not blank the list, and must not pretend it is current.
+          markFailed()
+          return
+        }
+        confirm(
+          attachTaskCollaborators(
+            ((tasksResult.data ?? []) as WorkspaceTaskRow[]).map(rowToTask),
+            ((collaboratorsResult.data ?? []) as TaskCollaboratorRow[]).map(
+              rowToTaskCollaborator,
+            ),
+          ),
+        )
+        markSucceeded()
+      })
     }
 
     fetchTasks()
@@ -141,12 +157,28 @@ export function useWorkspaceTasks(
         },
       )
       .subscribe()
+    const collaboratorChannel = supabase
+      .channel(`workspace-task-collaborators-${workspaceId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'task_collaborators',
+          filter: `workspace_id=eq.${workspaceId}`,
+        },
+        () => {
+          if (!cancelled) fetchTasks()
+        },
+      )
+      .subscribe()
 
     return () => {
       cancelled = true
       window.removeEventListener('online', handleReconnect)
       document.removeEventListener('visibilitychange', handleVisibility)
       supabase.removeChannel(channel)
+      supabase.removeChannel(collaboratorChannel)
     }
   }, [
     userId,

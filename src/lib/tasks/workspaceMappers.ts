@@ -1,4 +1,8 @@
-import { WorkspaceTask, WorkspaceTaskStatus } from '@/types/workspace'
+import {
+  TaskCollaborator,
+  WorkspaceTask,
+  WorkspaceTaskStatus,
+} from '@/types/workspace'
 
 export type WorkspaceTaskRow = {
   id: string
@@ -17,6 +21,50 @@ export type WorkspaceTaskRow = {
   progress_percentage: number | null
   started_at: string | null
   completed_at: string | null
+  completed_cleared_at?: string | null
+}
+
+export type TaskCollaboratorRow = {
+  id: string
+  task_id: string
+  workspace_id: string
+  user_id: string
+  participation_status: WorkspaceTaskStatus
+  started_at: string | null
+  completed_at: string | null
+  removed_at: string | null
+}
+
+export function rowToTaskCollaborator(
+  row: TaskCollaboratorRow,
+): TaskCollaborator {
+  return {
+    id: row.id,
+    taskId: row.task_id,
+    workspaceId: row.workspace_id,
+    userId: row.user_id,
+    participationStatus: row.participation_status,
+    startedAt: row.started_at ? new Date(row.started_at).getTime() : null,
+    completedAt: row.completed_at ? new Date(row.completed_at).getTime() : null,
+    removedAt: row.removed_at ? new Date(row.removed_at).getTime() : null,
+  }
+}
+
+export function attachTaskCollaborators(
+  tasks: WorkspaceTask[],
+  collaborators: TaskCollaborator[],
+): WorkspaceTask[] {
+  const byTask = new Map<string, TaskCollaborator[]>()
+  for (const collaborator of collaborators) {
+    if (collaborator.removedAt !== null) continue
+    const list = byTask.get(collaborator.taskId) ?? []
+    list.push(collaborator)
+    byTask.set(collaborator.taskId, list)
+  }
+  return tasks.map(task => ({
+    ...task,
+    collaborators: byTask.get(task.id) ?? [],
+  }))
 }
 
 export function rowToTask(row: WorkspaceTaskRow): WorkspaceTask {
@@ -36,6 +84,9 @@ export function rowToTask(row: WorkspaceTaskRow): WorkspaceTask {
         : null,
     workedSeconds: row.actual_seconds,
     status: row.status,
+    completedClearedAt: row.completed_cleared_at
+      ? new Date(row.completed_cleared_at).getTime()
+      : null,
     progressLabel: row.progress_label ?? undefined,
     progressPercentage: row.progress_percentage ?? undefined,
     startedAt: row.started_at ? new Date(row.started_at).getTime() : null,

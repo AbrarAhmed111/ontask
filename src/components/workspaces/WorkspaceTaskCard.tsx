@@ -23,6 +23,7 @@ import {
   canResolveBlocker,
 } from '@/lib/tasks/blockerPermissions'
 import { tourAnchor } from '@/lib/tourAnchors'
+import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { AssigneePicker } from '@/components/workspaces/AssigneePicker'
 import { useTaskFocus } from '@/components/workspaces/FocusedTaskContext'
@@ -123,6 +124,26 @@ export function WorkspaceTaskCard({
           ? 'Paused'
           : 'Queued'
   const assignee = members.find(member => member.userId === task.assignedTo)
+  const collaborators = (task.collaborators ?? []).filter(
+    collaborator => collaborator.removedAt === null,
+  )
+  const isCollaborative = collaborators.length > 1
+  const memberName = (userId: string) => {
+    const member = members.find(item => item.userId === userId)
+    return member?.fullName || member?.email || 'Member'
+  }
+  const statusText = (status: WorkspaceTask['status']) =>
+    status === 'completed'
+      ? 'Completed'
+      : status === 'working'
+        ? 'Working'
+        : status === 'paused'
+          ? 'Paused'
+          : status === 'blocked'
+            ? 'Blocked'
+            : status === 'skipped'
+              ? 'Skipped'
+              : 'Queued'
   // Timer permissions are a workspace-level fact (who's the owner, is this the
   // personal workspace), so they're read from the surrounding workspace rather
   // than threaded through every list and card between here and the page.
@@ -314,6 +335,32 @@ export function WorkspaceTaskCard({
         </>
       }
     >
+      {isCollaborative && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {collaborators.map(collaborator => {
+            const member = members.find(m => m.userId === collaborator.userId)
+            return (
+              <span
+                key={collaborator.id}
+                title={`${memberName(collaborator.userId)}: ${statusText(collaborator.participationStatus)}`}
+                className="inline-flex max-w-[160px] items-center gap-1.5 rounded-full border border-line bg-white/70 py-1 pl-1 pr-2 text-[10px] font-semibold text-ink"
+              >
+                <Avatar
+                  person={member ?? { fullName: 'Member' }}
+                  className="h-5 w-5 text-[8px]"
+                />
+                <span className="truncate">
+                  {memberName(collaborator.userId).split(' ')[0]}
+                </span>
+                <span className="text-muted">
+                  {statusText(collaborator.participationStatus)}
+                </span>
+              </span>
+            )
+          })}
+        </div>
+      )}
+
       {dependencyBlocked && (
         <p className="rounded-lg border border-coral/20 bg-coral/5 px-3 py-2 text-[11px] font-semibold text-coral">
           Blocked by: {blockedBy!.join(', ')}
