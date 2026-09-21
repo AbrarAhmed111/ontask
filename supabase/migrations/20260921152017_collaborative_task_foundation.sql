@@ -422,6 +422,7 @@ begin
             started_at = case when id = p_task_id then started_at else null end
         where id = v_open_entry.task_id;
     else
+      perform set_config('ontask.timer_write', 'on', true);
       update public.workspace_tasks
         set actual_seconds = actual_seconds + v_duration
         where id = v_open_entry.task_id;
@@ -503,6 +504,7 @@ begin
       where id = v_open_entry.id;
   end if;
 
+  perform set_config('ontask.timer_write', 'on', true);
   update public.workspace_tasks
     set actual_seconds = actual_seconds + v_duration
     where id = p_task_id;
@@ -565,6 +567,7 @@ begin
       where id = v_open_entry.id;
   end if;
 
+  perform set_config('ontask.timer_write', 'on', true);
   update public.workspace_tasks
     set actual_seconds = actual_seconds + v_duration
     where id = p_task_id;
