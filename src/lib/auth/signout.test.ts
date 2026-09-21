@@ -3,7 +3,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 const clearAllCache = vi.fn()
 const signOut = vi.fn()
 const rpc = vi.fn()
-const openEntries: { task_id: string | null; task_kind: string | null }[] = []
+const personalTasks: {
+  id: string
+  started_at: string | null
+  actual_seconds: number | null
+}[] = []
+const updatePersonalTask = vi.fn()
 const order: string[] = []
 
 vi.mock('@/lib/cache/cacheStore', () => ({
@@ -21,20 +26,29 @@ vi.mock('@/lib/supabase/client', () => ({
         return signOut()
       },
     },
-    from: (table: string) => ({
-      select: () => ({
-        eq: (column: string, value: unknown) => ({
-          is: (isColumn: string, isValue: unknown) => {
-            order.push(
-              `select:${table}:${column}:${value}:${isColumn}:${isValue}`,
-            )
-            return Promise.resolve({ data: openEntries, error: null })
+    from: (table: string) => {
+      if (table !== 'personal_tasks') throw new Error(`unexpected ${table}`)
+      return {
+        select: () => ({
+          eq: (column: string, value: unknown) => ({
+            eq: (nextColumn: string, nextValue: unknown) => {
+              order.push(
+                `select:${table}:${column}:${value}:${nextColumn}:${nextValue}`,
+              )
+              return Promise.resolve({ data: personalTasks, error: null })
+            },
+          }),
+        }),
+        update: (values: Record<string, unknown>) => ({
+          eq: (column: string, value: unknown) => {
+            order.push(`update:${table}:${column}:${value}`)
+            return updatePersonalTask(values)
           },
         }),
-      }),
-    }),
+      }
+    },
     rpc: (name: string, args: Record<string, unknown>) => {
-      order.push(`rpc:${String(args.p_task_id)}`)
+      order.push(`rpc:${name}`)
       return rpc(name, args)
     },
   }),
@@ -56,40 +70,56 @@ function stubBrowserStorage() {
 
 describe('clientSignout', () => {
   beforeEach(() => {
-    openEntries.length = 0
+    personalTasks.length = 0
     order.length = 0
     clearAllCache.mockResolvedValue(undefined)
     signOut.mockResolvedValue({ error: null })
     rpc.mockResolvedValue({ error: null })
+    updatePersonalTask.mockResolvedValue({ error: null })
     stubBrowserStorage()
   })
 
   afterEach(() => {
     vi.unstubAllGlobals()
+    vi.useRealTimers()
     vi.clearAllMocks()
   })
 
-  it('pauses the signed-in user running workspace tasks before ending the session', async () => {
-    openEntries.push(
-      { task_id: 'task-1', task_kind: 'workspace' },
-      { task_id: 'task-2', task_kind: 'workspace' },
-      { task_id: 'task-1', task_kind: 'workspace' },
-      { task_id: null, task_kind: 'workspace' },
+  it('pauses running tasks before ending the session', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-09-21T12:00:00.000Z'))
+    personalTasks.push(
+      {
+        id: 'personal-1',
+        started_at: '2026-09-21T11:59:30.000Z',
+        actual_seconds: 10,
+      },
+      {
+        id: 'personal-2',
+        started_at: null,
+        actual_seconds: null,
+      },
     )
 
     await expect(clientSignout()).resolves.toEqual({ success: true })
 
-    expect(rpc).toHaveBeenCalledTimes(2)
-    expect(rpc).toHaveBeenNthCalledWith(1, 'pause_workspace_task', {
-      p_task_id: 'task-1',
+    expect(rpc).toHaveBeenCalledTimes(1)
+    expect(rpc).toHaveBeenCalledWith('pause_my_running_workspace_tasks', {})
+    expect(updatePersonalTask).toHaveBeenNthCalledWith(1, {
+      status: 'paused',
+      started_at: null,
+      actual_seconds: 40,
     })
-    expect(rpc).toHaveBeenNthCalledWith(2, 'pause_workspace_task', {
-      p_task_id: 'task-2',
+    expect(updatePersonalTask).toHaveBeenNthCalledWith(2, {
+      status: 'paused',
+      started_at: null,
+      actual_seconds: 0,
     })
     expect(order).toEqual([
-      'select:task_time_entries:task_kind:workspace:ended_at:null',
-      'rpc:task-1',
-      'rpc:task-2',
+      'select:personal_tasks:status:working:completed:false',
+      'rpc:pause_my_running_workspace_tasks',
+      'update:personal_tasks:id:personal-1',
+      'update:personal_tasks:id:personal-2',
       'clearAllCache',
       'signOut',
     ])
