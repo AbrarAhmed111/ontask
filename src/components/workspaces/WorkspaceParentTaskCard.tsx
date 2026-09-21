@@ -71,7 +71,7 @@ export function WorkspaceParentTaskCard({
   onReopen?: (task: WorkspaceTask) => void
   onEdit: (task: WorkspaceTask) => void
   onDelete: (id: string) => void
-  onReassign: (id: string, userId: string | null) => void
+  onReassign: (id: string, userId: string | string[] | null) => void
   onAddSubtask: () => void
   onDeleteParent: () => void
   moveOptions: TaskMoveOption[]

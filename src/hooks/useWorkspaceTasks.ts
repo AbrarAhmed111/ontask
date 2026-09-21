@@ -220,7 +220,7 @@ export function useWorkspaceTasks(
     event: Parameters<typeof addTaskAction>[0],
     form: Parameters<typeof addTaskAction>[1],
     _parentTaskId: string | null = null,
-    assignedTo: string | null = null,
+    assignedTo: string | string[] | null = null,
   ) => addTaskAction(event, form, null, assignedTo, null)
 
   const reorderTasks = (fromIndex: number, toIndex: number) => {

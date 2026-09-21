@@ -132,7 +132,7 @@ export function GoalCard({
 
   const [taskModal, setTaskModal] = useState<'add' | 'edit' | null>(null)
   const [taskForm, setTaskForm] = useState<TaskFormValues>(emptyTaskForm)
-  const [taskAssignee, setTaskAssignee] = useState('')
+  const [taskAssignees, setTaskAssignees] = useState<string[]>([])
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
   const [pendingParentId, setPendingParentId] = useState<string | null>(null)
   const [pendingDeleteParent, setPendingDeleteParent] = useState<{
@@ -218,13 +218,13 @@ export function GoalCard({
   }
   const openAddTask = () => {
     setTaskForm({ ...emptyTaskForm })
-    setTaskAssignee('')
+    setTaskAssignees([])
     setPendingParentId(null)
     setTaskModal('add')
   }
   const openAddSubtask = (parentId: string) => {
     setTaskForm({ ...emptyTaskForm })
-    setTaskAssignee('')
+    setTaskAssignees([])
     setPendingParentId(parentId)
     setTaskModal('add')
   }
@@ -244,12 +244,21 @@ export function GoalCard({
       trackGoal: Boolean(task.progressLabel),
       ideaId: task.ideaId ?? '',
     })
-    setTaskAssignee(task.assignedTo ?? '')
+    const collaboratorIds = (task.collaborators ?? [])
+      .filter(collaborator => collaborator.removedAt === null)
+      .map(collaborator => collaborator.userId)
+    setTaskAssignees(
+      collaboratorIds.length > 0
+        ? collaboratorIds
+        : task.assignedTo
+          ? [task.assignedTo]
+          : [],
+    )
     setTaskModal('edit')
   }
 
   const handleAddTask = (event: FormEvent) => {
-    if (addTask(event, taskForm, pendingParentId, taskAssignee || null)) {
+    if (addTask(event, taskForm, pendingParentId, taskAssignees)) {
       closeTaskModal()
       showSuccessToast(pendingParentId ? 'Subtask added.' : 'Task added.')
     }
@@ -276,10 +285,22 @@ export function GoalCard({
       ideaId: taskForm.ideaId || null,
     })
     if (
-      taskAssignee !==
-      (tasks.find(t => t.id === editingTaskId)?.assignedTo ?? '')
+      taskAssignees.join('|') !==
+      (() => {
+        const task = tasks.find(t => t.id === editingTaskId)
+        const collaboratorIds = (task?.collaborators ?? [])
+          .filter(collaborator => collaborator.removedAt === null)
+          .map(collaborator => collaborator.userId)
+        return (
+          collaboratorIds.length > 0
+            ? collaboratorIds
+            : task?.assignedTo
+              ? [task.assignedTo]
+              : []
+        ).join('|')
+      })()
     ) {
-      reassignTask(editingTaskId, taskAssignee || null)
+      reassignTask(editingTaskId, taskAssignees)
     }
     closeTaskModal()
     showSuccessToast('Task updated.')
@@ -524,8 +545,8 @@ export function GoalCard({
             setValues={setTaskForm}
             isPersonal={isPersonal}
             members={members}
-            assignedTo={taskAssignee}
-            setAssignedTo={setTaskAssignee}
+            assignedTo={taskAssignees}
+            setAssignedTo={setTaskAssignees}
             submitLabel={pendingParentId ? 'Add subtask' : 'Add task'}
             onSubmit={handleAddTask}
             onCancel={closeTaskModal}
@@ -545,8 +566,8 @@ export function GoalCard({
             setValues={setTaskForm}
             isPersonal={isPersonal}
             members={members}
-            assignedTo={taskAssignee}
-            setAssignedTo={setTaskAssignee}
+            assignedTo={taskAssignees}
+            setAssignedTo={setTaskAssignees}
             submitLabel="Save changes"
             onSubmit={handleEditTask}
             onCancel={closeTaskModal}

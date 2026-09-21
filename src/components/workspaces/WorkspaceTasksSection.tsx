@@ -120,7 +120,7 @@ export function WorkspaceTasksSection({
   onEdit: (task: WorkspaceTask) => void
   onDelete: (id: string) => void
   onClearCompleted?: () => void
-  onReassign: (id: string, userId: string | null) => void
+  onReassign: (id: string, userId: string | string[] | null) => void
   onReorder: (fromIndex: number, toIndex: number) => void
   onAddSubtask?: (parentId: string) => void
   onDeleteParent?: (task: WorkspaceTask) => void

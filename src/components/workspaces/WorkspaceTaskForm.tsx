@@ -25,8 +25,8 @@ export function WorkspaceTaskForm({
   setValues: (values: TaskFormValues) => void
   isPersonal: boolean
   members: WorkspaceMember[]
-  assignedTo: string
-  setAssignedTo: (userId: string) => void
+  assignedTo: string[]
+  setAssignedTo: (userIds: string[]) => void
   submitLabel: string
   onSubmit: (event: FormEvent) => void
   onCancel: () => void
@@ -46,7 +46,13 @@ export function WorkspaceTaskForm({
       assignment={
         isPersonal
           ? undefined
-          : { members, assignedTo, onChange: setAssignedTo }
+          : {
+              members,
+              assignedTo,
+              onChange: userIds =>
+                setAssignedTo(Array.isArray(userIds) ? userIds : [userIds]),
+              multiple: true,
+            }
       }
     />
   )

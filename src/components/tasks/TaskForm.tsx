@@ -31,8 +31,9 @@ export function TaskForm({
   // workspace). Omit it for the guest dashboard and a personal workspace.
   assignment?: {
     members: WorkspaceMember[]
-    assignedTo: string
-    onChange: (userId: string) => void
+    assignedTo: string | string[]
+    onChange: (userId: string | string[]) => void
+    multiple?: boolean
   }
   ideas?: Idea[]
   targetLabel?: string
@@ -64,21 +65,58 @@ export function TaskForm({
         />
       </label>
       {assignment && (
-        <label className="block text-xs font-semibold text-muted">
+        <div className="block text-xs font-semibold text-muted">
           Assign to
-          <select
-            value={assignment.assignedTo}
-            onChange={event => assignment.onChange(event.target.value)}
-            className="mt-2 w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm text-ink outline-none focus:border-sage focus:ring-4 focus:ring-sage/15"
-          >
-            <option value="">Unassigned</option>
-            {assignment.members.map(member => (
-              <option key={member.userId} value={member.userId}>
-                {member.fullName || member.email}
-              </option>
-            ))}
-          </select>
-        </label>
+          {assignment.multiple ? (
+            <div className="mt-2 grid gap-2 rounded-lg border border-line bg-white p-2">
+              {assignment.members.map(member => {
+                const selected = Array.isArray(assignment.assignedTo)
+                  ? assignment.assignedTo.includes(member.userId)
+                  : assignment.assignedTo === member.userId
+                return (
+                  <label
+                    key={member.userId}
+                    className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-semibold text-ink transition hover:bg-slate-50"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selected}
+                      onChange={event => {
+                        const current = Array.isArray(assignment.assignedTo)
+                          ? assignment.assignedTo
+                          : assignment.assignedTo
+                            ? [assignment.assignedTo]
+                            : []
+                        assignment.onChange(
+                          event.target.checked
+                            ? [...current, member.userId]
+                            : current.filter(id => id !== member.userId),
+                        )
+                      }}
+                      className="h-4 w-4 accent-forest"
+                    />
+                    <span className="truncate">
+                      {member.fullName || member.email || 'Member'}
+                    </span>
+                  </label>
+                )
+              })}
+            </div>
+          ) : (
+            <select
+              value={assignment.assignedTo}
+              onChange={event => assignment.onChange(event.target.value)}
+              className="mt-2 w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm text-ink outline-none focus:border-sage focus:ring-4 focus:ring-sage/15"
+            >
+              <option value="">Unassigned</option>
+              {assignment.members.map(member => (
+                <option key={member.userId} value={member.userId}>
+                  {member.fullName || member.email}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
       )}
       {ideas && (
         <IdeaSelect

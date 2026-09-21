@@ -140,7 +140,7 @@ export function WorkspaceOverviewClient() {
 
   const [taskModal, setTaskModal] = useState<'add' | 'edit' | null>(null)
   const [taskForm, setTaskForm] = useState<TaskFormValues>(emptyTaskForm)
-  const [taskAssignee, setTaskAssignee] = useState('')
+  const [taskAssignees, setTaskAssignees] = useState<string[]>([])
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
   const [goalModalOpen, setGoalModalOpen] = useState(false)
   const [resourcesModalOpen, setResourcesModalOpen] = useState(false)
@@ -238,7 +238,7 @@ export function WorkspaceOverviewClient() {
   }
   const openAddTask = () => {
     setTaskForm({ ...emptyTaskForm })
-    setTaskAssignee('')
+    setTaskAssignees([])
     setTaskModal('add')
   }
   const openEditTask = (task: WorkspaceTask) => {
@@ -257,12 +257,21 @@ export function WorkspaceOverviewClient() {
       trackGoal: Boolean(task.progressLabel),
       ideaId: task.ideaId ?? '',
     })
-    setTaskAssignee(task.assignedTo ?? '')
+    const collaboratorIds = (task.collaborators ?? [])
+      .filter(collaborator => collaborator.removedAt === null)
+      .map(collaborator => collaborator.userId)
+    setTaskAssignees(
+      collaboratorIds.length > 0
+        ? collaboratorIds
+        : task.assignedTo
+          ? [task.assignedTo]
+          : [],
+    )
     setTaskModal('edit')
   }
 
   const handleAddTask = (event: FormEvent) => {
-    if (addTask(event, taskForm, null, taskAssignee || null)) {
+    if (addTask(event, taskForm, null, taskAssignees)) {
       closeTaskModal()
       showSuccessToast('Task added.')
     }
@@ -289,10 +298,22 @@ export function WorkspaceOverviewClient() {
       ideaId: taskForm.ideaId || null,
     })
     if (
-      taskAssignee !==
-      (tasks.find(t => t.id === editingTaskId)?.assignedTo ?? '')
+      taskAssignees.join('|') !==
+      (() => {
+        const task = tasks.find(t => t.id === editingTaskId)
+        const collaboratorIds = (task?.collaborators ?? [])
+          .filter(collaborator => collaborator.removedAt === null)
+          .map(collaborator => collaborator.userId)
+        return (
+          collaboratorIds.length > 0
+            ? collaboratorIds
+            : task?.assignedTo
+              ? [task.assignedTo]
+              : []
+        ).join('|')
+      })()
     ) {
-      reassignTask(editingTaskId, taskAssignee || null)
+      reassignTask(editingTaskId, taskAssignees)
     }
     closeTaskModal()
     showSuccessToast('Task updated.')
@@ -419,8 +440,8 @@ export function WorkspaceOverviewClient() {
             setValues={setTaskForm}
             isPersonal={isPersonal}
             members={members}
-            assignedTo={taskAssignee}
-            setAssignedTo={setTaskAssignee}
+            assignedTo={taskAssignees}
+            setAssignedTo={setTaskAssignees}
             submitLabel="Add task"
             onSubmit={handleAddTask}
             onCancel={closeTaskModal}
@@ -439,8 +460,8 @@ export function WorkspaceOverviewClient() {
             setValues={setTaskForm}
             isPersonal={isPersonal}
             members={members}
-            assignedTo={taskAssignee}
-            setAssignedTo={setTaskAssignee}
+            assignedTo={taskAssignees}
+            setAssignedTo={setTaskAssignees}
             submitLabel="Save changes"
             onSubmit={handleEditTask}
             onCancel={closeTaskModal}

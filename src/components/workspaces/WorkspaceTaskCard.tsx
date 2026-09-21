@@ -88,7 +88,7 @@ export function WorkspaceTaskCard({
   onEdit: () => void
   onDelete: () => void
   onAddSubtask?: () => void
-  onReassign: (userId: string | null) => void
+  onReassign: (userId: string | null | string[]) => void
   moveOptions?: TaskMoveOption[]
   onMoveTo?: (parentId: string | null) => void
   drag?: TaskDragProps
@@ -127,6 +127,16 @@ export function WorkspaceTaskCard({
   const collaborators = (task.collaborators ?? []).filter(
     collaborator => collaborator.removedAt === null,
   )
+  const assignees =
+    collaborators.length > 0
+      ? collaborators
+          .map(collaborator =>
+            members.find(member => member.userId === collaborator.userId),
+          )
+          .filter((member): member is WorkspaceMember => Boolean(member))
+      : assignee
+        ? [assignee]
+        : []
   const isCollaborative = collaborators.length > 1
   const memberName = (userId: string) => {
     const member = members.find(item => item.userId === userId)
@@ -218,8 +228,10 @@ export function WorkspaceTaskCard({
           {!isPersonal && (
             <AssigneePicker
               assignee={assignee}
+              assignees={assignees}
               members={members}
               onReassign={onReassign}
+              onReassignMany={userIds => onReassign(userIds)}
               // A blocked task keeps an assignee: they can always clear the
               // blocker, so it never ends up with nobody able to.
               canUnassign={!hasBlocker}

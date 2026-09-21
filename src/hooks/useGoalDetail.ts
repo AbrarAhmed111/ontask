@@ -315,7 +315,7 @@ export function useGoalDetail(
     event: Parameters<typeof addTaskAction>[0],
     form: Parameters<typeof addTaskAction>[1],
     parentTaskId: string | null = null,
-    assignedTo: string | null = null,
+    assignedTo: string | string[] | null = null,
   ) => addTaskAction(event, form, parentTaskId, assignedTo, goalId, ideaId)
 
   // Same auto-complete-on-planned-time behavior as flat tasks (useWorkspaceTasks.ts) —

@@ -17,6 +17,15 @@ function memberDisplayName(member?: WorkspaceMember) {
   return member?.fullName || member?.email || 'Someone'
 }
 
+function collaboratorIdsForTask(task: WorkspaceTask | undefined) {
+  if (!task) return []
+  const collaboratorIds = (task.collaborators ?? [])
+    .filter(collaborator => collaborator.removedAt === null)
+    .map(collaborator => collaborator.userId)
+  if (collaboratorIds.length > 0) return collaboratorIds
+  return task.assignedTo ? [task.assignedTo] : []
+}
+
 // The timer RPCs reject a caller who isn't allowed with 42501 and a message
 // meant to be read ("only the member this task is assigned to..."); anything
 // else stays the generic fallback.
@@ -104,7 +113,7 @@ export function useWorkspaceTaskActions({
     event: FormEvent,
     form: TaskFormValues,
     parentTaskId: string | null = null,
-    assignedTo: string | null = null,
+    assignedTo: string | string[] | null = null,
     goalId: string | null = null,
     ideaId: string | null = null,
   ) => {
@@ -128,6 +137,12 @@ export function useWorkspaceTaskActions({
       ? Math.min(100, Math.max(0, Number(form.progress) || 0))
       : undefined
     const effectiveIdeaId = form.ideaId || ideaId || null
+    const assigneeIds = Array.isArray(assignedTo)
+      ? assignedTo
+      : assignedTo
+        ? [assignedTo]
+        : []
+    const primaryAssignee = assigneeIds[0] ?? null
 
     setTasks(current => [
       ...current,
@@ -138,7 +153,7 @@ export function useWorkspaceTaskActions({
         goalId,
         ideaId: effectiveIdeaId,
         createdBy: userId,
-        assignedTo,
+        assignedTo: primaryAssignee,
         name,
         description,
         plannedMinutes,
@@ -146,6 +161,16 @@ export function useWorkspaceTaskActions({
         status: 'queued',
         startedAt: null,
         completedAt: null,
+        collaborators: assigneeIds.map(assigneeId => ({
+          id: `${id}:${assigneeId}`,
+          taskId: id,
+          workspaceId,
+          userId: assigneeId,
+          participationStatus: 'queued',
+          startedAt: null,
+          completedAt: null,
+          removedAt: null,
+        })),
         progressLabel,
         progressPercentage,
       },
@@ -161,7 +186,7 @@ export function useWorkspaceTaskActions({
         goal_id: goalId,
         idea_id: effectiveIdeaId,
         created_by: userId,
-        assigned_to: assignedTo,
+        assigned_to: primaryAssignee,
         title: name,
         description,
         planned_seconds: plannedMinutes !== null ? plannedMinutes * 60 : null,
@@ -179,6 +204,12 @@ export function useWorkspaceTaskActions({
           effectiveIdeaId,
           workspaceId,
         )
+        if (assigneeIds.length > 1) {
+          void supabase.rpc('set_workspace_task_collaborators', {
+            p_task_id: id,
+            p_user_ids: assigneeIds,
+          })
+        }
       })
 
     return true
@@ -533,29 +564,63 @@ export function useWorkspaceTaskActions({
       })
   }
 
-  const reassignTask = (id: string, newAssigneeId: string | null) => {
+  const reassignTask = (
+    id: string,
+    newAssigneeId: string | string[] | null,
+  ) => {
     if (!userId) return
     const task = tasks.find(t => t.id === id)
+    const newAssigneeIds = Array.isArray(newAssigneeId)
+      ? newAssigneeId
+      : newAssigneeId
+        ? [newAssigneeId]
+        : []
+    const primaryAssigneeId = newAssigneeIds[0] ?? null
+    const previousAssigneeIds = collaboratorIdsForTask(task)
     const fromMember = members.find(m => m.userId === task?.assignedTo)
-    const toMember = newAssigneeId
-      ? members.find(m => m.userId === newAssigneeId)
+    const toMember = primaryAssigneeId
+      ? members.find(m => m.userId === primaryAssigneeId)
       : undefined
     const fromName = memberDisplayName(fromMember)
-    const toName = newAssigneeId ? memberDisplayName(toMember) : 'Unassigned'
+    const toName =
+      newAssigneeIds.length > 1
+        ? `${newAssigneeIds.length} collaborators`
+        : primaryAssigneeId
+          ? memberDisplayName(toMember)
+          : 'Unassigned'
     // Changing hands stops a running timer — the database does this in the
     // same write (time recorded so far is kept, and the new assignee can then
     // resume) — so the card mustn't keep counting under the new name while
     // waiting for the realtime update to land.
     const stopsTimer =
       task?.status === 'working' &&
-      task.assignedTo !== newAssigneeId &&
+      !newAssigneeIds.includes(task.assignedTo ?? '') &&
       !isPersonal
     setTasks(current =>
       current.map(t =>
         t.id === id
           ? {
               ...t,
-              assignedTo: newAssigneeId,
+              assignedTo: primaryAssigneeId,
+              collaborators: newAssigneeIds.map(assigneeId => {
+                const existing = t.collaborators?.find(
+                  collaborator =>
+                    collaborator.userId === assigneeId &&
+                    collaborator.removedAt === null,
+                )
+                return (
+                  existing ?? {
+                    id: `${t.id}:${assigneeId}`,
+                    taskId: t.id,
+                    workspaceId: t.workspaceId,
+                    userId: assigneeId,
+                    participationStatus: 'queued' as const,
+                    startedAt: null,
+                    completedAt: null,
+                    removedAt: null,
+                  }
+                )
+              }),
               ...(stopsTimer
                 ? {
                     status: 'paused' as const,
@@ -569,9 +634,10 @@ export function useWorkspaceTaskActions({
     )
     const supabase = createClient()
     void supabase
-      .from('workspace_tasks')
-      .update({ assigned_to: newAssigneeId })
-      .eq('id', id)
+      .rpc('set_workspace_task_collaborators', {
+        p_task_id: id,
+        p_user_ids: newAssigneeIds,
+      })
       .then(({ error: updateError }) => {
         if (updateError) {
           if (task) restoreTasks([task])
@@ -588,7 +654,7 @@ export function useWorkspaceTaskActions({
         const parentTitle = task?.parentTaskId
           ? tasks.find(t => t.id === task.parentTaskId)?.name
           : undefined
-        const eventType = !newAssigneeId
+        const eventType = !primaryAssigneeId
           ? 'unassigned'
           : task?.assignedTo
             ? 'reassigned'
@@ -603,7 +669,9 @@ export function useWorkspaceTaskActions({
             from: fromName,
             to: toName,
             from_user_id: task?.assignedTo ?? null,
-            to_user_id: newAssigneeId,
+            to_user_id: primaryAssigneeId,
+            from_user_ids: previousAssigneeIds,
+            to_user_ids: newAssigneeIds,
             parent_title: parentTitle,
           },
           task?.goalId,
