@@ -3,7 +3,7 @@
 
 create or replace function public.pause_workspace_task(p_task_id uuid)
 returns public.workspace_tasks
-language plpgsql security invoker set search_path = public
+language plpgsql security definer set search_path = public
 as $$
 declare
   v_user_id uuid := auth.uid();

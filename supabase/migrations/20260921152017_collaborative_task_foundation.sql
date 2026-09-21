@@ -357,7 +357,7 @@ create policy "task_time_entries_update_own" on public.task_time_entries
 
 create or replace function public.start_workspace_task(p_task_id uuid)
 returns public.workspace_tasks
-language plpgsql security invoker set search_path = public
+language plpgsql security definer set search_path = public
 as $$
 declare
   v_user_id uuid := auth.uid();
@@ -469,7 +469,7 @@ $$;
 
 create or replace function public.pause_workspace_task(p_task_id uuid)
 returns public.workspace_tasks
-language plpgsql security invoker set search_path = public
+language plpgsql security definer set search_path = public
 as $$
 declare
   v_user_id uuid := auth.uid();
@@ -530,7 +530,7 @@ create or replace function public.complete_workspace_task(
   p_task_id uuid, p_skip boolean default false
 )
 returns public.workspace_tasks
-language plpgsql security invoker set search_path = public
+language plpgsql security definer set search_path = public
 as $$
 declare
   v_user_id uuid := auth.uid();
@@ -624,7 +624,7 @@ $$;
 
 create or replace function public.reopen_workspace_task(p_task_id uuid)
 returns public.workspace_tasks
-language plpgsql security invoker set search_path = public
+language plpgsql security definer set search_path = public
 as $$
 declare
   v_user_id uuid := auth.uid();
