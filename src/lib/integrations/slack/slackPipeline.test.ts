@@ -555,9 +555,18 @@ describe('the Daily Report', () => {
     // but the three characters Slack reads as markup.
     const stored = STORED_NARRATION.split('\n\n')
     const forSlack = (text: string) =>
-      text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(
+          /"OnTask Integration to Slack"/g,
+          '"`OnTask Integration to Slack`"',
+        )
 
-    expect(bodyOf(call)).toBe(stored.slice(0, 3).map(forSlack).join('\n\n'))
+    expect(bodyOf(call)).toBe(
+      ['*Summary*', ...stored.slice(0, 3).map(forSlack)].join('\n\n'),
+    )
     // The preview renders no markup, so it carries the words as written.
     expect(call.fallbackText).toBe(
       `[${WORKSPACE_NAME}] Daily Report: ${stored[0]}`,
@@ -569,7 +578,7 @@ describe('the Daily Report', () => {
     const call = await deliver(payloadFor('daily report ready'))
 
     expect(bodyOf(call).length).toBeLessThan(STORED_NARRATION.length)
-    expect(bodyOf(call).split('\n\n')).toHaveLength(3)
+    expect(bodyOf(call).split('\n\n')).toHaveLength(4)
     // The paragraphs it leaves out stay in OnTask.
     expect(bodyOf(call)).not.toContain('Two invitations went out')
   })

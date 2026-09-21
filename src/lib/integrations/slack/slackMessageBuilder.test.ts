@@ -239,6 +239,37 @@ describe('buildSlackEventMessage — the Daily Report', () => {
 
     expect(blockText(message, 'header').length).toBeLessThanOrEqual(150)
   })
+  it('renders work-context reports as member narratives plus a summary', () => {
+    const message = buildSlackEventMessage({
+      ...base,
+      report: {
+        paragraphs: [
+          'Abrar worked on Calendar Booking System.',
+          'The team progressed Calendar Booking System.',
+        ],
+        sections: [
+          {
+            kind: 'member',
+            userId: 'user-abrar',
+            name: 'Abrar Ahmed',
+            paragraphs: ['Abrar worked on Calendar Booking System.'],
+          },
+          {
+            kind: 'summary',
+            name: 'Summary',
+            paragraphs: ['The team progressed Calendar Booking System.'],
+          },
+        ],
+        facts: [],
+        taskTitles: ['Calendar Booking System'],
+        shortened: false,
+      },
+    })
+
+    expect(blockText(message, 'section')).toBe(
+      '*Abrar Ahmed*\n\nAbrar worked on `Calendar Booking System`.\n\n*Summary*\n\nThe team progressed `Calendar Booking System`.',
+    )
+  })
 })
 
 // The categories 0047 connected. Each one checks the words a reader sees and

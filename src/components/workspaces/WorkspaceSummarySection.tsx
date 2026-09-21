@@ -17,9 +17,9 @@ import { Skeleton } from '@/components/ui/Skeleton'
 import { formatBoundary } from '@/lib/dailyReportWindow'
 import {
   ReportTaskStatus,
+  dailyReportNarrativeSections,
   getDailyReportMetrics,
   hasReportActivity,
-  narrativeParagraphs,
   reportTaskStatus,
 } from '@/lib/dailyReportMetrics'
 import { formatHM } from '@/lib/time'
@@ -318,12 +318,20 @@ export function ReportMetrics({
 
 // The AI's reading of what happened, as the paragraph(s) it wrote.
 function Narrative({ summary }: { summary: WorkspaceDailySummary }) {
+  const sections = dailyReportNarrativeSections(summary.narrative)
   return (
-    <div className="space-y-3">
-      {narrativeParagraphs(summary.narrative).map((paragraph, i) => (
-        <p key={i} className="text-sm leading-6 text-ink">
-          {paragraph}
-        </p>
+    <div className="space-y-5">
+      {sections.map((section, sectionIndex) => (
+        <section key={`${section.kind}-${section.userId ?? sectionIndex}`}>
+          <h3 className="text-sm font-bold text-ink">{section.name}</h3>
+          <div className="mt-2 space-y-3">
+            {section.paragraphs.map((paragraph, i) => (
+              <p key={i} className="text-sm leading-6 text-ink">
+                {paragraph}
+              </p>
+            ))}
+          </div>
+        </section>
       ))}
     </div>
   )
@@ -490,11 +498,7 @@ export function WorkspaceSummarySection({
         </div>
       ) : (
         <div>
-          <div className="flex flex-wrap items-start justify-between gap-3 px-5 pt-4">
-            <ReportMetrics
-              snapshot={summary.structuredSnapshot}
-              isPersonal={isPersonal}
-            />
+          <div className="flex justify-end px-5 pt-4">
             <Button
               variant="ghost"
               onClick={onRegenerate}

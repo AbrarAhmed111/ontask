@@ -134,10 +134,10 @@ describe('the Daily Report: a personal workspace', () => {
   const personal = summary(snapshot(), PERSONAL_NARRATIVE)
   const html = render(personal, { isPersonal: true })
 
-  it('shows the exact deterministic figures beside the narrative', () => {
+  it('does not lead with generic deterministic figures beside the narrative', () => {
     const t = text(html)
-    expect(t).toContain('4h 48m focused')
-    expect(t).toContain('1 task completed')
+    expect(t).not.toContain('4h 48m focused')
+    expect(t).not.toContain('1 task completed')
   })
 
   it('shows the AI narrative as prose', () => {
@@ -177,10 +177,10 @@ describe('the Daily Report: a personal workspace', () => {
 describe('the Daily Report: a shared workspace', () => {
   const shared = summary(sharedSnapshot(), SHARED_NARRATIVE)
 
-  it('shows how many members were active, next to the exact figures', () => {
+  it('does not lead with workspace activity metrics', () => {
     const t = text(render(shared))
-    expect(t).toContain('5h 48m focused')
-    expect(t).toContain('2 members active')
+    expect(t).not.toContain('5h 48m focused')
+    expect(t).not.toContain('2 members active')
   })
 
   it('writes a multi-paragraph narrative as separate paragraphs', () => {
@@ -254,18 +254,19 @@ describe('the Daily Report: deterministic facts stay authoritative', () => {
         defaultExpanded: true,
       }),
     )
-    expect(t).toContain('1 task completed')
+    expect(t).not.toContain('1 task completed')
     expect(t).not.toContain('3 tasks completed')
     expect(t).toContain('2 tasks created') // the other counts are still useful
   })
 
-  it('takes every figure from the snapshot, not from the narrative', () => {
+  it('does not turn narrative claims into metric chips', () => {
     const t = text(
       render(summary(snapshot(), 'Abrar was busy all day.'), {
         isPersonal: true,
       }),
     )
-    expect(t).toContain('4h 48m focused')
+    expect(t).not.toContain('4h 48m focused')
+    expect(t).toContain('Abrar was busy all day.')
   })
 
   it('shows the report’s own window', () => {
@@ -286,7 +287,7 @@ describe('the Daily Report: deterministic facts stay authoritative', () => {
       }),
     )
     expect(t).toContain('A single old paragraph.')
-    expect(t).toContain('1 task completed') // derived from status_end
+    expect(t).not.toContain('1 task completed')
     expect(t).toContain(`${BOOK} 1h 48m In progress`)
   })
 })
@@ -417,6 +418,7 @@ describe('the Daily Report in Slack and in the app', () => {
       .replace(/&lt;/g, '<')
       .replace(/&gt;/g, '>')
       .replace(/&amp;/g, '&')
+      .replace(/[*`]/g, '')
       .replace(/\s+/g, ' ')
       .trim()
 
@@ -435,7 +437,7 @@ describe('the Daily Report in Slack and in the app', () => {
     }
   })
 
-  it('quotes the same figures the card prints', () => {
+  it('keeps deterministic figures out of the card headline', () => {
     const onScreen = text(render(stored, { isPersonal: false }))
     const context = slackMessage().blocks.find(
       block => (block as { type: string }).type === 'context',
@@ -445,8 +447,8 @@ describe('the Daily Report in Slack and in the app', () => {
     // from the snapshot by getDailyReportMetrics -- the card's own source.
     expect(context.elements[0].text).toContain('5h 48m focused')
     expect(context.elements[0].text).toContain('1 task completed')
-    expect(onScreen).toContain('5h 48m focused')
-    expect(onScreen).toContain('1 task completed')
+    expect(onScreen).not.toContain('5h 48m focused')
+    expect(onScreen).not.toContain('1 task completed')
   })
 
   it('links to the report the card is showing', () => {

@@ -1,8 +1,9 @@
 import { formatHM } from '@/lib/time'
 import {
+  DailyReportNarrativeSection,
+  dailyReportNarrativeSections,
   getDailyReportMetrics,
   hasReportActivity,
-  narrativeParagraphs,
 } from '@/lib/dailyReportMetrics'
 import {
   SummaryNarrative,
@@ -35,8 +36,12 @@ export type StoredDailyReport = Pick<
 export type DailyReportDigest = {
   /** Paragraphs of the stored narration, exactly as written. */
   paragraphs: string[]
+  /** Work-context report sections, when the stored narrative has them. */
+  sections?: DailyReportNarrativeSection[]
   /** Deterministic figures from the stored snapshot ("4 tasks completed"). */
   facts: string[]
+  /** Task titles the backend knows, for deterministic Slack formatting. */
+  taskTitles?: string[]
   /** Whether prose was left behind -- i.e. the app has more than Slack got. */
   shortened: boolean
 }
@@ -86,12 +91,6 @@ function readableSnapshot(
 // The stored narration, or nothing. A report whose AI narration never landed
 // still has its figures, and those are worth sending on their own -- so a
 // missing, null or empty `overall_summary` is an absence, not a failure.
-function storedParagraphs(narrative: SummaryNarrative | null): string[] {
-  const summary = narrative?.overall_summary
-  if (typeof summary !== 'string' || summary.trim() === '') return []
-  return narrativeParagraphs({ overall_summary: summary })
-}
-
 function truncateAtSentence(text: string, limit: number): string {
   if (text.length <= limit) return text
   const head = text.slice(0, limit)
@@ -127,6 +126,42 @@ function concise(paragraphs: string[]): {
   return {
     paragraphs: kept,
     shortened: kept.join('\n\n').length < paragraphs.join('\n\n').length,
+  }
+}
+
+function conciseSections(sections: DailyReportNarrativeSection[]): {
+  sections: DailyReportNarrativeSection[]
+  paragraphs: string[]
+  shortened: boolean
+} {
+  const kept: DailyReportNarrativeSection[] = []
+  const paragraphs: string[] = []
+  let used = 0
+  for (const section of sections) {
+    const sectionParagraphs: string[] = []
+    for (const paragraph of section.paragraphs) {
+      if (paragraphs.length >= MAX_PARAGRAPHS) break
+      if (used > 0 && used + paragraph.length > MAX_NARRATION_CHARS) break
+      sectionParagraphs.push(paragraph)
+      paragraphs.push(paragraph)
+      used += paragraph.length
+    }
+    if (sectionParagraphs.length > 0) {
+      kept.push({ ...section, paragraphs: sectionParagraphs })
+    }
+    if (paragraphs.length >= MAX_PARAGRAPHS) break
+  }
+  if (paragraphs.length === 1) {
+    const clipped = truncateAtSentence(paragraphs[0], MAX_NARRATION_CHARS)
+    paragraphs[0] = clipped
+    kept[0] = { ...kept[0], paragraphs: [clipped] }
+  }
+  return {
+    sections: kept,
+    paragraphs,
+    shortened:
+      sections.flatMap(section => section.paragraphs).join('\n\n') !==
+      paragraphs.join('\n\n'),
   }
 }
 
@@ -169,15 +204,33 @@ function factsFor(snapshot: WorkspaceStructuredSnapshot): string[] {
   return facts.slice(0, MAX_FACTS)
 }
 
+function taskTitlesFor(snapshot: WorkspaceStructuredSnapshot): string[] {
+  const titles = new Set<string>()
+  for (const member of snapshot.members) {
+    for (const task of member.task_activity) {
+      if (task.title.trim()) titles.add(task.title)
+    }
+  }
+  for (const blocker of snapshot.blockers ?? []) {
+    if (blocker.task_title.trim()) titles.add(blocker.task_title)
+  }
+  return [...titles].sort((a, b) => b.length - a.length)
+}
+
 export function buildDailyReportDigest(
   report: StoredDailyReport,
 ): DailyReportDigest {
   const snapshot = readableSnapshot(report)
-  const { paragraphs, shortened } = concise(storedParagraphs(report.narrative))
+  const sections = dailyReportNarrativeSections(report.narrative)
+  const conciseNarrative = sections.length
+    ? conciseSections(sections)
+    : { ...concise([]), sections: [] }
   return {
-    paragraphs,
+    paragraphs: conciseNarrative.paragraphs,
+    sections: conciseNarrative.sections,
     facts: snapshot ? factsFor(snapshot) : [],
-    shortened,
+    taskTitles: snapshot ? taskTitlesFor(snapshot) : [],
+    shortened: conciseNarrative.shortened,
   }
 }
 

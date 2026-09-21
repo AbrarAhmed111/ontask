@@ -556,9 +556,22 @@ export function buildSlackEventMessage(
     // what the button is for.
     case 'daily_report_ready': {
       const digest = payload.report ?? null
-      const narration = digest?.paragraphs.length
-        ? digest.paragraphs.map(escapeSlackText).join('\n\n')
-        : null
+      const sections = digest?.sections ?? []
+      const taskTitles = digest?.taskTitles ?? []
+      const formatReportText = (text: string) =>
+        formatKnownTaskTitlesForSlack(escapeSlackText(text), taskTitles)
+      const narration = sections.length
+        ? sections
+            .map(
+              section =>
+                `*${escapeSlackText(section.name)}*\n\n${section.paragraphs
+                  .map(formatReportText)
+                  .join('\n\n')}`,
+            )
+            .join('\n\n')
+        : digest?.paragraphs.length
+          ? digest.paragraphs.map(formatReportText).join('\n\n')
+          : null
       const factsText = digest?.facts.length ? digest.facts.join(' · ') : null
       const facts = factsText ? escapeSlackText(factsText) : null
 
@@ -664,6 +677,26 @@ export function buildSlackEventMessage(
 
 function escapeSlackText(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+function formatKnownTaskTitlesForSlack(text: string, taskTitles: string[]) {
+  let formatted = text
+  for (const title of taskTitles) {
+    if (!title.trim()) continue
+    const escapedTitle = escapeSlackText(title)
+    const pattern = new RegExp(
+      `(^|[^\\w\`])(${escapeRegExp(escapedTitle)})(?=$|[^\\w\`])`,
+      'g',
+    )
+    formatted = formatted.replace(pattern, (_match, prefix, matched) => {
+      return `${prefix}\`${matched}\``
+    })
+  }
+  return formatted
+}
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 // Slack's own limits, enforced here rather than discovered as an invalid_blocks
