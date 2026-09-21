@@ -2,20 +2,6 @@
 
 import { clearAllCache } from '@/lib/cache/cacheStore'
 
-type PauseClient = {
-  from: (table: string) => unknown
-  rpc: (
-    name: string,
-    args: Record<string, unknown>,
-  ) => PromiseLike<{ error: { message?: string } | null }>
-}
-
-type PersonalTaskRow = {
-  id: string
-  started_at: string | null
-  actual_seconds: number | null
-}
-
 // Clear browser storage (localStorage, sessionStorage, cookies)
 async function clearBrowserStorage(): Promise<void> {
   if (typeof window !== 'undefined') {
@@ -54,90 +40,10 @@ async function clearBrowserStorage(): Promise<void> {
   }
 }
 
-function isQueryBuilder(value: unknown): value is {
-  select: (columns: string) => {
-    eq: (
-      column: string,
-      value: unknown,
-    ) => {
-      eq: (
-        column: string,
-        value: unknown,
-      ) => PromiseLike<{ data: PersonalTaskRow[] | null; error: unknown }>
-    }
-  }
-  update: (values: Record<string, unknown>) => {
-    eq: (
-      column: string,
-      value: unknown,
-    ) => PromiseLike<{ error: { message?: string } | null }>
-  }
-} {
-  return Boolean(value && typeof value === 'object')
-}
-
-async function pauseRunningPersonalTasks(supabase: unknown): Promise<void> {
-  const client = supabase as PauseClient
-  const personalTasks = client.from('personal_tasks')
-  if (!isQueryBuilder(personalTasks)) return
-
-  const { data, error } = await personalTasks
-    .select('id, started_at, actual_seconds')
-    .eq('status', 'working')
-    .eq('completed', false)
-
-  if (error || !data) {
-    throw new Error(
-      error instanceof Error
-        ? error.message
-        : 'Could not find running personal tasks before sign-out.',
-    )
-  }
-
-  const now = Date.now()
-  const results = await Promise.all(
-    data.map(task => {
-      const startedAt = task.started_at
-        ? new Date(task.started_at).getTime()
-        : now
-      const elapsedSeconds = Math.max(0, Math.round((now - startedAt) / 1000))
-      return personalTasks
-        .update({
-          status: 'paused',
-          started_at: null,
-          actual_seconds: (task.actual_seconds ?? 0) + elapsedSeconds,
-        })
-        .eq('id', task.id)
-    }),
-  )
-  const failed = results.filter(result => result.error)
-  if (failed.length > 0) {
-    throw new Error(
-      failed[0].error?.message ??
-        `Could not pause ${failed.length} running personal task(s) before sign-out.`,
-    )
-  }
-}
-
-async function pauseRunningWorkspaceTasks(supabase: unknown): Promise<void> {
-  const client = supabase as PauseClient
-  const { error } = await client.rpc('pause_my_running_workspace_tasks', {})
-  if (error) {
-    throw new Error(
-      error.message ??
-        'Could not pause running workspace tasks before sign-out.',
-    )
-  }
-}
-
 export async function clientSignout() {
   try {
     const { createClient } = await import('@/lib/supabase/client')
     const supabase = createClient()
-    await Promise.all([
-      pauseRunningPersonalTasks(supabase),
-      pauseRunningWorkspaceTasks(supabase),
-    ])
     const { error } = await supabase.auth.signOut()
     if (error) {
       console.error('Error signing out from Supabase:', error)
