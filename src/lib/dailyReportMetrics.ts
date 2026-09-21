@@ -1,5 +1,6 @@
 import {
   SummaryCurrentStatus,
+  SummaryNarrative,
   WorkspaceStructuredSnapshot,
 } from '@/types/workspace'
 
@@ -47,6 +48,7 @@ export function getDailyReportMetrics(
     activeMembers: snapshot.members.filter(
       member =>
         member.focused_seconds > 0 ||
+        (member.work_sessions?.length ?? 0) > 0 ||
         member.events.length > 0 ||
         member.task_activity.length > 0,
     ).length,
@@ -60,7 +62,10 @@ export function hasReportActivity(
   return (
     snapshot.total_focused_seconds > 0 ||
     snapshot.members.some(
-      member => member.events.length > 0 || member.task_activity.length > 0,
+      member =>
+        member.events.length > 0 ||
+        member.task_activity.length > 0 ||
+        (member.work_sessions?.length ?? 0) > 0,
     ) ||
     (snapshot.blockers?.length ?? 0) > 0 ||
     changes.invitations.length > 0 ||
@@ -84,4 +89,81 @@ export function narrativeParagraphs(narrative: {
     .split(/\n{2,}/)
     .map(paragraph => paragraph.trim())
     .filter(Boolean)
+}
+
+export type DailyReportNarrativeSection = {
+  kind: 'member' | 'summary'
+  userId?: string
+  name: string
+  paragraphs: string[]
+}
+
+function textParagraphs(text: unknown): string[] {
+  if (typeof text !== 'string') return []
+  return text
+    .split(/\n{2,}/)
+    .map(paragraph => paragraph.trim())
+    .filter(Boolean)
+}
+
+function memberNarrativeText(member: unknown): string | null {
+  if (!member || typeof member !== 'object') return null
+  const record = member as Record<string, unknown>
+  if (typeof record.narrative === 'string') return record.narrative
+  if (typeof record.note === 'string') return record.note
+  return null
+}
+
+export function dailyReportNarrativeSections(
+  narrative: SummaryNarrative | null,
+): DailyReportNarrativeSection[] {
+  if (!narrative || typeof narrative !== 'object') return []
+
+  const members = Array.isArray(narrative.members) ? narrative.members : []
+  const memberSections = members.flatMap(member => {
+    if (!member || typeof member !== 'object') return []
+    const record = member as Record<string, unknown>
+    const paragraphs = textParagraphs(memberNarrativeText(member))
+    if (paragraphs.length === 0) return []
+    const name =
+      typeof record.name === 'string' && record.name.trim()
+        ? record.name.trim()
+        : typeof record.user_id === 'string'
+          ? record.user_id
+          : 'Member'
+    return [
+      {
+        kind: 'member' as const,
+        userId: typeof record.user_id === 'string' ? record.user_id : undefined,
+        name,
+        paragraphs,
+      },
+    ]
+  })
+
+  const summaryParagraphs = textParagraphs(narrative.summary)
+  if (memberSections.length > 0 || summaryParagraphs.length > 0) {
+    return [
+      ...memberSections,
+      ...(summaryParagraphs.length > 0
+        ? [
+            {
+              kind: 'summary' as const,
+              name: 'Summary',
+              paragraphs: summaryParagraphs,
+            },
+          ]
+        : []),
+    ]
+  }
+
+  return textParagraphs(narrative.overall_summary).length
+    ? [
+        {
+          kind: 'summary',
+          name: 'Summary',
+          paragraphs: narrativeParagraphs(narrative),
+        },
+      ]
+    : []
 }

@@ -69,8 +69,14 @@ describe('POST /api/cron/daily-reports', () => {
         new Response(
           JSON.stringify({
             narrative: {
-              overall_summary: `Abrar completed "${EVO}".`,
-              members: [],
+              members: [
+                {
+                  user_id: 'user-abrar',
+                  narrative: `Abrar completed "${EVO}".`,
+                },
+              ],
+              summary: `Abrar completed "${EVO}".`,
+              overall_summary: '',
               workspace_changes_summary: '',
               highlights: [],
             },
@@ -136,13 +142,11 @@ describe('POST /api/cron/daily-reports', () => {
 
     expect(body).toMatchObject({ due: 1, completed: 1 })
     expect(fetchMock).toHaveBeenCalledTimes(1)
-    // the snapshot goes to the AI untouched: workspace type and metrics included
+    // the LLM receives work context, not the raw activity snapshot
     const sent = JSON.parse(fetchMock.mock.calls[0][1].body as string)
-    expect(sent.snapshot.workspace_type).toBe('personal')
-    expect(sent.snapshot.metrics).toEqual({
-      tasks_worked_on: 2,
-      tasks_completed: 1,
-    })
+    expect(sent.work_context.workspace.type).toBe('personal')
+    expect(sent.work_context.members[0].tasks_worked_on).toHaveLength(2)
+    expect(sent.work_context.members[0].completed_work[0].title).toBe(EVO)
     expect(called(supabase.rpc, 'finish_daily_report')).toHaveLength(1)
   })
 
@@ -207,29 +211,28 @@ describe('POST /api/cron/daily-reports', () => {
     // ONE model call for the report -- none for the Daily Updates
     expect(fetchMock).toHaveBeenCalledTimes(1)
     const sent = JSON.parse(fetchMock.mock.calls[0][1].body as string)
-    // the recorded activity and the members' updates travel together
-    expect(sent.snapshot.members.length).toBeGreaterThan(0)
-    expect(sent.snapshot.metrics).toEqual({
-      tasks_worked_on: 2,
-      tasks_completed: 1,
-    })
-    expect(sent.snapshot.daily_updates).toHaveLength(1)
+    // the meaningful work evidence and the members' updates travel together
+    expect(sent.work_context.members.length).toBeGreaterThan(0)
     expect(
-      sent.snapshot.daily_updates[0].items.map(
-        (item: { type: string }) => item.type,
+      sent.work_context.members[0].daily_updates.done.map(
+        (item: { content: string }) => item.content,
       ),
-    ).toEqual(['done', 'blocker', 'next'])
-    expect(sent.snapshot.daily_updates[0].items[1].task_title).toBe(
-      'Payment Integration',
-    )
+    ).toContain('Finished the Slack integration')
+    expect(
+      sent.work_context.members[0].daily_updates.blockers[0].task_title,
+    ).toBe('Payment Integration')
     // the stored report is that one call's result, saved once
     const finished = called(supabase.rpc, 'finish_daily_report')
     expect(finished).toHaveLength(1)
     const args = finished[0][1] as unknown as {
-      p_narrative: { overall_summary: string }
+      p_narrative: {
+        members: { narrative: string }[]
+        summary: string
+      }
       p_structured_snapshot: { daily_updates: unknown[] }
     }
-    expect(args.p_narrative.overall_summary).toContain(EVO)
+    expect(args.p_narrative.members[0].narrative).toContain(EVO)
+    expect(args.p_narrative.summary).toContain(EVO)
     // and the snapshot kept beside it is the recorded one plus what was reported
     expect(args.p_structured_snapshot.daily_updates).toHaveLength(1)
   })

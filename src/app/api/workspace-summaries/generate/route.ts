@@ -1,9 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import {
-  buildFallbackNarrative,
-  buildUnreachableFallbackMeta,
-} from '@/lib/dailyReportFallback'
+import { generateDailyReportNarrative } from '@/lib/dailyReportGeneration'
 import { WorkspaceStructuredSnapshot } from '@/types/workspace'
 
 // Manual "Regenerate" -- strictly secondary to the automatic scheduler
@@ -117,35 +114,11 @@ export async function POST(request: Request) {
     )
   }
 
-  // A failure here must NOT throw away the freshly-computed snapshot above -- we still
-  // save a deterministic-only report (mirroring ontask-llm's own fallback narrative)
-  // rather than leaving the user with a 502 and no updated report at all.
-  let narrative: unknown
-  let meta: unknown
-  try {
-    const response = await fetch(`${serviceUrl}/api/summary/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ snapshot }),
-      signal: AbortSignal.timeout(45_000),
-    })
-    if (!response.ok) {
-      throw new Error(`ontask-llm responded ${response.status}`)
-    }
-    const data = await response.json()
-    narrative = data.narrative
-    meta = data.meta
-  } catch (err) {
-    const message =
-      err instanceof Error ? err.message : 'AI summary service unavailable'
-    console.error(
-      `[workspace-summaries] AI narration unreachable for workspace ${workspaceId}, ` +
-        `falling back to deterministic narrative:`,
-      err,
-    )
-    narrative = buildFallbackNarrative(snapshot as WorkspaceStructuredSnapshot)
-    meta = buildUnreachableFallbackMeta(message)
-  }
+  const { narrative, meta } = await generateDailyReportNarrative({
+    snapshot: snapshot as WorkspaceStructuredSnapshot,
+    serviceUrl,
+    timeoutMs: 45_000,
+  })
 
   if (
     (meta as { used_fallback_template?: boolean } | null)

@@ -416,6 +416,19 @@ export type StructuredSnapshotMember = {
   focused_seconds: number
   events: StructuredSnapshotEvent[]
   task_activity: StructuredSnapshotTaskActivity[]
+  work_sessions?: StructuredSnapshotWorkSession[]
+}
+
+export type StructuredSnapshotWorkSession = {
+  session_id: string
+  started_at: string
+  ended_at: string | null
+  status_at_report_end: WorkSessionStatus
+  current_break_started_at: string | null
+  total_break_seconds: number
+  overlapped_seconds: number
+  active_seconds: number
+  still_active_at_report_end: boolean
 }
 
 export type StructuredSnapshotInvitation = {
@@ -527,16 +540,21 @@ export type WorkspaceStructuredSnapshot = {
 
 export type SummaryMemberNarrative = {
   user_id: string
-  note: string
+  name?: string
+  narrative?: string
+  note?: string
 }
 
 // Since migration 0042 the Daily Report narrative is prose: `overall_summary`
 // holds ALL of it (paragraphs separated by a blank line) and the other three
 // fields are empty. They stay on the type because a report stored before then
-// filled them.
+// filled them. Newer work-context reports may instead carry member narratives
+// plus a separate workspace summary.
 export type SummaryNarrative = {
   overall_summary: string
   members: SummaryMemberNarrative[]
+  summary?: string
+  format_version?: number
   workspace_changes_summary: string
   highlights: string[]
 }

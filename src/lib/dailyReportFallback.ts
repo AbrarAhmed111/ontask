@@ -231,16 +231,43 @@ export function buildFallbackNarrative(
   if (!hasReportActivity(snapshot)) {
     return {
       overall_summary: NO_ACTIVITY_SUMMARY,
-      members: [],
+      members: snapshot.members.map(member => ({
+        user_id: member.user_id,
+        name: member.display_name,
+        narrative:
+          'No meaningful work activity was recorded during this reporting period.',
+      })),
+      summary: NO_ACTIVITY_SUMMARY,
+      format_version: 2,
       workspace_changes_summary: '',
       highlights: [],
     }
   }
+  const people = collectPeople(snapshot)
+  const isPersonal = snapshot.workspace_type === 'personal'
+  const blockers = blockerSentences(snapshot, people)
+  const members = snapshot.members.map(member => {
+    const name = people.display(member.user_id, member.display_name)
+    const hasMemberActivity =
+      member.focused_seconds > 0 ||
+      member.events.length > 0 ||
+      member.task_activity.length > 0
+    return {
+      user_id: member.user_id,
+      name: member.display_name,
+      narrative: hasMemberActivity
+        ? memberSentence(member, name, isPersonal)
+        : 'No meaningful work activity was recorded during this reporting period.',
+    }
+  })
+  const summary = buildFallbackParagraphs(snapshot).join('\n\n')
   return {
-    overall_summary: buildFallbackParagraphs(snapshot).join('\n\n'),
-    members: [],
+    overall_summary: summary,
+    members,
+    summary,
+    format_version: 2,
     workspace_changes_summary: '',
-    highlights: [],
+    highlights: blockers,
   }
 }
 

@@ -1,9 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase/service'
-import {
-  buildFallbackNarrative,
-  buildUnreachableFallbackMeta,
-} from '@/lib/dailyReportFallback'
+import { generateDailyReportNarrative } from '@/lib/dailyReportGeneration'
 import { WorkspaceStructuredSnapshot } from '@/types/workspace'
 
 // The automatic Daily Report scheduler's entry point. Invoked every 5
@@ -99,36 +96,11 @@ async function processCandidate(
     return 'failed'
   }
 
-  // The deterministic snapshot now exists -- from here on, a failure to reach or parse
-  // ontask-llm must NOT discard it. We fall back to a locally-built deterministic
-  // narrative and still finish the report, exactly as ontask-llm itself would if the
-  // model's own output failed validation (see summary_service.py's _fallback_narrative).
-  let narrative: unknown
-  let meta: unknown
-  try {
-    const response = await fetch(`${serviceUrl}/api/summary/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ snapshot }),
-      signal: AbortSignal.timeout(ONTASK_LLM_TIMEOUT_MS),
-    })
-    if (!response.ok) {
-      throw new Error(`ontask-llm responded ${response.status}`)
-    }
-    const data = await response.json()
-    narrative = data.narrative
-    meta = data.meta
-  } catch (err) {
-    const message =
-      err instanceof Error ? err.message : 'AI summary service unavailable'
-    console.error(
-      `[daily-reports] AI narration unreachable for workspace ${candidate.workspace_id}, ` +
-        `falling back to deterministic narrative:`,
-      err,
-    )
-    narrative = buildFallbackNarrative(snapshot)
-    meta = buildUnreachableFallbackMeta(message)
-  }
+  const { narrative, meta } = await generateDailyReportNarrative({
+    snapshot,
+    serviceUrl,
+    timeoutMs: ONTASK_LLM_TIMEOUT_MS,
+  })
 
   if (
     (meta as { used_fallback_template?: boolean } | null)

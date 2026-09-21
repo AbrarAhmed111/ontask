@@ -28,9 +28,17 @@ describe('buildFallbackNarrative: a personal workspace', () => {
     expect(narrative.overall_summary).toBe(
       `Abrar spent 4h 48m focused on 2 tasks during the reporting period, completing "${EVO}" and continuing work on "${BOOK}".`,
     )
-    // one paragraph, and the legacy structured fields stay empty
+    // one legacy paragraph, plus the v2 member narrative shape
     expect(narrative.overall_summary).not.toContain('\n')
-    expect(narrative.members).toEqual([])
+    expect(narrative.members).toEqual([
+      {
+        user_id: 'user-abrar',
+        name: 'Abrar Ahmed',
+        narrative: `Abrar spent 4h 48m focused on 2 tasks during the reporting period, completing "${EVO}" and continuing work on "${BOOK}".`,
+      },
+    ])
+    expect(narrative.summary).toBe(narrative.overall_summary)
+    expect(narrative.format_version).toBe(2)
     expect(narrative.highlights).toEqual([])
     expect(narrative.workspace_changes_summary).toBe('')
   })

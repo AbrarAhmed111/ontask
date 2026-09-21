@@ -65,8 +65,14 @@ const llmResponse = () =>
   new Response(
     JSON.stringify({
       narrative: {
-        overall_summary: `Abrar completed "${EVO}".`,
-        members: [],
+        members: [
+          {
+            user_id: 'user-abrar',
+            narrative: `Abrar completed "${EVO}".`,
+          },
+        ],
+        summary: `Abrar completed "${EVO}".`,
+        overall_summary: '',
         workspace_changes_summary: '',
         highlights: [],
       },
@@ -144,7 +150,7 @@ describe('POST /api/workspace-summaries/generate', () => {
     expect(response.status).toBe(200)
     expect(fetchMock).toHaveBeenCalledTimes(1) // no extra call for the Daily Updates
     const sent = JSON.parse(fetchMock.mock.calls[0][1].body as string)
-    expect(sent.snapshot.daily_updates[0].items[0].task_title).toBe(
+    expect(sent.work_context.members[0].daily_updates.next[0].task_title).toBe(
       'Slack Notification Testing',
     )
     const saved = supabase.rpc.mock.calls.find(
