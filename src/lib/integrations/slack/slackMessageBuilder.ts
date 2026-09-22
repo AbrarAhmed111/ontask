@@ -204,9 +204,7 @@ export function buildSlackEventMessage(
   switch (eventType) {
     // ── tasks ────────────────────────────────────────────────────────────
     case 'task_created': {
-      const assigned = assigneeText
-        ? ` Assigned to *${assigneeText}*.`
-        : ''
+      const assigned = assigneeText ? ` Assigned to *${assigneeText}*.` : ''
       return message({
         heading: '📋 Task Created',
         body: `*${actor}* created ${taskLink}.${assigned}`,
@@ -216,9 +214,7 @@ export function buildSlackEventMessage(
     }
 
     case 'goal_task_created': {
-      const assigned = assigneeText
-        ? ` Assigned to *${assigneeText}*.`
-        : ''
+      const assigned = assigneeText ? ` Assigned to *${assigneeText}*.` : ''
       return message({
         heading: '🎯 Goal Task Added',
         body: `*${actor}* added ${taskLink}${goalName ? ` to the goal *${escapeSlackText(goalName)}*` : ' to a goal'}.${assigned}`,
@@ -232,9 +228,7 @@ export function buildSlackEventMessage(
       const under = parentTitle
         ? ` under *${escapeSlackText(parentTitle)}*`
         : ''
-      const assigned = assigneeText
-        ? ` Assigned to *${assigneeText}*.`
-        : ''
+      const assigned = assigneeText ? ` Assigned to *${assigneeText}*.` : ''
       return message({
         heading: '🎯 Goal Subtask Added',
         body: `*${actor}* added subtask ${taskLink}${under}.${assigned}`,
@@ -260,9 +254,7 @@ export function buildSlackEventMessage(
         isReassigned && previousAssigneeName
           ? ` from ${previousAssigneeName}`
           : ''
-      const recipientText = assigneeText
-        ? ` to *${assigneeText}*`
-        : ''
+      const recipientText = assigneeText ? ` to *${assigneeText}*` : ''
       return message({
         heading: isReassigned ? '📋 Task Reassigned' : '📋 Task Assigned',
         body: `*${actor}* ${verb} ${taskPhrase}${fromText}${recipientText}.`,

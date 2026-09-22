@@ -186,8 +186,7 @@ export function useWorkspaceTaskActions({
         p_idea_id: effectiveIdeaId,
         p_title: name,
         p_description: description,
-        p_planned_seconds:
-          plannedMinutes !== null ? plannedMinutes * 60 : null,
+        p_planned_seconds: plannedMinutes !== null ? plannedMinutes * 60 : null,
         p_progress_label: progressLabel ?? null,
         p_progress_percentage: progressPercentage ?? null,
         p_user_ids: assigneeIds,
