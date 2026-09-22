@@ -1,10 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { DragEvent } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
+import { act, create } from 'react-test-renderer'
 import { TaskForm } from '@/components/tasks/TaskForm'
 import { TaskCardShell } from '@/components/tasks/TaskCardShell'
 import { ParentTaskShell } from '@/components/tasks/ParentTaskShell'
 import { TaskTree } from '@/components/tasks/TaskTree'
+import { AssigneePicker } from '@/components/workspaces/AssigneePicker'
 import { WorkspaceTaskForm } from '@/components/workspaces/WorkspaceTaskForm'
 import type { TaskFormValues } from '@/types'
 import type { WorkspaceMember } from '@/types/workspace'
@@ -27,6 +29,20 @@ const member: WorkspaceMember = {
   fullName: 'Ada Lovelace',
   email: 'ada@example.com',
   avatarUrl: null,
+}
+const secondMember: WorkspaceMember = {
+  ...member,
+  id: 'm2',
+  userId: 'u2',
+  fullName: 'Grace Hopper',
+  email: 'grace@example.com',
+}
+const thirdMember: WorkspaceMember = {
+  ...member,
+  id: 'm3',
+  userId: 'u3',
+  fullName: 'Katherine Johnson',
+  email: 'katherine@example.com',
 }
 
 const noop = () => {}
@@ -89,6 +105,47 @@ describe('WorkspaceTaskForm', () => {
     const html = render(false)
     expect(html).toContain('Assign to')
     expect(html).toContain('Planned time')
+  })
+})
+
+describe('AssigneePicker', () => {
+  it('keeps a local multi-assignee draft while realtime catches up', () => {
+    const onReassignMany = vi.fn()
+    const renderer = create(
+      <AssigneePicker
+        assignee={member}
+        assignees={[member]}
+        members={[member, secondMember, thirdMember]}
+        onReassign={noop}
+        onReassignMany={onReassignMany}
+      />,
+    )
+
+    act(() => {
+      renderer.root
+        .findByProps({ 'aria-label': 'Change assignee' })
+        .props.onClick()
+    })
+
+    const buttonNamed = (name: string) => {
+      let node = renderer.root
+        .findAllByType('span')
+        .find(span => span.props.children === name)
+      while (node && node.type !== 'button') node = node.parent ?? undefined
+      return node
+    }
+
+    act(() => {
+      buttonNamed('Grace Hopper')?.props.onClick()
+    })
+    act(() => {
+      buttonNamed('Katherine Johnson')?.props.onClick()
+    })
+
+    expect(onReassignMany.mock.calls).toEqual([
+      [['u1', 'u2']],
+      [['u1', 'u2', 'u3']],
+    ])
   })
 })
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Check, ChevronDown, UserRound, X } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
 import { DropdownPanel } from '@/components/ui/DropdownPanel'
@@ -66,21 +66,39 @@ export function AssigneePicker({
 }) {
   const [open, setOpen] = useState(false)
   const multiSelect = Boolean(onReassignMany)
-  const selectedAssignees = assignees ?? (assignee ? [assignee] : [])
-  const selectedIds = selectedAssignees.map(member => member.userId)
+  const propSelectedAssignees = assignees ?? (assignee ? [assignee] : [])
+  const propSelectedIds = propSelectedAssignees.map(member => member.userId)
+  const propSelectedKey = propSelectedIds.join('|')
+  const [draftSelectedIds, setDraftSelectedIds] =
+    useState<string[]>(propSelectedIds)
+  const selectedIds = multiSelect && open ? draftSelectedIds : propSelectedIds
+  const selectedAssignees = selectedIds
+    .map(userId => members.find(member => member.userId === userId))
+    .filter((member): member is WorkspaceMember => Boolean(member))
+
+  useEffect(() => {
+    if (!open)
+      setDraftSelectedIds(propSelectedKey ? propSelectedKey.split('|') : [])
+  }, [open, propSelectedKey])
+
   const label =
     selectedAssignees.length > 1
       ? `${selectedAssignees.length} assigned`
-      : assignee
-        ? (assignee.fullName || assignee.email || 'Member').split(' ')[0]
+      : selectedAssignees.length === 1
+        ? (
+            selectedAssignees[0].fullName ||
+            selectedAssignees[0].email ||
+            'Member'
+          ).split(' ')[0]
         : 'Unassigned'
 
   const toggleAssignee = (userId: string) => {
     if (!onReassignMany) return
-    const nextIds = selectedIds.includes(userId)
-      ? selectedIds.filter(id => id !== userId)
-      : [...selectedIds, userId]
+    const nextIds = draftSelectedIds.includes(userId)
+      ? draftSelectedIds.filter(id => id !== userId)
+      : [...draftSelectedIds, userId]
     if (!canUnassign && nextIds.length === 0) return
+    setDraftSelectedIds(nextIds)
     onReassignMany(nextIds)
   }
 
@@ -88,7 +106,12 @@ export function AssigneePicker({
     <div className="relative">
       <button
         type="button"
-        onClick={() => setOpen(current => !current)}
+        onClick={() =>
+          setOpen(current => {
+            if (!current) setDraftSelectedIds(propSelectedIds)
+            return !current
+          })
+        }
         aria-label="Change assignee"
         title={
           selectedAssignees.length > 1
@@ -119,8 +142,10 @@ export function AssigneePicker({
           {canUnassign && (
             <button
               onClick={() => {
-                if (onReassignMany) onReassignMany([])
-                else onReassign(null)
+                if (onReassignMany) {
+                  setDraftSelectedIds([])
+                  onReassignMany([])
+                } else onReassign(null)
                 if (!multiSelect) setOpen(false)
               }}
               type="button"
@@ -144,7 +169,10 @@ export function AssigneePicker({
                 <button
                   type="button"
                   aria-label="Clear assignees"
-                  onClick={() => onReassignMany?.([])}
+                  onClick={() => {
+                    setDraftSelectedIds([])
+                    onReassignMany?.([])
+                  }}
                   className="grid h-6 w-6 place-items-center rounded-md text-muted transition hover:bg-slate-100 hover:text-coral"
                 >
                   <X size={13} />
