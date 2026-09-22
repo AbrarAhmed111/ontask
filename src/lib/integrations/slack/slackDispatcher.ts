@@ -29,6 +29,7 @@ export interface DispatchSlackEventParams {
   entityName?: string
   actorId?: string
   recipientUserId?: string
+  recipientUserIds?: string[]
   previousAssigneeId?: string
   selfRemoved?: boolean
   blockerReason?: string
@@ -134,6 +135,7 @@ export async function dispatchSlackNotification(
       entityName,
       actorId,
       recipientUserId,
+      recipientUserIds,
       previousAssigneeId,
       selfRemoved,
       blockerReason,
@@ -234,6 +236,14 @@ export async function dispatchSlackNotification(
     const recipientName = recipientUserId
       ? await displayName(recipientUserId)
       : undefined
+    const recipientNames =
+      recipientUserIds && recipientUserIds.length > 0
+        ? (
+            await Promise.all(
+              recipientUserIds.map(userId => displayName(userId)),
+            )
+          ).filter((name): name is string => Boolean(name))
+        : undefined
     const previousAssigneeName = previousAssigneeId
       ? await displayName(previousAssigneeId)
       : undefined
@@ -253,6 +263,7 @@ export async function dispatchSlackNotification(
       entityName,
       actorName,
       recipientName,
+      recipientNames,
       previousAssigneeName,
       selfRemoved,
       blockerReason,

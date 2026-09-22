@@ -301,6 +301,22 @@ describe('buildSlackEventMessage — task lifecycle', () => {
     )
   })
 
+  it('announces every assignee on a collaborative task creation', () => {
+    const message = buildSlackEventMessage({
+      ...base,
+      eventType: 'goal_task_created',
+      goalName: 'School Management MVP',
+      recipientNames: ['Araysh Uddin', 'Iqra Nadeem'],
+    })
+
+    expect(message.fallbackText).toBe(
+      '[DevAbby] Abrar added "Student CRUD API" to the goal "School Management MVP"',
+    )
+    expect(JSON.stringify(message.blocks)).toContain(
+      'Assigned to *Araysh Uddin, Iqra Nadeem*',
+    )
+  })
+
   it('leaves the assignee out of a task created without one', () => {
     const message = buildSlackEventMessage({
       ...base,

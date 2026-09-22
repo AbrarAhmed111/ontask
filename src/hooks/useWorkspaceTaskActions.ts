@@ -178,20 +178,19 @@ export function useWorkspaceTaskActions({
 
     const supabase = createClient()
     void supabase
-      .from('workspace_tasks')
-      .insert({
-        id,
-        workspace_id: workspaceId,
-        parent_task_id: parentTaskId,
-        goal_id: goalId,
-        idea_id: effectiveIdeaId,
-        created_by: userId,
-        assigned_to: primaryAssignee,
-        title: name,
-        description,
-        planned_seconds: plannedMinutes !== null ? plannedMinutes * 60 : null,
-        progress_label: progressLabel ?? null,
-        progress_percentage: progressPercentage ?? null,
+      .rpc('create_workspace_task_with_collaborators', {
+        p_id: id,
+        p_workspace_id: workspaceId,
+        p_parent_task_id: parentTaskId,
+        p_goal_id: goalId,
+        p_idea_id: effectiveIdeaId,
+        p_title: name,
+        p_description: description,
+        p_planned_seconds:
+          plannedMinutes !== null ? plannedMinutes * 60 : null,
+        p_progress_label: progressLabel ?? null,
+        p_progress_percentage: progressPercentage ?? null,
+        p_user_ids: assigneeIds,
       })
       .then(({ error: insertError }) => {
         if (insertError) {
@@ -204,12 +203,6 @@ export function useWorkspaceTaskActions({
           effectiveIdeaId,
           workspaceId,
         )
-        if (assigneeIds.length > 1) {
-          void supabase.rpc('set_workspace_task_collaborators', {
-            p_task_id: id,
-            p_user_ids: assigneeIds,
-          })
-        }
       })
 
     return true

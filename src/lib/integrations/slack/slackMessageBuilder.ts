@@ -53,6 +53,7 @@ export interface EventSlackPayload {
   entityName?: string | null
   actorName?: string | null
   recipientName?: string | null
+  recipientNames?: string[] | null
   previousAssigneeName?: string | null
   selfRemoved?: boolean | null
   blockerReason?: string | null
@@ -87,6 +88,9 @@ export function buildSlackEventMessage(
   const entityName = str(payload.entityName)
   const actorName = str(payload.actorName) ?? 'Someone'
   const recipientName = str(payload.recipientName)
+  const recipientNames = (payload.recipientNames ?? [])
+    .map(name => str(name))
+    .filter((name): name is string => Boolean(name))
   const previousAssigneeName = str(payload.previousAssigneeName)
   const blockerReason = str(payload.blockerReason)
   const reportId = str(payload.reportId)
@@ -169,6 +173,14 @@ export function buildSlackEventMessage(
   const taskLink = `*<${taskUrl}|${escapeSlackText(taskTitle)}>*`
   const subject = escapeSlackText(entityName || 'Untitled')
   const actor = escapeSlackText(actorName)
+  const assigneeNames =
+    recipientNames.length > 0
+      ? recipientNames
+      : recipientName
+        ? [recipientName]
+        : []
+  const assigneeText = assigneeNames.map(escapeSlackText).join(', ')
+  const assigneeTextPlain = assigneeNames.join(', ')
 
   // How a task refers to itself in a sentence. A subtask says what it is a
   // subtask OF, because its own title ("Create OAuth callback") rarely makes
@@ -192,20 +204,20 @@ export function buildSlackEventMessage(
   switch (eventType) {
     // ── tasks ────────────────────────────────────────────────────────────
     case 'task_created': {
-      const assigned = recipientName
-        ? ` Assigned to *${escapeSlackText(recipientName)}*.`
+      const assigned = assigneeText
+        ? ` Assigned to *${assigneeText}*.`
         : ''
       return message({
         heading: '📋 Task Created',
         body: `*${actor}* created ${taskLink}.${assigned}`,
-        fallback: `${actorName} created "${taskTitle}"${recipientName ? ` and assigned it to ${recipientName}` : ''}`,
+        fallback: `${actorName} created "${taskTitle}"${assigneeTextPlain ? ` and assigned it to ${assigneeTextPlain}` : ''}`,
         url: taskUrl,
       })
     }
 
     case 'goal_task_created': {
-      const assigned = recipientName
-        ? ` Assigned to *${escapeSlackText(recipientName)}*.`
+      const assigned = assigneeText
+        ? ` Assigned to *${assigneeText}*.`
         : ''
       return message({
         heading: '🎯 Goal Task Added',
@@ -220,8 +232,8 @@ export function buildSlackEventMessage(
       const under = parentTitle
         ? ` under *${escapeSlackText(parentTitle)}*`
         : ''
-      const assigned = recipientName
-        ? ` Assigned to *${escapeSlackText(recipientName)}*.`
+      const assigned = assigneeText
+        ? ` Assigned to *${assigneeText}*.`
         : ''
       return message({
         heading: '🎯 Goal Subtask Added',
@@ -248,13 +260,13 @@ export function buildSlackEventMessage(
         isReassigned && previousAssigneeName
           ? ` from ${previousAssigneeName}`
           : ''
-      const recipientText = recipientName
-        ? ` to *${escapeSlackText(recipientName)}*`
+      const recipientText = assigneeText
+        ? ` to *${assigneeText}*`
         : ''
       return message({
         heading: isReassigned ? '📋 Task Reassigned' : '📋 Task Assigned',
         body: `*${actor}* ${verb} ${taskPhrase}${fromText}${recipientText}.`,
-        fallback: `${actorName} ${verb} ${taskPhraseText}${fromTextPlain}${recipientName ? ` to ${recipientName}` : ''}`,
+        fallback: `${actorName} ${verb} ${taskPhraseText}${fromTextPlain}${assigneeTextPlain ? ` to ${assigneeTextPlain}` : ''}`,
         url: taskUrl,
         style: 'primary',
         goal: goalName,
