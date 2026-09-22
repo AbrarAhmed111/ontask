@@ -78,6 +78,20 @@ describe('buildDailyReportDigest — the narration', () => {
     expect(digest.shortened).toBe(false)
   })
 
+  it('adds one written report section for every active member', () => {
+    const digest = buildDailyReportDigest(stored(NARRATION, sharedSnapshot()))
+    const memberSections = (digest.sections ?? []).filter(
+      section => section.kind === 'member',
+    )
+
+    expect(memberSections.map(section => section.name)).toEqual([
+      'Abrar Ahmed',
+      'Rachel Smith',
+    ])
+    expect(memberSections[0].paragraphs[0]).toContain('Abrar Ahmed worked on')
+    expect(memberSections[1].paragraphs[0]).toContain('Rachel Smith worked on')
+  })
+
   it('cuts a single runaway paragraph at a sentence rather than mid-word', () => {
     const runaway = `${'A complete sentence about the day. '.repeat(40)}`
     const digest = buildDailyReportDigest(stored(runaway))

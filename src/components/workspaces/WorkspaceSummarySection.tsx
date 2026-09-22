@@ -17,10 +17,13 @@ import { Skeleton } from '@/components/ui/Skeleton'
 import { Avatar } from '@/components/ui/Avatar'
 import { formatBoundary } from '@/lib/dailyReportWindow'
 import {
+  DailyReportNarrativeSection,
   ReportTaskStatus,
+  dailyReportMemberNarrativeSections,
   dailyReportNarrativeSections,
   getDailyReportMetrics,
   hasReportActivity,
+  memberHasReportActivity,
   reportTaskStatus,
 } from '@/lib/dailyReportMetrics'
 import { formatHM } from '@/lib/time'
@@ -116,15 +119,6 @@ function TaskActivityRow({
   )
 }
 
-function memberHasReportActivity(member: StructuredSnapshotMember) {
-  return (
-    member.focused_seconds > 0 ||
-    member.events.length > 0 ||
-    member.task_activity.length > 0 ||
-    (member.work_sessions?.length ?? 0) > 0
-  )
-}
-
 // A parent task with its subtasks indented beneath it.
 function TaskList({ tasks }: { tasks: StructuredSnapshotTaskActivity[] }) {
   const taskById = new Map(tasks.map(t => [t.task_id, t]))
@@ -162,9 +156,11 @@ function memberProfile(
 function MemberWorkCard({
   member,
   profile,
+  section,
 }: {
   member: StructuredSnapshotMember
   profile: ReturnType<typeof memberProfile>
+  section: DailyReportNarrativeSection
 }) {
   return (
     <article className="rounded-xl border border-line/70 bg-paper/60 p-4">
@@ -179,12 +175,20 @@ function MemberWorkCard({
             <h4 className="truncate text-sm font-bold text-ink">
               {profile.fullName}
             </h4>
-            <p className="text-[11px] text-muted">Member work</p>
+            <p className="text-[11px] text-muted">Member report</p>
           </div>
         </div>
         <span className="shrink-0 rounded-full bg-[var(--ws-accent-soft,#e9f0ec)] px-2.5 py-1 font-mono text-[11px] font-semibold text-[var(--ws-accent,#375b4b)]">
           {formatHM(member.focused_seconds)}
         </span>
+      </div>
+
+      <div className="mt-3 space-y-2 border-t border-line/50 pt-3">
+        {section.paragraphs.map((paragraph, i) => (
+          <p key={i} className="text-sm leading-6 text-ink">
+            {paragraph}
+          </p>
+        ))}
       </div>
 
       {member.task_activity.length > 0 ? (
@@ -212,13 +216,20 @@ function MemberWorkOverview({
   if (isPersonal) return null
   const activeMembers = snapshot.members.filter(memberHasReportActivity)
   if (activeMembers.length === 0) return null
+  const sectionsByUserId = new Map(
+    dailyReportMemberNarrativeSections(snapshot).map(section => [
+      section.userId,
+      section,
+    ]),
+  )
 
   return (
     <section className="space-y-3">
       <div>
-        <h3 className="text-sm font-bold text-ink">Work by member</h3>
+        <h3 className="text-sm font-bold text-ink">Member reports</h3>
         <p className="text-[11px] leading-4 text-muted">
-          Each person&apos;s recorded task work for this report window.
+          Each active member&apos;s summary and recorded task evidence for this
+          report window.
         </p>
       </div>
       <div className="grid gap-3 lg:grid-cols-2">
@@ -227,6 +238,16 @@ function MemberWorkOverview({
             key={member.user_id}
             member={member}
             profile={memberProfile(member, members)}
+            section={
+              sectionsByUserId.get(member.user_id) ?? {
+                kind: 'member',
+                userId: member.user_id,
+                name: member.display_name,
+                paragraphs: [
+                  `${member.display_name} had recorded workspace activity during the reporting window.`,
+                ],
+              }
+            }
           />
         ))}
       </div>

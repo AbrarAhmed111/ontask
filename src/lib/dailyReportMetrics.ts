@@ -45,14 +45,19 @@ export function getDailyReportMetrics(
   return {
     focusedSeconds: snapshot.total_focused_seconds,
     tasksCompleted,
-    activeMembers: snapshot.members.filter(
-      member =>
-        member.focused_seconds > 0 ||
-        (member.work_sessions?.length ?? 0) > 0 ||
-        member.events.length > 0 ||
-        member.task_activity.length > 0,
-    ).length,
+    activeMembers: snapshot.members.filter(memberHasReportActivity).length,
   }
+}
+
+export function memberHasReportActivity(
+  member: WorkspaceStructuredSnapshot['members'][number],
+): boolean {
+  return (
+    member.focused_seconds > 0 ||
+    (member.work_sessions?.length ?? 0) > 0 ||
+    member.events.length > 0 ||
+    member.task_activity.length > 0
+  )
 }
 
 export function hasReportActivity(
@@ -61,12 +66,7 @@ export function hasReportActivity(
   const changes = snapshot.workspace_changes
   return (
     snapshot.total_focused_seconds > 0 ||
-    snapshot.members.some(
-      member =>
-        member.events.length > 0 ||
-        member.task_activity.length > 0 ||
-        (member.work_sessions?.length ?? 0) > 0,
-    ) ||
+    snapshot.members.some(memberHasReportActivity) ||
     (snapshot.blockers?.length ?? 0) > 0 ||
     changes.invitations.length > 0 ||
     changes.members_joined.length > 0 ||
@@ -96,6 +96,85 @@ export type DailyReportNarrativeSection = {
   userId?: string
   name: string
   paragraphs: string[]
+}
+
+function quotedTaskTitle(task: {
+  title: string
+  parent_title?: string | null
+}) {
+  return task.parent_title
+    ? `"${task.title}" under "${task.parent_title}"`
+    : `"${task.title}"`
+}
+
+function joinHuman(items: string[]): string {
+  if (items.length === 0) return ''
+  if (items.length === 1) return items[0]
+  if (items.length === 2) return `${items[0]} and ${items[1]}`
+  return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`
+}
+
+function taskStatusClause(status: ReportTaskStatus, titles: string[]) {
+  if (titles.length === 0) return null
+  const subject = joinHuman(titles)
+  switch (status) {
+    case 'completed':
+      return `completed ${subject}`
+    case 'working':
+      return `kept ${subject} in focus`
+    case 'paused':
+      return `left ${subject} paused`
+    case 'queued':
+      return `left ${subject} queued`
+    case 'blocked':
+      return `ended with ${subject} blocked`
+    case 'skipped':
+      return `skipped ${subject}`
+    case 'deleted':
+      return `worked on ${subject} before it was deleted`
+    case 'in_progress':
+      return `continued work on ${subject}`
+  }
+}
+
+export function dailyReportMemberNarrativeSections(
+  snapshot: WorkspaceStructuredSnapshot,
+): DailyReportNarrativeSection[] {
+  return snapshot.members.filter(memberHasReportActivity).map(member => {
+    const tasks = member.task_activity
+    const taskTitles = tasks.map(quotedTaskTitle)
+    const clauses = [
+      'completed',
+      'working',
+      'paused',
+      'queued',
+      'blocked',
+      'skipped',
+      'deleted',
+      'in_progress',
+    ]
+      .map(status =>
+        taskStatusClause(
+          status as ReportTaskStatus,
+          tasks
+            .filter(task => reportTaskStatus(task) === status)
+            .map(quotedTaskTitle),
+        ),
+      )
+      .filter((clause): clause is string => Boolean(clause))
+
+    const paragraph =
+      tasks.length > 0
+        ? `${member.display_name} worked on ${joinHuman(taskTitles)} during the reporting window${clauses.length ? `, and ${joinHuman(clauses)}.` : '.'}`
+        : `${member.display_name} had recorded workspace activity during the reporting window without task focus time.`
+
+    return {
+      kind: 'member',
+      userId: member.user_id,
+      name: member.display_name,
+      paragraphs: [paragraph],
+    }
+  })
 }
 
 function textParagraphs(text: unknown): string[] {

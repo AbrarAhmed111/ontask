@@ -1,6 +1,7 @@
 import { formatHM } from '@/lib/time'
 import {
   DailyReportNarrativeSection,
+  dailyReportMemberNarrativeSections,
   dailyReportNarrativeSections,
   getDailyReportMetrics,
   hasReportActivity,
@@ -58,9 +59,9 @@ export type DailyReportDecision =
   | { send: true; digest: DailyReportDigest }
   | { send: false; reason: DailyReportSkipReason }
 
-// Three paragraphs is the outer limit of what anyone reads in a channel, and
-// the character budget is what keeps three SHORT ones from becoming a wall.
-// Whatever is cut is still one click away.
+// Three overview paragraphs is the outer limit of what anyone reads before the
+// per-member sections in a channel. Member reports are not capped by count:
+// every active member should appear in Slack.
 const MAX_PARAGRAPHS = 3
 const MAX_NARRATION_CHARS = 700
 const MAX_FACTS = 6
@@ -165,6 +166,14 @@ function conciseSections(sections: DailyReportNarrativeSection[]): {
   }
 }
 
+function overviewSections(
+  narrative: SummaryNarrative,
+): DailyReportNarrativeSection[] {
+  return dailyReportNarrativeSections(narrative).filter(
+    section => section.kind !== 'member',
+  )
+}
+
 const plural = (count: number, word: string) =>
   `${count} ${word}${count === 1 ? '' : 's'}`
 
@@ -221,16 +230,21 @@ export function buildDailyReportDigest(
   report: StoredDailyReport,
 ): DailyReportDigest {
   const snapshot = readableSnapshot(report)
-  const sections = dailyReportNarrativeSections(report.narrative)
-  const conciseNarrative = sections.length
-    ? conciseSections(sections)
+  const storedOverviewSections = overviewSections(report.narrative)
+  const conciseNarrative = storedOverviewSections.length
+    ? conciseSections(storedOverviewSections)
     : { ...concise([]), sections: [] }
+  const memberSections = snapshot
+    ? dailyReportMemberNarrativeSections(snapshot)
+    : []
   return {
     paragraphs: conciseNarrative.paragraphs,
-    sections: conciseNarrative.sections,
+    sections: [...conciseNarrative.sections, ...memberSections],
     facts: snapshot ? factsFor(snapshot) : [],
     taskTitles: snapshot ? taskTitlesFor(snapshot) : [],
-    shortened: conciseNarrative.shortened,
+    shortened:
+      conciseNarrative.shortened ||
+      storedOverviewSections.length > conciseNarrative.sections.length,
   }
 }
 

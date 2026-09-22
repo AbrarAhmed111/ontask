@@ -564,7 +564,7 @@ export function buildSlackEventMessage(
       const taskTitles = digest?.taskTitles ?? []
       const formatReportText = (text: string) =>
         formatKnownTaskTitlesForSlack(escapeSlackText(text), taskTitles)
-      const narration = sections.length
+      const sectionTexts = sections.length
         ? sections
             .map(
               section =>
@@ -572,10 +572,10 @@ export function buildSlackEventMessage(
                   .map(formatReportText)
                   .join('\n\n')}`,
             )
-            .join('\n\n')
+            .filter(Boolean)
         : digest?.paragraphs.length
-          ? digest.paragraphs.map(formatReportText).join('\n\n')
-          : null
+          ? [digest.paragraphs.map(formatReportText).join('\n\n')]
+          : []
       const factsText = digest?.facts.length ? digest.facts.join(' · ') : null
       const facts = factsText ? escapeSlackText(factsText) : null
 
@@ -583,7 +583,8 @@ export function buildSlackEventMessage(
       // worth a message on their own. With neither (a caller that has not read
       // the report at all) this stays the pointer it used to be rather than
       // inventing a sentence to fill the space.
-      const body = narration ?? (facts ? `*${facts}*` : null)
+      const body =
+        sectionTexts.length > 0 ? sectionTexts : facts ? [`*${facts}*`] : []
 
       const blocks: unknown[] = [
         {
@@ -597,19 +598,29 @@ export function buildSlackEventMessage(
             emoji: true,
           },
         },
-        {
+      ]
+      if (body.length > 0) {
+        blocks.push(
+          ...body.map(text => ({
+            type: 'section',
+            text: {
+              type: 'mrkdwn',
+              text,
+            },
+          })),
+        )
+      } else {
+        blocks.push({
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text:
-              body ??
-              `The Daily Report for *${escapeSlackText(workspaceName)}* is ready.`,
+            text: `The Daily Report for *${escapeSlackText(workspaceName)}* is ready.`,
           },
-        },
-      ]
+        })
+      }
       // The figures sit under the prose, not inside it: the narration already
       // says what happened in words, and this is the same day in numbers.
-      if (narration && facts) {
+      if (sectionTexts.length > 0 && facts) {
         blocks.push({
           type: 'context',
           elements: [{ type: 'mrkdwn', text: facts }],

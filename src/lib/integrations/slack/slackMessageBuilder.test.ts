@@ -134,6 +134,15 @@ describe('buildSlackEventMessage — the Daily Report', () => {
       message.blocks.find(b => (b as { type: string }).type === type) as
         { text?: { text?: string } } | undefined
     )?.text?.text ?? ''
+  const blockTexts = (
+    message: ReturnType<typeof buildSlackEventMessage>,
+    type: string,
+  ) =>
+    message.blocks
+      .filter(b => (b as { type: string }).type === type)
+      .map(
+        b => ((b as { text?: { text?: string } }).text?.text ?? '') as string,
+      )
 
   it('puts the stored narration in the message, not a notice that a report exists', () => {
     const message = buildSlackEventMessage({ ...base, report: digest })
@@ -266,9 +275,10 @@ describe('buildSlackEventMessage — the Daily Report', () => {
       },
     })
 
-    expect(blockText(message, 'section')).toBe(
-      '*Abrar Ahmed*\n\nAbrar worked on `Calendar Booking System`.\n\n*Summary*\n\nThe team progressed `Calendar Booking System`.',
-    )
+    expect(blockTexts(message, 'section')).toEqual([
+      '*Abrar Ahmed*\n\nAbrar worked on `Calendar Booking System`.',
+      '*Summary*\n\nThe team progressed `Calendar Booking System`.',
+    ])
   })
 })
 

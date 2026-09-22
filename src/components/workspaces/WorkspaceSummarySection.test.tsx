@@ -185,16 +185,18 @@ describe('the Daily Report: a shared workspace', () => {
 
   it('writes a multi-paragraph narrative as separate paragraphs', () => {
     const html = render(shared)
-    expect(html.match(/<p class="text-sm leading-6 text-ink">/g)).toHaveLength(
-      2,
-    )
+    expect(
+      html.match(/<p class="text-sm leading-6 text-ink">/g)?.length,
+    ).toBeGreaterThanOrEqual(2)
     expect(text(html)).toContain('Rachel also started on')
   })
 
   it('breaks the work down per member, by avatar/name, with exact times', () => {
     const html = render(shared)
     const t = text(html)
-    expect(t).toContain('Work by member')
+    expect(t).toContain('Member reports')
+    expect(t).toContain('Abrar Ahmed worked on')
+    expect(t).toContain('Rachel Smith worked on')
     expect(t).toContain('Abrar Ahmed')
     expect(t).toContain('4h 48m')
     expect(t).toContain('Rachel Smith')
