@@ -191,15 +191,21 @@ describe('the Daily Report: a shared workspace', () => {
     expect(text(html)).toContain('Rachel also started on')
   })
 
-  it('breaks the work down per member, by name, with exact times', () => {
-    const t = text(render(shared, { defaultExpanded: true }))
-    expect(t).toContain('Abrar Ahmed 4h 48m')
-    expect(t).toContain('Rachel Smith 1h 0m')
+  it('breaks the work down per member, by avatar/name, with exact times', () => {
+    const html = render(shared)
+    const t = text(html)
+    expect(t).toContain('Work by member')
+    expect(t).toContain('Abrar Ahmed')
+    expect(t).toContain('4h 48m')
+    expect(t).toContain('Rachel Smith')
+    expect(t).toContain('1h 0m')
     expect(t).toContain('Onboarding flow 1h 0m Working')
+    expect(html).toContain('title="Abrar Ahmed"')
+    expect(html).toContain('title="Rachel Smith"')
   })
 
   it('still does not turn the narrative into per-member lines or an event log', () => {
-    const t = text(render(shared, { defaultExpanded: true }))
+    const t = text(render(shared))
     expect(t).not.toMatch(/Member \d/)
     expect(t).not.toContain('Resumed working on')
   })

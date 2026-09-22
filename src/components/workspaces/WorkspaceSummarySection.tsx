@@ -14,6 +14,7 @@ import {
 import { Button } from '@/components/ui/Button'
 import { ErrorBanner } from '@/components/ui/ErrorBanner'
 import { Skeleton } from '@/components/ui/Skeleton'
+import { Avatar } from '@/components/ui/Avatar'
 import { formatBoundary } from '@/lib/dailyReportWindow'
 import {
   ReportTaskStatus,
@@ -115,6 +116,15 @@ function TaskActivityRow({
   )
 }
 
+function memberHasReportActivity(member: StructuredSnapshotMember) {
+  return (
+    member.focused_seconds > 0 ||
+    member.events.length > 0 ||
+    member.task_activity.length > 0 ||
+    (member.work_sessions?.length ?? 0) > 0
+  )
+}
+
 // A parent task with its subtasks indented beneath it.
 function TaskList({ tasks }: { tasks: StructuredSnapshotTaskActivity[] }) {
   const taskById = new Map(tasks.map(t => [t.task_id, t]))
@@ -137,22 +147,90 @@ function TaskList({ tasks }: { tasks: StructuredSnapshotTaskActivity[] }) {
   )
 }
 
-// One person's tasks with their exact focused time -- shared workspaces only.
-// (Deterministic: the exact numbers, straight from the snapshot. What they mean
-// is the narrative's job.)
-function MemberBreakdown({ member }: { member: StructuredSnapshotMember }) {
+function memberProfile(
+  snapshotMember: StructuredSnapshotMember,
+  members: WorkspaceMember[],
+) {
+  const member = members.find(item => item.userId === snapshotMember.user_id)
+  return {
+    fullName: member?.fullName || snapshotMember.display_name,
+    email: member?.email ?? null,
+    avatarUrl: member?.avatarUrl ?? null,
+  }
+}
+
+function MemberWorkCard({
+  member,
+  profile,
+}: {
+  member: StructuredSnapshotMember
+  profile: ReturnType<typeof memberProfile>
+}) {
   return (
-    <div className="rounded-xl border border-line/70 bg-paper/60 p-4">
+    <article className="rounded-xl border border-line/70 bg-paper/60 p-4">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-bold text-ink">{member.display_name}</p>
-        <span className="font-mono text-[11px] font-semibold text-[var(--ws-accent,#375b4b)]">
+        <div className="flex min-w-0 items-center gap-3">
+          <Avatar
+            person={profile}
+            title={profile.fullName}
+            className="h-9 w-9 shrink-0 text-sm shadow-sm ring-2 ring-white"
+          />
+          <div className="min-w-0">
+            <h4 className="truncate text-sm font-bold text-ink">
+              {profile.fullName}
+            </h4>
+            <p className="text-[11px] text-muted">Member work</p>
+          </div>
+        </div>
+        <span className="shrink-0 rounded-full bg-[var(--ws-accent-soft,#e9f0ec)] px-2.5 py-1 font-mono text-[11px] font-semibold text-[var(--ws-accent,#375b4b)]">
           {formatHM(member.focused_seconds)}
         </span>
       </div>
-      <div className="mt-2.5 border-t border-line/50">
-        <TaskList tasks={member.task_activity} />
+
+      {member.task_activity.length > 0 ? (
+        <div className="mt-3 border-t border-line/50 pt-1">
+          <TaskList tasks={member.task_activity} />
+        </div>
+      ) : (
+        <p className="mt-3 border-t border-line/50 pt-3 text-xs leading-5 text-muted">
+          Recorded workspace activity without task focus time.
+        </p>
+      )}
+    </article>
+  )
+}
+
+function MemberWorkOverview({
+  snapshot,
+  members,
+  isPersonal,
+}: {
+  snapshot: WorkspaceStructuredSnapshot
+  members: WorkspaceMember[]
+  isPersonal: boolean
+}) {
+  if (isPersonal) return null
+  const activeMembers = snapshot.members.filter(memberHasReportActivity)
+  if (activeMembers.length === 0) return null
+
+  return (
+    <section className="space-y-3">
+      <div>
+        <h3 className="text-sm font-bold text-ink">Work by member</h3>
+        <p className="text-[11px] leading-4 text-muted">
+          Each person&apos;s recorded task work for this report window.
+        </p>
       </div>
-    </div>
+      <div className="grid gap-3 lg:grid-cols-2">
+        {activeMembers.map(member => (
+          <MemberWorkCard
+            key={member.user_id}
+            member={member}
+            profile={memberProfile(member, members)}
+          />
+        ))}
+      </div>
+    </section>
   )
 }
 
@@ -352,19 +430,13 @@ function ReportDetails({
   )
   return (
     <div className="space-y-4 border-t border-line/70 px-5 py-4">
-      {isPersonal ? (
-        membersWithTasks.length > 0 && (
-          <PersonalTasks
-            tasks={membersWithTasks.flatMap(m => m.task_activity)}
-          />
-        )
-      ) : (
-        <div className="space-y-3">
-          {membersWithTasks.map(member => (
-            <MemberBreakdown key={member.user_id} member={member} />
-          ))}
-        </div>
-      )}
+      {isPersonal
+        ? membersWithTasks.length > 0 && (
+            <PersonalTasks
+              tasks={membersWithTasks.flatMap(m => m.task_activity)}
+            />
+          )
+        : null}
 
       <WorkspaceChangesSection changes={snapshot.workspace_changes} />
       <BlockersSection blockers={snapshot.blockers ?? []} />
@@ -523,8 +595,13 @@ export function WorkspaceSummarySection({
             </div>
           )}
 
-          <div className="space-y-2 px-5 pb-4 pt-3">
+          <div className="space-y-5 px-5 pb-4 pt-3">
             <Narrative summary={summary} />
+            <MemberWorkOverview
+              snapshot={summary.structuredSnapshot}
+              members={members}
+              isPersonal={isPersonal}
+            />
           </div>
 
           <div className="border-t border-line/70 px-5 py-2.5">
