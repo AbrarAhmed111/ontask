@@ -157,7 +157,11 @@ export function useGoalDetail(
           setTasks(current => {
             const exists = current.some(t => t.id === incoming.id)
             return exists
-              ? current.map(t => (t.id === incoming.id ? incoming : t))
+              ? current.map(t =>
+                  t.id === incoming.id
+                    ? { ...incoming, collaborators: t.collaborators ?? [] }
+                    : t,
+                )
               : [...current, incoming]
           })
         },

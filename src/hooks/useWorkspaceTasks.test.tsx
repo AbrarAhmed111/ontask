@@ -9,7 +9,11 @@ import {
 } from '@/test/fakeSupabase'
 import { useWorkspaceTasks } from '@/hooks/useWorkspaceTasks'
 import { clearAllCache, writeCache } from '@/lib/cache/cacheStore'
-import { WorkspaceTaskRow, rowToTask } from '@/lib/tasks/workspaceMappers'
+import {
+  TaskCollaboratorRow,
+  WorkspaceTaskRow,
+  rowToTask,
+} from '@/lib/tasks/workspaceMappers'
 import type { WorkspaceTask } from '@/types/workspace'
 
 vi.mock('@/lib/supabase/client', async () => {
@@ -114,6 +118,20 @@ const seedCache = (rows: WorkspaceTaskRow[], userId = ME) =>
 
 const statusOf = (tasks: WorkspaceTask[], id: string) =>
   tasks.find(t => t.id === id)?.status
+
+const collaboratorRow = (
+  taskId: string,
+  userId: string,
+): TaskCollaboratorRow => ({
+  id: `${taskId}:${userId}`,
+  task_id: taskId,
+  workspace_id: 'ws-1',
+  user_id: userId,
+  participation_status: 'queued',
+  started_at: null,
+  completed_at: null,
+  removed_at: null,
+})
 
 describe('useWorkspaceTasks: cached data renders, but never triggers completion', () => {
   it('shows a cached overdue running task immediately, without waiting for the server', async () => {
@@ -270,6 +288,33 @@ describe('useWorkspaceTasks: current data keeps the existing behavior', () => {
 })
 
 describe('useWorkspaceTasks: refetches, realtime and remounts cannot complete it twice', () => {
+  it('keeps collaborators when a task-row realtime update arrives first', async () => {
+    const row = runningTask({ status: 'queued', started_at: null })
+    fakeSupabase.setRows('workspace_tasks', [row])
+    fakeSupabase.setRows('task_collaborators', [
+      collaboratorRow(row.id, ME),
+      collaboratorRow(row.id, 'user-two'),
+    ])
+    const hook = mount()
+    await settle()
+
+    expect(
+      hook.result.current.tasks[0].collaborators?.map(c => c.userId),
+    ).toEqual([ME, 'user-two'])
+
+    act(() =>
+      fakeSupabase.emit('workspace_tasks', {
+        eventType: 'UPDATE',
+        new: { ...row, title: 'Renamed task' },
+      }),
+    )
+
+    expect(hook.result.current.tasks[0].name).toBe('Renamed task')
+    expect(
+      hook.result.current.tasks[0].collaborators?.map(c => c.userId),
+    ).toEqual([ME, 'user-two'])
+  })
+
   it('confirms against the server at the moment of acting, not only the list', async () => {
     // A minute of time left when the list is read...
     const row = runningTask({ startedMinutesAgo: 59 })
