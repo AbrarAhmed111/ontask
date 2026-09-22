@@ -96,7 +96,7 @@ function AssignmentField({
             className="shrink-0 text-muted transition group-open:rotate-180"
           />
         </summary>
-        <div className="grid gap-1 p-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+        <div className="grid max-h-52 origin-top gap-1 overflow-y-auto p-2 pr-1 animate-[dropdownIn_160ms_ease-out] sm:grid-cols-2">
           {assignment.members.map(member => {
             const selected = selectedIds.includes(member.userId)
             return (
@@ -191,109 +191,97 @@ export function TaskForm({
     setValues({ ...values, [key]: value })
   return (
     <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col">
-      <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-        <div
-          className={
-            assignment
-              ? 'grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.85fr)]'
-              : 'space-y-4'
-          }
-        >
-          <div className="space-y-4">
-            <label className="block text-xs font-semibold text-muted">
-              Task name
-              <input
-                required
-                value={values.name}
-                onChange={event => update('name', event.target.value)}
-                placeholder={namePlaceholder}
-                className="mt-2 w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm text-ink outline-none transition placeholder:text-muted/60 focus:border-sage focus:ring-4 focus:ring-sage/15"
-              />
-            </label>
-            <label className="block text-xs font-semibold text-muted">
-              Description{' '}
-              <span className="font-normal text-muted/80">(optional)</span>
-              <textarea
-                rows={assignment ? 4 : 2}
-                value={values.description || ''}
-                onChange={event => update('description', event.target.value)}
-                placeholder="Add details or notes..."
-                className="mt-2 w-full resize-y rounded-lg border border-line bg-white px-3 py-2.5 text-sm text-ink outline-none transition placeholder:text-muted/60 focus:border-sage focus:ring-4 focus:ring-sage/15"
-              />
-            </label>
-            {ideas && (
-              <IdeaSelect
-                ideas={ideas}
-                value={values.ideaId || ''}
-                onChange={ideaId => update('ideaId', ideaId)}
-              />
-            )}
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
+        <label className="block text-xs font-semibold text-muted">
+          Task name
+          <input
+            required
+            value={values.name}
+            onChange={event => update('name', event.target.value)}
+            placeholder={namePlaceholder}
+            className="mt-2 w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm text-ink outline-none transition placeholder:text-muted/60 focus:border-sage focus:ring-4 focus:ring-sage/15"
+          />
+        </label>
+        <label className="block text-xs font-semibold text-muted">
+          Description{' '}
+          <span className="font-normal text-muted/80">(optional)</span>
+          <textarea
+            rows={2}
+            value={values.description || ''}
+            onChange={event => update('description', event.target.value)}
+            placeholder="Add details or notes..."
+            className="mt-2 w-full resize-y rounded-lg border border-line bg-white px-3 py-2.5 text-sm text-ink outline-none transition placeholder:text-muted/60 focus:border-sage focus:ring-4 focus:ring-sage/15"
+          />
+        </label>
+        {assignment && <AssignmentField assignment={assignment} />}
+        {ideas && (
+          <IdeaSelect
+            ideas={ideas}
+            value={values.ideaId || ''}
+            onChange={ideaId => update('ideaId', ideaId)}
+          />
+        )}
+        <label className="block text-xs font-semibold text-muted">
+          {targetLabel}{' '}
+          <span className="font-normal text-muted/80">(optional)</span>
+          <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto] items-center gap-2">
+            <input
+              type="number"
+              min="0"
+              value={values.hours}
+              onChange={event => update('hours', event.target.value)}
+              placeholder="0"
+              className="w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm text-ink outline-none focus:border-sage focus:ring-4 focus:ring-sage/15"
+            />
+            <span className="text-[11px] font-normal">hours</span>
+            <input
+              type="number"
+              min="0"
+              max="59"
+              value={values.minutes}
+              onChange={event => update('minutes', event.target.value)}
+              placeholder="0"
+              className="w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm text-ink outline-none focus:border-sage focus:ring-4 focus:ring-sage/15"
+            />
+            <span className="text-[11px] font-normal">minutes</span>
           </div>
-          <div className="space-y-4">
-            {assignment && <AssignmentField assignment={assignment} />}
+        </label>
+        <label className="flex items-center gap-2 text-xs font-semibold text-ink">
+          <input
+            type="checkbox"
+            checked={values.trackGoal}
+            onChange={event => update('trackGoal', event.target.checked)}
+            className="h-4 w-4 accent-forest"
+          />{' '}
+          Track overall goal
+        </label>
+        {values.trackGoal && (
+          <div className="grid gap-3 sm:grid-cols-[1fr_100px]">
             <label className="block text-xs font-semibold text-muted">
-              {targetLabel}{' '}
-              <span className="font-normal text-muted/80">(optional)</span>
+              Goal name
+              <input
+                value={values.goal}
+                onChange={event => update('goal', event.target.value)}
+                placeholder="Optional goal"
+                className="mt-2 w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm text-ink outline-none focus:border-sage focus:ring-4 focus:ring-sage/15"
+              />
+            </label>
+            <label className="block text-xs font-semibold text-muted">
+              Progress
               <div className="mt-2 flex items-center gap-2">
                 <input
                   type="number"
                   min="0"
-                  value={values.hours}
-                  onChange={event => update('hours', event.target.value)}
-                  placeholder="0"
-                  className="w-20 rounded-lg border border-line bg-white px-3 py-2.5 text-sm text-ink outline-none focus:border-sage focus:ring-4 focus:ring-sage/15"
+                  max="100"
+                  value={values.progress}
+                  onChange={event => update('progress', event.target.value)}
+                  className="w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm text-ink outline-none focus:border-sage focus:ring-4 focus:ring-sage/15"
                 />
-                <span className="text-[11px] font-normal">hours</span>
-                <input
-                  type="number"
-                  min="0"
-                  max="59"
-                  value={values.minutes}
-                  onChange={event => update('minutes', event.target.value)}
-                  placeholder="0"
-                  className="w-20 rounded-lg border border-line bg-white px-3 py-2.5 text-sm text-ink outline-none focus:border-sage focus:ring-4 focus:ring-sage/15"
-                />
-                <span className="text-[11px] font-normal">minutes</span>
+                <span className="text-forest">%</span>
               </div>
             </label>
-            <label className="flex items-center gap-2 text-xs font-semibold text-ink">
-              <input
-                type="checkbox"
-                checked={values.trackGoal}
-                onChange={event => update('trackGoal', event.target.checked)}
-                className="h-4 w-4 accent-forest"
-              />{' '}
-              Track overall goal
-            </label>
-            {values.trackGoal && (
-              <div className="grid gap-3 sm:grid-cols-[1fr_100px] lg:grid-cols-1 xl:grid-cols-[1fr_100px]">
-                <label className="block text-xs font-semibold text-muted">
-                  Goal name
-                  <input
-                    value={values.goal}
-                    onChange={event => update('goal', event.target.value)}
-                    placeholder="Optional goal"
-                    className="mt-2 w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm text-ink outline-none focus:border-sage focus:ring-4 focus:ring-sage/15"
-                  />
-                </label>
-                <label className="block text-xs font-semibold text-muted">
-                  Progress
-                  <div className="mt-2 flex items-center gap-2">
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={values.progress}
-                      onChange={event => update('progress', event.target.value)}
-                      className="w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm text-ink outline-none focus:border-sage focus:ring-4 focus:ring-sage/15"
-                    />
-                    <span className="text-forest">%</span>
-                  </div>
-                </label>
-              </div>
-            )}
           </div>
-        </div>
+        )}
       </div>
       <div className="mt-4 flex shrink-0 justify-end gap-2 border-t border-line pb-6 pt-4">
         <Button type="button" variant="ghost" onClick={onCancel}>
