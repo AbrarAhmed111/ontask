@@ -113,6 +113,7 @@ export type TaskCollaborator = {
   workspaceId: string
   userId: string
   participationStatus: WorkspaceTaskStatus
+  focusedSeconds: number
   startedAt: number | null
   completedAt: number | null
   removedAt: number | null
@@ -138,6 +139,7 @@ export type WorkspaceTask = {
   status: WorkspaceTaskStatus
   completedClearedAt?: number | null
   collaborators?: TaskCollaborator[]
+  totalFocusSeconds?: number
   // A free-text label + manual percent a member can track on any task —
   // unrelated to the real `Goal` entity below. Named distinctly to avoid
   // confusion between "set a progress label on this task" and "create a

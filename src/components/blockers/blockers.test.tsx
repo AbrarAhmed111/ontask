@@ -359,6 +359,47 @@ describe('a blocked task card', () => {
   })
 })
 
+describe('a collaborative task card', () => {
+  it('shows each collaborator focus time and the all-task total', () => {
+    const html = renderCard({
+      viewer: abrar,
+      task: task({
+        workedSeconds: 5100,
+        totalFocusSeconds: 6000,
+        collaborators: [
+          {
+            id: 'c-abrar',
+            taskId: 't-1',
+            workspaceId: 'w1',
+            userId: 'u-abrar',
+            participationStatus: 'paused',
+            focusedSeconds: 2400,
+            startedAt: null,
+            completedAt: null,
+            removedAt: null,
+          },
+          {
+            id: 'c-araysh',
+            taskId: 't-1',
+            workspaceId: 'w1',
+            userId: 'u-araysh',
+            participationStatus: 'completed',
+            focusedSeconds: 3600,
+            startedAt: null,
+            completedAt: null,
+            removedAt: null,
+          },
+        ],
+      }),
+    })
+
+    expect(html).toContain('All Focus Time')
+    expect(html).toContain('01h 40m 00s')
+    expect(html).toContain('40m')
+    expect(html).toContain('01h 00m')
+  })
+})
+
 describe('BlockerButton', () => {
   it('has an accessible name that says which task', () => {
     const html = renderToStaticMarkup(

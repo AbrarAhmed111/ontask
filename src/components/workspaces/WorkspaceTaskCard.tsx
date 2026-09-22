@@ -11,6 +11,7 @@ import {
   Square,
 } from 'lucide-react'
 import { WorkspaceMember, WorkspaceTask } from '@/types/workspace'
+import { formatTime } from '@/lib/time'
 import {
   canControlTimer,
   canEmergencyStop,
@@ -138,6 +139,28 @@ export function WorkspaceTaskCard({
         ? [assignee]
         : []
   const isCollaborative = collaborators.length > 1
+  const liveCollaboratorSeconds = (
+    collaborator: (typeof collaborators)[number],
+  ) =>
+    Math.round(
+      collaborator.focusedSeconds +
+        (collaborator.participationStatus === 'working' &&
+        collaborator.startedAt
+          ? Math.max(0, Date.now() - collaborator.startedAt) / 1000
+          : 0),
+    )
+  const collaborativeLiveSeconds = collaborators.reduce(
+    (sum, collaborator) =>
+      sum +
+      (collaborator.participationStatus === 'working' && collaborator.startedAt
+        ? Math.max(0, Date.now() - collaborator.startedAt) / 1000
+        : 0),
+    0,
+  )
+  const totalFocusedSeconds =
+    isCollaborative && task.totalFocusSeconds !== undefined
+      ? Math.round(task.totalFocusSeconds + collaborativeLiveSeconds)
+      : workedSeconds
   const memberName = (userId: string) => {
     const member = members.find(item => item.userId === userId)
     return member?.fullName || member?.email || 'Member'
@@ -215,8 +238,8 @@ export function WorkspaceTaskCard({
       tone={running ? 'running' : completed ? 'done' : 'idle'}
       blocked={blocked}
       statusLabel={statusLabel}
-      focusLabel="Focused time"
-      workedSeconds={workedSeconds}
+      focusLabel={isCollaborative ? 'All Focus Time' : 'Focused time'}
+      workedSeconds={totalFocusedSeconds}
       plannedMinutes={task.plannedMinutes}
       progressLabel={task.progressLabel}
       progressPercentage={task.progressPercentage}
@@ -366,6 +389,9 @@ export function WorkspaceTaskCard({
                 </span>
                 <span className="text-muted">
                   {statusText(collaborator.participationStatus)}
+                </span>
+                <span className="font-mono text-muted">
+                  {formatTime(liveCollaboratorSeconds(collaborator), true)}
                 </span>
               </span>
             )

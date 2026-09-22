@@ -35,6 +35,12 @@ export type TaskCollaboratorRow = {
   removed_at: string | null
 }
 
+export type TaskFocusTotalRow = {
+  task_id: string
+  user_id: string
+  focused_seconds: number
+}
+
 export function rowToTaskCollaborator(
   row: TaskCollaboratorRow,
 ): TaskCollaborator {
@@ -44,6 +50,7 @@ export function rowToTaskCollaborator(
     workspaceId: row.workspace_id,
     userId: row.user_id,
     participationStatus: row.participation_status,
+    focusedSeconds: 0,
     startedAt: row.started_at ? new Date(row.started_at).getTime() : null,
     completedAt: row.completed_at ? new Date(row.completed_at).getTime() : null,
     removedAt: row.removed_at ? new Date(row.removed_at).getTime() : null,
@@ -64,6 +71,30 @@ export function attachTaskCollaborators(
   return tasks.map(task => ({
     ...task,
     collaborators: byTask.get(task.id) ?? [],
+  }))
+}
+
+export function attachTaskFocusTotals(
+  tasks: WorkspaceTask[],
+  rows: TaskFocusTotalRow[],
+): WorkspaceTask[] {
+  const byTask = new Map<string, number>()
+  const byTaskUser = new Map<string, number>()
+
+  for (const row of rows) {
+    const seconds = Number(row.focused_seconds) || 0
+    byTask.set(row.task_id, (byTask.get(row.task_id) ?? 0) + seconds)
+    byTaskUser.set(`${row.task_id}:${row.user_id}`, seconds)
+  }
+
+  return tasks.map(task => ({
+    ...task,
+    totalFocusSeconds: byTask.get(task.id) ?? task.workedSeconds,
+    collaborators: (task.collaborators ?? []).map(collaborator => ({
+      ...collaborator,
+      focusedSeconds:
+        byTaskUser.get(`${collaborator.taskId}:${collaborator.userId}`) ?? 0,
+    })),
   }))
 }
 

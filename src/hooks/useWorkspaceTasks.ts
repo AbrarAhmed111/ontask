@@ -9,7 +9,9 @@ import { SNAPSHOTS } from '@/lib/cache/workspaceSnapshots'
 import {
   WorkspaceTaskRow,
   TaskCollaboratorRow,
+  TaskFocusTotalRow,
   attachTaskCollaborators,
+  attachTaskFocusTotals,
   getWorkspaceLiveSeconds,
   rowToTaskCollaborator,
   rowToTask,
@@ -88,7 +90,11 @@ export function useWorkspaceTasks(
           .select('*')
           .eq('workspace_id', workspaceId)
           .is('removed_at', null),
-      ]).then(([tasksResult, collaboratorsResult]) => {
+        supabase.rpc('list_workspace_task_focus_totals', {
+          p_workspace_id: workspaceId,
+          p_goal_id: null,
+        }),
+      ]).then(([tasksResult, collaboratorsResult, focusResult]) => {
         if (cancelled) return
         if (tasksResult.error || collaboratorsResult.error) {
           // Whatever is already shown (cached) stays: a failed refresh must
@@ -97,11 +103,16 @@ export function useWorkspaceTasks(
           return
         }
         confirm(
-          attachTaskCollaborators(
-            ((tasksResult.data ?? []) as WorkspaceTaskRow[]).map(rowToTask),
-            ((collaboratorsResult.data ?? []) as TaskCollaboratorRow[]).map(
-              rowToTaskCollaborator,
+          attachTaskFocusTotals(
+            attachTaskCollaborators(
+              ((tasksResult.data ?? []) as WorkspaceTaskRow[]).map(rowToTask),
+              ((collaboratorsResult.data ?? []) as TaskCollaboratorRow[]).map(
+                rowToTaskCollaborator,
+              ),
             ),
+            focusResult.error
+              ? []
+              : ((focusResult.data ?? []) as TaskFocusTotalRow[]),
           ),
         )
         markSucceeded()
@@ -153,7 +164,11 @@ export function useWorkspaceTasks(
             return exists
               ? current.map(t =>
                   t.id === incoming.id
-                    ? { ...incoming, collaborators: t.collaborators ?? [] }
+                    ? {
+                        ...incoming,
+                        collaborators: t.collaborators ?? [],
+                        totalFocusSeconds: t.totalFocusSeconds,
+                      }
                     : t,
                 )
               : [...current, incoming]
