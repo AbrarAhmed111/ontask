@@ -50,6 +50,13 @@ import { TaskNotesPanel } from '@/components/tasks/TaskNotesPanel'
 import { useTaskNoteCount } from '@/hooks/useTaskNotes'
 import type { AuthUser } from '@/hooks/useAuth'
 
+function formatCollaboratorFocusTime(seconds: number) {
+  const safe = Math.max(0, Math.floor(seconds))
+  const hours = Math.floor(safe / 3600)
+  const minutes = Math.floor((safe % 3600) / 60)
+  return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
+}
+
 // A workspace task (shared or personal, flat or inside a Goal). The card frame
 // is shared with the guest's local tasks (TaskCardShell); what's specific to a
 // workspace task lives here: assignment, shared notes, dependencies, blockers,
@@ -378,20 +385,22 @@ export function WorkspaceTaskCard({
               <span
                 key={collaborator.id}
                 title={`${memberName(collaborator.userId)}: ${statusText(collaborator.participationStatus)}`}
-                className="inline-flex max-w-[160px] items-center gap-1.5 rounded-full border border-line bg-white/70 py-1 pl-1 pr-2 text-[10px] font-semibold text-ink"
+                className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-line bg-white/70 py-1 pl-1 pr-2 text-[10px] font-semibold text-ink"
               >
                 <Avatar
                   person={member ?? { fullName: 'Member' }}
-                  className="h-5 w-5 text-[8px]"
+                  className="h-5 w-5 shrink-0 text-[8px]"
                 />
-                <span className="truncate">
+                <span className="max-w-16 truncate">
                   {memberName(collaborator.userId).split(' ')[0]}
                 </span>
-                <span className="text-muted">
+                <span className="shrink-0 text-muted">
                   {statusText(collaborator.participationStatus)}
                 </span>
-                <span className="font-mono text-muted">
-                  {formatTime(liveCollaboratorSeconds(collaborator), true)}
+                <span className="shrink-0 whitespace-nowrap font-mono tabular-nums text-muted">
+                  {formatCollaboratorFocusTime(
+                    liveCollaboratorSeconds(collaborator),
+                  )}
                 </span>
               </span>
             )

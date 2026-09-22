@@ -396,7 +396,8 @@ describe('a collaborative task card', () => {
     expect(html).toContain('All Focus Time')
     expect(html).toContain('01h 40m 00s')
     expect(html).toContain('40m')
-    expect(html).toContain('01h 00m')
+    expect(html).toContain('1h 0m')
+    expect(html).toContain('whitespace-nowrap')
   })
 })
 
