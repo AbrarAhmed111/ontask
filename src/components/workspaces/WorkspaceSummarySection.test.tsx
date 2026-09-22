@@ -183,23 +183,26 @@ describe('the Daily Report: a shared workspace', () => {
     expect(t).not.toContain('2 members active')
   })
 
-  it('writes a multi-paragraph narrative as separate paragraphs', () => {
-    const html = render(shared)
-    expect(html.match(/<p class="text-sm leading-6 text-ink">/g)).toHaveLength(
-      2,
-    )
-    expect(text(html)).toContain('Rachel also started on')
+  it('does not show the combined AI summary in the shared workspace card', () => {
+    const t = text(render(shared))
+    expect(t).not.toContain('Summary')
+    expect(t).not.toContain(SHARED_NARRATIVE.split('\n\n')[0])
+    expect(t).not.toContain('Rachel also started on')
   })
 
-  it('does not duplicate the AI summary with member report cards', () => {
+  it('breaks the work down per member, by avatar/name, with exact times', () => {
     const html = render(shared)
     const t = text(html)
-    expect(t).not.toContain('Member reports')
-    expect(t).not.toContain('Abrar Ahmed worked on')
-    expect(t).not.toContain('Rachel Smith worked on')
-    expect(t).not.toContain('Onboarding flow 1h 0m Working')
-    expect(html).not.toContain('title="Abrar Ahmed"')
-    expect(html).not.toContain('title="Rachel Smith"')
+    expect(t).toContain('Member reports')
+    expect(t).toContain('Abrar Ahmed worked on')
+    expect(t).toContain('Rachel Smith worked on')
+    expect(t).toContain('Abrar Ahmed')
+    expect(t).toContain('4h 48m')
+    expect(t).toContain('Rachel Smith')
+    expect(t).toContain('1h 0m')
+    expect(t).toContain('Onboarding flow 1h 0m Working')
+    expect(html).toContain('title="Abrar Ahmed"')
+    expect(html).toContain('title="Rachel Smith"')
   })
 
   it('still does not turn the narrative into per-member lines or an event log', () => {
@@ -400,10 +403,8 @@ describe('the Daily Reports switch', () => {
 
 // ── the same report, in the app and in Slack ────────────────────────────────
 // Slack's Daily Report message is built from the stored row, through the same
-// helpers this card renders it with (narrativeParagraphs, getDailyReportMetrics).
-// The risk that creates is drift: two renderings of one report that slowly stop
-// agreeing. So this renders the card and builds the Slack message from ONE
-// stored report and checks that everything Slack says, the card says too.
+// digest helpers as the app. The channel message keeps the full AI Summary;
+// the app card is optimized for scanning and shows the per-member breakdown.
 describe('the Daily Report in Slack and in the app', () => {
   const stored = summary(sharedSnapshot(), SHARED_NARRATIVE)
 
@@ -427,19 +428,22 @@ describe('the Daily Report in Slack and in the app', () => {
       .replace(/\s+/g, ' ')
       .trim()
 
-  const slackBody = () => {
-    const section = slackMessage().blocks.find(
-      block => (block as { type: string }).type === 'section',
-    ) as { text: { text: string } }
-    return section.text.text
-  }
+  const slackSectionTexts = () =>
+    slackMessage()
+      .blocks.filter(block => (block as { type: string }).type === 'section')
+      .map(block => (block as { text: { text: string } }).text.text)
 
-  it('says nothing in Slack that the card does not show', () => {
+  it('sends the full Summary to Slack while the app shows member cards', () => {
     const onScreen = text(render(stored, { isPersonal: false }))
+    const slackSections = slackSectionTexts().map(unescape)
 
-    for (const paragraph of slackBody().split('\n\n')) {
-      expect(onScreen).toContain(unescape(paragraph))
-    }
+    expect(slackSections[0]).toContain('Summary')
+    expect(slackSections[0]).toContain(SHARED_NARRATIVE.split('\n\n')[0])
+    expect(slackSections[0]).toContain('Rachel also started on')
+    expect(onScreen).not.toContain(SHARED_NARRATIVE.split('\n\n')[0])
+    expect(onScreen).toContain('Member reports')
+    expect(onScreen).toContain('Abrar Ahmed worked on')
+    expect(onScreen).toContain('Rachel Smith worked on')
   })
 
   it('keeps deterministic figures out of the card headline', () => {
