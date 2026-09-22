@@ -633,10 +633,9 @@ export function useWorkspaceTaskActions({
       .then(({ error: updateError }) => {
         if (updateError) {
           if (task) restoreTasks([task])
-          // 55000: the server said why (e.g. a blocked task can't be
-          // unassigned) in words meant to be read.
+          // Prefer the server's readable reason when it gives one.
           setError(
-            updateError.code === '55000' && updateError.message
+            updateError.message
               ? updateError.message.charAt(0).toUpperCase() +
                   updateError.message.slice(1)
               : "Couldn't reassign the task.",
