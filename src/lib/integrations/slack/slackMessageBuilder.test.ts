@@ -39,6 +39,32 @@ describe('buildSlackEventMessage', () => {
     expect(JSON.stringify(message.blocks)).toContain('*Workspace:* DevAbby')
   })
 
+  it('names remaining collaborators when one member completes their part', () => {
+    const message = buildSlackEventMessage({
+      workspaceName: 'Growducts Solutions',
+      workspaceSlug: 'products-ai-solutions',
+      eventType: 'completed',
+      taskTitle: 'Collect Free Cloud LLM API Keys',
+      taskId: 'task-123',
+      actorName: 'Abrar Ahmed',
+      goalName: 'Automation System DM/Email',
+      entityType: 'goal_task',
+      remainingCollaboratorNames: ['Araysh Uddin', 'Iqra Khan'],
+    })
+
+    const text = JSON.stringify(message.blocks)
+    expect(text).toContain('Task Completed')
+    expect(text).toContain(
+      '*Abrar Ahmed* completed *<http://localhost:3000/workspaces/products-ai-solutions?task=task-123|Collect Free Cloud LLM API Keys>*.',
+    )
+    expect(text).toContain(
+      'Araysh Uddin and Iqra Khan are still working on it.',
+    )
+    expect(message.fallbackText).toContain(
+      'Abrar Ahmed completed "Collect Free Cloud LLM API Keys" in goal "Automation System DM/Email". Araysh Uddin and Iqra Khan are still working on it.',
+    )
+  })
+
   it('formats task blocker message correctly', () => {
     const message = buildSlackEventMessage({
       workspaceName: 'DevAbby',

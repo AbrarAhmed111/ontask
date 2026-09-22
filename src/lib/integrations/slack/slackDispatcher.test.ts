@@ -178,6 +178,7 @@ beforeEach(() => {
     profiles: [
       { id: 'user-1', full_name: 'Abrar', email: 'abrar@example.com' },
       { id: 'user-2', full_name: 'Araysh', email: 'araysh@example.com' },
+      { id: 'user-3', full_name: 'Iqra', email: 'iqra@example.com' },
     ],
     summaries: [storedReport()],
     deliveries: [],
@@ -226,6 +227,26 @@ describe('dispatchSlackNotification', () => {
     expect(first.outcome).toBe('delivered')
     expect(second.outcome).toBe('duplicate_event_skipped')
     expect(postSlackMessage).toHaveBeenCalledTimes(1)
+  })
+
+  it('names collaborators who are still working after one member completes', async () => {
+    const result = await dispatchSlackNotification({
+      workspaceId: 'ws-a',
+      eventType: 'completed',
+      eventId: 'event-10',
+      entityType: 'goal_task',
+      taskId: 'task-1',
+      taskTitle: 'Collect Free Cloud LLM API Keys',
+      goalName: 'Automation System DM/Email',
+      actorId: 'user-1',
+      remainingCollaboratorUserIds: ['user-2', 'user-3'],
+    })
+
+    expect(result).toEqual({ success: true, outcome: 'delivered' })
+    const blocks = postSlackMessage.mock.calls[0][3]
+    expect(JSON.stringify(blocks)).toContain(
+      'Araysh and Iqra are still working on it.',
+    )
   })
 
   it('still lets a different event on the same entity through', async () => {

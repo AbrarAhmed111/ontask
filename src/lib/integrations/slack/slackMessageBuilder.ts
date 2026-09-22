@@ -54,6 +54,7 @@ export interface EventSlackPayload {
   actorName?: string | null
   recipientName?: string | null
   recipientNames?: string[] | null
+  remainingCollaboratorNames?: string[] | null
   previousAssigneeName?: string | null
   selfRemoved?: boolean | null
   blockerReason?: string | null
@@ -89,6 +90,9 @@ export function buildSlackEventMessage(
   const actorName = str(payload.actorName) ?? 'Someone'
   const recipientName = str(payload.recipientName)
   const recipientNames = (payload.recipientNames ?? [])
+    .map(name => str(name))
+    .filter((name): name is string => Boolean(name))
+  const remainingCollaboratorNames = (payload.remainingCollaboratorNames ?? [])
     .map(name => str(name))
     .filter((name): name is string => Boolean(name))
   const previousAssigneeName = str(payload.previousAssigneeName)
@@ -181,6 +185,10 @@ export function buildSlackEventMessage(
         : []
   const assigneeText = assigneeNames.map(escapeSlackText).join(', ')
   const assigneeTextPlain = assigneeNames.join(', ')
+  const remainingCollaboratorsText = joinHuman(
+    remainingCollaboratorNames.map(escapeSlackText),
+  )
+  const remainingCollaboratorsTextPlain = joinHuman(remainingCollaboratorNames)
 
   // How a task refers to itself in a sentence. A subtask says what it is a
   // subtask OF, because its own title ("Create OAuth callback") rarely makes
@@ -302,20 +310,32 @@ export function buildSlackEventMessage(
     }
 
     case 'completed': {
+      const remainingText = remainingCollaboratorsText
+        ? ` ${remainingCollaboratorsText} ${remainingCollaboratorNames.length === 1 ? 'is' : 'are'} still working on it.`
+        : ''
+      const remainingTextPlain = remainingCollaboratorsTextPlain
+        ? `. ${remainingCollaboratorsTextPlain} ${remainingCollaboratorNames.length === 1 ? 'is' : 'are'} still working on it.`
+        : ''
       return message({
         heading: '✅ Task Completed',
-        body: `*${actor}* completed ${taskPhrase}.`,
-        fallback: `${actorName} completed ${taskPhraseText}`,
+        body: `*${actor}* completed ${taskPhrase}.${remainingText}`,
+        fallback: `${actorName} completed ${taskPhraseText}${remainingTextPlain}`,
         url: taskUrl,
         goal: goalName,
       })
     }
 
     case 'skipped': {
+      const remainingText = remainingCollaboratorsText
+        ? ` ${remainingCollaboratorsText} ${remainingCollaboratorNames.length === 1 ? 'is' : 'are'} still working on it.`
+        : ''
+      const remainingTextPlain = remainingCollaboratorsTextPlain
+        ? `. ${remainingCollaboratorsTextPlain} ${remainingCollaboratorNames.length === 1 ? 'is' : 'are'} still working on it.`
+        : ''
       return message({
         heading: '⏭️ Task Skipped',
-        body: `*${actor}* skipped ${taskPhrase}.`,
-        fallback: `${actorName} skipped ${taskPhraseText}`,
+        body: `*${actor}* skipped ${taskPhrase}.${remainingText}`,
+        fallback: `${actorName} skipped ${taskPhraseText}${remainingTextPlain}`,
         url: taskUrl,
         goal: goalName,
       })
@@ -712,6 +732,13 @@ function formatKnownTaskTitlesForSlack(text: string, taskTitles: string[]) {
 
 function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function joinHuman(items: string[]): string {
+  if (items.length === 0) return ''
+  if (items.length === 1) return items[0]
+  if (items.length === 2) return `${items[0]} and ${items[1]}`
+  return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`
 }
 
 // Slack's own limits, enforced here rather than discovered as an invalid_blocks
