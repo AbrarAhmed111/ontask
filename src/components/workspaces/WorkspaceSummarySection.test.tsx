@@ -185,25 +185,21 @@ describe('the Daily Report: a shared workspace', () => {
 
   it('writes a multi-paragraph narrative as separate paragraphs', () => {
     const html = render(shared)
-    expect(
-      html.match(/<p class="text-sm leading-6 text-ink">/g)?.length,
-    ).toBeGreaterThanOrEqual(2)
+    expect(html.match(/<p class="text-sm leading-6 text-ink">/g)).toHaveLength(
+      2,
+    )
     expect(text(html)).toContain('Rachel also started on')
   })
 
-  it('breaks the work down per member, by avatar/name, with exact times', () => {
+  it('does not duplicate the AI summary with member report cards', () => {
     const html = render(shared)
     const t = text(html)
-    expect(t).toContain('Member reports')
-    expect(t).toContain('Abrar Ahmed worked on')
-    expect(t).toContain('Rachel Smith worked on')
-    expect(t).toContain('Abrar Ahmed')
-    expect(t).toContain('4h 48m')
-    expect(t).toContain('Rachel Smith')
-    expect(t).toContain('1h 0m')
-    expect(t).toContain('Onboarding flow 1h 0m Working')
-    expect(html).toContain('title="Abrar Ahmed"')
-    expect(html).toContain('title="Rachel Smith"')
+    expect(t).not.toContain('Member reports')
+    expect(t).not.toContain('Abrar Ahmed worked on')
+    expect(t).not.toContain('Rachel Smith worked on')
+    expect(t).not.toContain('Onboarding flow 1h 0m Working')
+    expect(html).not.toContain('title="Abrar Ahmed"')
+    expect(html).not.toContain('title="Rachel Smith"')
   })
 
   it('still does not turn the narrative into per-member lines or an event log', () => {
