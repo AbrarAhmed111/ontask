@@ -96,26 +96,20 @@ async function processCandidate(
     return 'failed'
   }
 
-  const { narrative, meta } = await generateDailyReportNarrative({
-    snapshot,
-    serviceUrl,
-    timeoutMs: ONTASK_LLM_TIMEOUT_MS,
-  })
-
-  if (
-    snapshot &&
-    (meta as { used_fallback_template?: boolean } | null)
-      ?.used_fallback_template
-  ) {
-    const warnings =
-      (meta as { validation_warnings?: string[] })?.validation_warnings ?? []
+  let generated: Awaited<ReturnType<typeof generateDailyReportNarrative>>
+  try {
+    generated = await generateDailyReportNarrative({
+      snapshot,
+      serviceUrl,
+      timeoutMs: ONTASK_LLM_TIMEOUT_MS,
+    })
+  } catch (err) {
     const message =
-      warnings[0] ||
-      'AI narrative generation failed; deterministic fallback was refused'
+      err instanceof Error ? err.message : 'AI narrative generation failed'
     console.error(
       `[daily-reports] AI narrative generation failed for workspace ` +
         `${candidate.workspace_id} report_end=${candidate.report_end}: ` +
-        JSON.stringify(warnings),
+        message,
     )
     await supabase.rpc('fail_daily_report', {
       p_workspace_id: candidate.workspace_id,
@@ -124,6 +118,8 @@ async function processCandidate(
     })
     return 'failed'
   }
+
+  const { narrative, meta } = generated
 
   try {
     const { error: finishError } = await supabase.rpc('finish_daily_report', {

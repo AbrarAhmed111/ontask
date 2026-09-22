@@ -3,6 +3,25 @@ import { normalizeDailyReportNarrative } from './dailyReportGeneration'
 import { sharedSnapshot, snapshot } from './dailyReportTestData'
 
 describe('normalizeDailyReportNarrative', () => {
+  it('accepts the snapshot endpoint narrative shape from ontask-llm', () => {
+    const narrative = normalizeDailyReportNarrative(
+      {
+        overall_summary: 'Abrar completed the reporting work.',
+        members: [],
+        workspace_changes_summary: '',
+        highlights: ['Report generated'],
+      },
+      snapshot(),
+    )
+
+    expect(narrative).toMatchObject({
+      overall_summary: 'Abrar completed the reporting work.',
+      members: [],
+      workspace_changes_summary: '',
+      highlights: ['Report generated'],
+    })
+  })
+
   it('accepts one narrative per expected workspace member plus a summary', () => {
     const narrative = normalizeDailyReportNarrative(
       {

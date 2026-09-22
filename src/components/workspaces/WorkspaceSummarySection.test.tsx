@@ -346,14 +346,15 @@ describe('the Daily Report: other states', () => {
     expect(html).toContain('Blockers')
   })
 
-  it('says when the narrative was written without AI', () => {
+  it('treats a completed fallback row as retryable, not as a finished report', () => {
     const fallback = summary(snapshot(), PERSONAL_NARRATIVE, {
       meta: { ...summary(snapshot(), '').meta, used_fallback_template: true },
     })
-    expect(text(render(fallback))).toContain("AI narration wasn't available")
-    expect(text(render(summary(snapshot(), PERSONAL_NARRATIVE)))).not.toContain(
-      "AI narration wasn't available",
-    )
+    const t = text(render(fallback))
+    expect(t).toContain("Daily Report couldn't be generated yet")
+    expect(t).toContain('Retry')
+    expect(t).not.toContain("AI narration wasn't available")
+    expect(t).not.toContain(PERSONAL_NARRATIVE)
   })
 
   it('offers Regenerate on a finished report, and Retry on a failed one', () => {

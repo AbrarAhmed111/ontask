@@ -421,9 +421,13 @@ export function WorkspaceSummarySection({
   }, [reportFocus])
 
   if (!enabled) return null
+  const hasFallbackNarrative = summary?.meta.used_fallback_template === true
   const isPending = summary?.generationStatus === 'pending'
-  const isFailed = summary?.generationStatus === 'failed'
-  const isCompleted = summary?.generationStatus === 'completed'
+  const isFailed =
+    summary?.generationStatus === 'failed' ||
+    (summary?.generationStatus === 'completed' && hasFallbackNarrative)
+  const isCompleted =
+    summary?.generationStatus === 'completed' && !hasFallbackNarrative
   const hasNoRecordedActivity =
     isCompleted && !hasReportActivity(summary.structuredSnapshot)
 
@@ -521,12 +525,6 @@ export function WorkspaceSummarySection({
 
           <div className="space-y-2 px-5 pb-4 pt-3">
             <Narrative summary={summary} />
-            {summary.meta.used_fallback_template && (
-              <p className="text-[10px] leading-4 text-muted">
-                AI narration wasn&apos;t available for this report, so this
-                summary was written directly from what was recorded.
-              </p>
-            )}
           </div>
 
           <div className="border-t border-line/70 px-5 py-2.5">

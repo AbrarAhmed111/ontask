@@ -69,14 +69,8 @@ describe('POST /api/cron/daily-reports', () => {
         new Response(
           JSON.stringify({
             narrative: {
-              members: [
-                {
-                  user_id: 'user-abrar',
-                  narrative: `Abrar completed "${EVO}".`,
-                },
-              ],
-              summary: `Abrar completed "${EVO}".`,
-              overall_summary: '',
+              members: [],
+              overall_summary: `Abrar completed "${EVO}".`,
               workspace_changes_summary: '',
               highlights: [],
             },
@@ -142,11 +136,11 @@ describe('POST /api/cron/daily-reports', () => {
 
     expect(body).toMatchObject({ due: 1, completed: 1 })
     expect(fetchMock).toHaveBeenCalledTimes(1)
-    // the LLM receives work context, not the raw activity snapshot
+    // the LLM service receives the structured snapshot contract it validates.
     const sent = JSON.parse(fetchMock.mock.calls[0][1].body as string)
-    expect(sent.work_context.workspace.type).toBe('personal')
-    expect(sent.work_context.members[0].tasks_worked_on).toHaveLength(2)
-    expect(sent.work_context.members[0].completed_work[0].title).toBe(EVO)
+    expect(sent.snapshot.workspace_type).toBe('personal')
+    expect(sent.snapshot.members[0].task_activity).toHaveLength(2)
+    expect(sent.snapshot.members[0].task_activity[0].title).toBe(EVO)
     expect(called(supabase.rpc, 'finish_daily_report')).toHaveLength(1)
   })
 
@@ -212,27 +206,27 @@ describe('POST /api/cron/daily-reports', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
     const sent = JSON.parse(fetchMock.mock.calls[0][1].body as string)
     // the meaningful work evidence and the members' updates travel together
-    expect(sent.work_context.members.length).toBeGreaterThan(0)
+    expect(sent.snapshot.members.length).toBeGreaterThan(0)
     expect(
-      sent.work_context.members[0].daily_updates.done.map(
-        (item: { content: string }) => item.content,
-      ),
+      sent.snapshot.daily_updates[0].items
+        .filter((item: { type: string }) => item.type === 'done')
+        .map((item: { content: string }) => item.content),
     ).toContain('Finished the Slack integration')
     expect(
-      sent.work_context.members[0].daily_updates.blockers[0].task_title,
+      sent.snapshot.daily_updates[0].items.find(
+        (item: { type: string }) => item.type === 'blocker',
+      ).task_title,
     ).toBe('Payment Integration')
     // the stored report is that one call's result, saved once
     const finished = called(supabase.rpc, 'finish_daily_report')
     expect(finished).toHaveLength(1)
     const args = finished[0][1] as unknown as {
       p_narrative: {
-        members: { narrative: string }[]
-        summary: string
+        overall_summary: string
       }
       p_structured_snapshot: { daily_updates: unknown[] }
     }
-    expect(args.p_narrative.members[0].narrative).toContain(EVO)
-    expect(args.p_narrative.summary).toContain(EVO)
+    expect(args.p_narrative.overall_summary).toContain(EVO)
     // and the snapshot kept beside it is the recorded one plus what was reported
     expect(args.p_structured_snapshot.daily_updates).toHaveLength(1)
   })
@@ -278,13 +272,10 @@ describe('POST /api/cron/daily-reports', () => {
         new Response(
           JSON.stringify({
             narrative: {
-              members: [
-                {
-                  user_id: 'user-abrar',
-                  narrative: `Abrar worked on "${EVO}".`,
-                },
-              ],
-              summary: `Abrar worked on "${EVO}".`,
+              members: [],
+              overall_summary: `Abrar worked on "${EVO}".`,
+              workspace_changes_summary: '',
+              highlights: [],
             },
             meta: {
               used_fallback_template: true,

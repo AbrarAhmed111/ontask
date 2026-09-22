@@ -65,14 +65,8 @@ const llmResponse = () =>
   new Response(
     JSON.stringify({
       narrative: {
-        members: [
-          {
-            user_id: 'user-abrar',
-            narrative: `Abrar completed "${EVO}".`,
-          },
-        ],
-        summary: `Abrar completed "${EVO}".`,
-        overall_summary: '',
+        members: [],
+        overall_summary: `Abrar completed "${EVO}".`,
         workspace_changes_summary: '',
         highlights: [],
       },
@@ -150,7 +144,7 @@ describe('POST /api/workspace-summaries/generate', () => {
     expect(response.status).toBe(200)
     expect(fetchMock).toHaveBeenCalledTimes(1) // no extra call for the Daily Updates
     const sent = JSON.parse(fetchMock.mock.calls[0][1].body as string)
-    expect(sent.work_context.members[0].daily_updates.next[0].task_title).toBe(
+    expect(sent.snapshot.daily_updates[0].items[0].task_title).toBe(
       'Slack Notification Testing',
     )
     const saved = supabase.rpc.mock.calls.find(
@@ -190,7 +184,7 @@ describe('POST /api/workspace-summaries/generate', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('falls back to a deterministic narrative built from the real facts when the AI is unreachable', async () => {
+  it('refuses to save a deterministic fallback when the AI is unreachable', async () => {
     const supabase = fakeSupabase({
       workspace: { daily_reports_enabled: true },
     })
@@ -198,17 +192,16 @@ describe('POST /api/workspace-summaries/generate', () => {
     fetchMock.mockRejectedValue(new Error('ECONNREFUSED'))
     vi.spyOn(console, 'error').mockImplementation(() => {})
 
-    expect((await POST(request())).status).toBe(200)
+    const response = await POST(request())
 
-    const call = supabase.rpc.mock.calls.find(
-      ([name]) => name === 'regenerate_workspace_daily_report',
+    expect(response.status).toBe(502)
+    expect((await response.json()).error).toContain(
+      'AI summary service unreachable',
     )
-    const args = call?.[1] as unknown as {
-      p_narrative: { overall_summary: string }
-      p_meta: { used_fallback_template: boolean }
-    }
-    expect(args.p_meta.used_fallback_template).toBe(true)
-    expect(args.p_narrative.overall_summary).toContain(`"${EVO}"`)
-    expect(args.p_narrative.overall_summary).not.toMatch(/\ba task\b/)
+    expect(
+      supabase.rpc.mock.calls.find(
+        ([name]) => name === 'regenerate_workspace_daily_report',
+      ),
+    ).toBeUndefined()
   })
 })

@@ -114,25 +114,24 @@ export async function POST(request: Request) {
     )
   }
 
-  const { narrative, meta } = await generateDailyReportNarrative({
-    snapshot: snapshot as WorkspaceStructuredSnapshot,
-    serviceUrl,
-    timeoutMs: 45_000,
-  })
-
-  if (
-    (meta as { used_fallback_template?: boolean } | null)
-      ?.used_fallback_template
-  ) {
-    console.warn(
-      `[workspace-summaries] AI narrative fell back to the deterministic template ` +
-        `workspace_id=${workspaceId} report_end=${reportEnd} ` +
-        `validation_failure_reason=${JSON.stringify(
-          (meta as { validation_warnings?: string[] })?.validation_warnings ??
-            [],
-        )}`,
+  let generated: Awaited<ReturnType<typeof generateDailyReportNarrative>>
+  try {
+    generated = await generateDailyReportNarrative({
+      snapshot: snapshot as WorkspaceStructuredSnapshot,
+      serviceUrl,
+      timeoutMs: 45_000,
+    })
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : 'AI narrative generation failed'
+    console.error(
+      `[workspace-summaries] AI narrative generation failed ` +
+        `workspace_id=${workspaceId} report_end=${reportEnd}: ${message}`,
     )
+    return NextResponse.json({ error: message }, { status: 502 })
   }
+
+  const { narrative, meta } = generated
 
   const { data: saved, error: regenerateError } = await supabase.rpc(
     'regenerate_workspace_daily_report',

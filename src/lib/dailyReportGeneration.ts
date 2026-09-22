@@ -1,17 +1,8 @@
 import {
-  buildFallbackNarrative,
-  buildUnreachableFallbackMeta,
-} from '@/lib/dailyReportFallback'
-import {
-  buildDailyReportWorkContext,
-  emptyWorkContextNarrative,
-} from '@/lib/dailyReportWorkContext'
-import {
   SummaryGenerationMeta,
   SummaryNarrative,
   WorkspaceStructuredSnapshot,
 } from '@/types/workspace'
-import { hasReportActivity } from '@/lib/dailyReportMetrics'
 
 const DAILY_REPORT_FORMAT_VERSION = 2
 
@@ -27,7 +18,8 @@ function normalizeMemberNarrative(
   if (!value || typeof value !== 'object') return null
   const record = value as Record<string, unknown>
   const userId = record.user_id
-  const narrative = record.narrative
+  const narrative =
+    typeof record.narrative === 'string' ? record.narrative : record.note
   if (typeof userId !== 'string' || !expected.has(userId)) return null
   if (typeof narrative !== 'string' || narrative.trim() === '') return null
   return {
@@ -60,6 +52,26 @@ export function normalizeDailyReportNarrative(
     .map(member => normalizeMemberNarrative(member, expectedMembers))
     .filter(member => member !== null)
 
+  const overallSummary = record.overall_summary
+  if (typeof overallSummary === 'string' && overallSummary.trim() !== '') {
+    const workspaceChangesSummary = record.workspace_changes_summary
+    const highlights = Array.isArray(record.highlights)
+      ? record.highlights.filter(
+          (highlight): highlight is string =>
+            typeof highlight === 'string' && highlight.trim() !== '',
+        )
+      : []
+    return {
+      overall_summary: overallSummary.trim(),
+      members,
+      workspace_changes_summary:
+        typeof workspaceChangesSummary === 'string'
+          ? workspaceChangesSummary.trim()
+          : '',
+      highlights: highlights.map(highlight => highlight.trim()),
+    }
+  }
+
   const expectedIds = new Set(expectedMembers.keys())
   const seenIds = new Set(members.map(member => member.user_id))
   if (
@@ -82,6 +94,25 @@ export function normalizeDailyReportNarrative(
   }
 }
 
+function compactDetails(value: string): string {
+  return value.trim().replace(/\s+/g, ' ').slice(0, 300)
+}
+
+function fallbackFailureReason(meta: unknown): string | null {
+  if (!meta || typeof meta !== 'object') return null
+  const record = meta as Record<string, unknown>
+  if (record.used_fallback_template !== true) return null
+  const warnings = Array.isArray(record.validation_warnings)
+    ? record.validation_warnings.filter(
+        (warning): warning is string =>
+          typeof warning === 'string' && warning.trim() !== '',
+      )
+    : []
+  return (
+    warnings[0]?.trim() || 'AI summary service returned deterministic fallback'
+  )
+}
+
 export async function generateDailyReportNarrative({
   snapshot,
   serviceUrl,
@@ -91,39 +122,47 @@ export async function generateDailyReportNarrative({
   serviceUrl: string
   timeoutMs?: number
 }): Promise<GeneratedDailyReport> {
-  if (!hasReportActivity(snapshot)) {
-    return {
-      narrative: emptyWorkContextNarrative(snapshot),
-      meta: buildUnreachableFallbackMeta('No meaningful work context'),
-    }
-  }
-
-  const workContext = buildDailyReportWorkContext(snapshot)
+  let response: Response
   try {
-    const response = await fetch(`${serviceUrl}/api/summary/generate`, {
+    response = await fetch(`${serviceUrl}/api/summary/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ work_context: workContext }),
+      body: JSON.stringify({ snapshot }),
       signal: AbortSignal.timeout(timeoutMs),
     })
-    if (!response.ok) {
-      throw new Error(`ontask-llm responded ${response.status}`)
-    }
-    const data = await response.json()
-    const narrative = normalizeDailyReportNarrative(data.narrative, snapshot)
-    if (!narrative) {
-      throw new Error('ontask-llm returned an invalid Daily Report narrative')
-    }
-    return {
-      narrative,
-      meta: data.meta,
-    }
   } catch (err) {
     const message =
       err instanceof Error ? err.message : 'AI summary service unavailable'
-    return {
-      narrative: buildFallbackNarrative(snapshot),
-      meta: buildUnreachableFallbackMeta(message),
-    }
+    throw new Error(`AI summary service unreachable: ${message}`)
+  }
+
+  if (!response.ok) {
+    const details = compactDetails(await response.text().catch(() => ''))
+    throw new Error(
+      `AI summary service unreachable: ontask-llm responded ${response.status}` +
+        (details ? `: ${details}` : ''),
+    )
+  }
+
+  const data = await response.json().catch(() => null)
+  if (!data || typeof data !== 'object') {
+    throw new Error('ontask-llm returned an invalid Daily Report response')
+  }
+
+  const meta = (data as { meta?: unknown }).meta
+  const fallbackReason = fallbackFailureReason(meta)
+  if (fallbackReason) throw new Error(fallbackReason)
+
+  const narrative = normalizeDailyReportNarrative(
+    (data as { narrative?: unknown }).narrative,
+    snapshot,
+  )
+  if (!narrative) {
+    throw new Error('ontask-llm returned an invalid Daily Report narrative')
+  }
+
+  return {
+    narrative,
+    meta,
   }
 }
