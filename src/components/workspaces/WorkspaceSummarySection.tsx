@@ -224,10 +224,10 @@ function MemberWorkOverview({
   )
 
   return (
-    <section className="space-y-3">
+    <section className="space-y-0">
       <div>
         <h3 className="text-sm font-bold text-ink">Member reports</h3>
-        <p className="text-[11px] leading-4 text-muted">
+        <p className="text-[11px] leading-4 text-muted mb-2">
           Each active member&apos;s summary and recorded task evidence for this
           report window.
         </p>
@@ -616,7 +616,7 @@ export function WorkspaceSummarySection({
             </div>
           )}
 
-          <div className="space-y-5 px-5 pb-4 pt-3">
+          <div className="space-y-5 px-5 pb-4">
             {isPersonal ? (
               <Narrative summary={summary} />
             ) : (
