@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { AuthUser } from '@/hooks/useAuth'
 import type { WorkSession } from '@/types/workspace'
+import { onResync } from '@/lib/realtime/onResync'
 
 type WorkSessionRow = {
   id: string
@@ -72,12 +73,7 @@ export function useWorkSessions(workspaceId: string, user: AuthUser | null) {
     }
     load()
 
-    const handleReconnect = () => load()
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') handleReconnect()
-    }
-    window.addEventListener('online', handleReconnect)
-    document.addEventListener('visibilitychange', handleVisibility)
+    const stopResync = onResync(() => load())
 
     const channel = supabase
       .channel(`work-sessions-${workspaceId}`)
@@ -109,8 +105,7 @@ export function useWorkSessions(workspaceId: string, user: AuthUser | null) {
 
     return () => {
       cancelled = true
-      window.removeEventListener('online', handleReconnect)
-      document.removeEventListener('visibilitychange', handleVisibility)
+      stopResync()
       supabase.removeChannel(channel)
     }
   }, [workspaceId, userId, fetchSessions])

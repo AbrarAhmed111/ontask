@@ -11,6 +11,7 @@ import {
   isInScope,
   rowsToNotifications,
 } from '@/lib/workspaceNotifications'
+import { onResync } from '@/lib/realtime/onResync'
 
 const LIMIT = 50
 const NO_NOTIFICATIONS: NotificationWithWorkspace[] = []
@@ -86,12 +87,7 @@ export function useNotifications(
 
     fetchNotifications()
 
-    const handleReconnect = () => fetchNotifications()
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') handleReconnect()
-    }
-    window.addEventListener('online', handleReconnect)
-    document.addEventListener('visibilitychange', handleVisibility)
+    const stopResync = onResync(() => fetchNotifications())
 
     // The scope is in the channel name so a workspace switch never reuses --
     // or tears down -- the previous workspace's channel.
@@ -131,8 +127,7 @@ export function useNotifications(
 
     return () => {
       cancelled = true
-      window.removeEventListener('online', handleReconnect)
-      document.removeEventListener('visibilitychange', handleVisibility)
+      stopResync()
       supabase.removeChannel(channel)
     }
   }, [

@@ -7,6 +7,7 @@ import { useFetchStatus } from '@/hooks/useFetchStatus'
 import { SNAPSHOTS } from '@/lib/cache/workspaceSnapshots'
 import type { AuthUser } from '@/hooks/useAuth'
 import type { Idea, IdeaType } from '@/types/workspace'
+import { onResync } from '@/lib/realtime/onResync'
 
 export type IdeaFormInput = {
   title: string
@@ -86,21 +87,9 @@ export function useWorkspaceIdeas(workspaceId: string, user: AuthUser | null) {
 
     fetchIdeas()
 
-    const handleReconnect = () => {
+    const stopResync = onResync(() => {
       if (!cancelled) void fetchIdeas()
-    }
-    const handleVisibility = () => {
-      if (
-        typeof document !== 'undefined' &&
-        document.visibilityState === 'visible' &&
-        !cancelled
-      ) {
-        void fetchIdeas()
-      }
-    }
-
-    window.addEventListener('online', handleReconnect)
-    document.addEventListener('visibilitychange', handleVisibility)
+    })
 
     const supabase = createClient()
     const channel = supabase
@@ -132,8 +121,7 @@ export function useWorkspaceIdeas(workspaceId: string, user: AuthUser | null) {
 
     return () => {
       cancelled = true
-      window.removeEventListener('online', handleReconnect)
-      document.removeEventListener('visibilitychange', handleVisibility)
+      stopResync()
       void supabase.removeChannel(channel)
     }
   }, [userId, workspaceId, fetchKey, fetchIdeas])

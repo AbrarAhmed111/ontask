@@ -30,6 +30,7 @@ import {
   deleteCache,
   readCache,
 } from '@/lib/cache/cacheStore'
+import { onResync } from '@/lib/realtime/onResync'
 
 type WorkspaceMemberRow = {
   id: string
@@ -198,8 +199,7 @@ export function useWorkspace(workspaceSlug: string, user: AuthUser | null) {
     let cancelled = false
     const supabase = createClient()
     let channel: ReturnType<typeof supabase.channel> | null = null
-    let handleReconnect: (() => void) | null = null
-    let handleVisibility: (() => void) | null = null
+    let stopResync: (() => void) | null = null
 
     // A fresh start for this key: an earlier refusal (say, before accepting an
     // invitation) must not outlive it.
@@ -300,31 +300,12 @@ export function useWorkspace(workspaceSlug: string, user: AuthUser | null) {
         )
         .subscribe()
 
-      handleReconnect = () => void refreshMembers(loaded.id)
-      handleVisibility = () => {
-        if (
-          typeof document !== 'undefined' &&
-          document.visibilityState === 'visible' &&
-          handleReconnect
-        )
-          handleReconnect()
-      }
-      if (typeof window !== 'undefined') {
-        window.addEventListener('online', handleReconnect)
-      }
-      if (typeof document !== 'undefined') {
-        document.addEventListener('visibilitychange', handleVisibility)
-      }
+      stopResync = onResync(() => void refreshMembers(loaded.id))
     })
 
     return () => {
       cancelled = true
-      if (typeof window !== 'undefined' && handleReconnect) {
-        window.removeEventListener('online', handleReconnect)
-      }
-      if (typeof document !== 'undefined' && handleVisibility) {
-        document.removeEventListener('visibilitychange', handleVisibility)
-      }
+      stopResync?.()
       if (channel) supabase.removeChannel(channel)
     }
   }, [

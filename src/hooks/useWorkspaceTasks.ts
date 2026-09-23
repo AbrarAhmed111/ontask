@@ -18,6 +18,7 @@ import {
 } from '@/lib/tasks/workspaceMappers'
 import type { AuthUser } from '@/hooks/useAuth'
 import { WorkspaceMember, WorkspaceTask } from '@/types/workspace'
+import { onResync } from '@/lib/realtime/onResync'
 
 export { getWorkspaceLiveSeconds }
 
@@ -123,14 +124,10 @@ export function useWorkspaceTasks(
 
     // Timer state is never trusted from memory alone across a reconnect —
     // a dropped websocket (laptop sleep, network blip) can silently miss
-    // postgres_changes events, so coming back online or back into the tab
-    // always re-derives the full task list from the database.
-    const handleReconnect = () => fetchTasks()
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') handleReconnect()
-    }
-    window.addEventListener('online', handleReconnect)
-    document.addEventListener('visibilitychange', handleVisibility)
+    // postgres_changes events, so coming back online, or back into the tab
+    // after long enough for the socket to have dropped (see onResync),
+    // re-derives the full task list from the database.
+    const stopResync = onResync(() => fetchTasks())
 
     const channel = supabase
       .channel(`workspace-tasks-${workspaceId}`)
@@ -194,8 +191,7 @@ export function useWorkspaceTasks(
 
     return () => {
       cancelled = true
-      window.removeEventListener('online', handleReconnect)
-      document.removeEventListener('visibilitychange', handleVisibility)
+      stopResync()
       supabase.removeChannel(channel)
       supabase.removeChannel(collaboratorChannel)
     }

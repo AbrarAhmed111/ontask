@@ -7,6 +7,7 @@ import { useFetchStatus } from '@/hooks/useFetchStatus'
 import { SNAPSHOTS } from '@/lib/cache/workspaceSnapshots'
 import { mergeById } from '@/lib/realtime/mergeById'
 import type { AuthUser } from '@/hooks/useAuth'
+import { onResync } from '@/lib/realtime/onResync'
 
 type TaskEventRow = {
   id: string
@@ -100,12 +101,7 @@ export function useWorkspaceActivity(
     // postgres_changes events — coming back online or back into the tab
     // always re-derives the recent activity list from the database, the
     // same resilience pattern as useWorkspaceTasks.ts.
-    const handleReconnect = () => fetchEvents()
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') handleReconnect()
-    }
-    window.addEventListener('online', handleReconnect)
-    document.addEventListener('visibilitychange', handleVisibility)
+    const stopResync = onResync(() => fetchEvents())
 
     const channel = supabase
       .channel(`workspace-activity-${workspaceId}`)
@@ -134,8 +130,7 @@ export function useWorkspaceActivity(
 
     return () => {
       cancelled = true
-      window.removeEventListener('online', handleReconnect)
-      document.removeEventListener('visibilitychange', handleVisibility)
+      stopResync()
       supabase.removeChannel(channel)
     }
   }, [

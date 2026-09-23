@@ -10,6 +10,7 @@ import {
 } from '@/lib/dailyUpdates'
 import type { AuthUser } from '@/hooks/useAuth'
 import type { DailyUpdate, DailyUpdateItemType } from '@/types/workspace'
+import { onResync } from '@/lib/realtime/onResync'
 
 // A burst of realtime events (an edit rewrites the update and its items) becomes
 // one read.
@@ -78,12 +79,7 @@ export function useDailyUpdates(
       if (timer) clearTimeout(timer)
       timer = setTimeout(fetchUpdates, REFETCH_DELAY_MS)
     }
-    const handleReconnect = () => fetchUpdates()
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') handleReconnect()
-    }
-    window.addEventListener('online', handleReconnect)
-    document.addEventListener('visibilitychange', handleVisibility)
+    const stopResync = onResync(() => fetchUpdates())
 
     // The realtime filter can only name a column of the table itself, which is
     // why both tables carry workspace_id. An event for another day's update is
@@ -129,8 +125,7 @@ export function useDailyUpdates(
     return () => {
       cancelled = true
       if (timer) clearTimeout(timer)
-      window.removeEventListener('online', handleReconnect)
-      document.removeEventListener('visibilitychange', handleVisibility)
+      stopResync()
       supabase.removeChannel(channel)
     }
   }, [key, userId, workspaceId, day])

@@ -26,6 +26,7 @@ import {
   WorkspaceMember,
   WorkspaceTask,
 } from '@/types/workspace'
+import { onResync } from '@/lib/realtime/onResync'
 
 type TaskDependencyRow = {
   id: string
@@ -139,12 +140,7 @@ export function useGoalDetail(
 
     fetchTasks(true)
 
-    const handleReconnect = () => fetchTasks(false)
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') handleReconnect()
-    }
-    window.addEventListener('online', handleReconnect)
-    document.addEventListener('visibilitychange', handleVisibility)
+    const stopResync = onResync(() => fetchTasks(false))
 
     const channel = supabase
       .channel(`goal-tasks-${goalId}`)
@@ -200,8 +196,7 @@ export function useGoalDetail(
 
     return () => {
       cancelled = true
-      window.removeEventListener('online', handleReconnect)
-      document.removeEventListener('visibilitychange', handleVisibility)
+      stopResync()
       supabase.removeChannel(channel)
       supabase.removeChannel(collaboratorChannel)
     }
@@ -237,12 +232,7 @@ export function useGoalDetail(
 
     fetchDependencies()
 
-    const handleReconnect = () => fetchDependencies()
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') handleReconnect()
-    }
-    window.addEventListener('online', handleReconnect)
-    document.addEventListener('visibilitychange', handleVisibility)
+    const stopResync = onResync(() => fetchDependencies())
 
     const channel = supabase
       .channel(`goal-dependencies-${goalId}`)
@@ -277,8 +267,7 @@ export function useGoalDetail(
 
     return () => {
       cancelled = true
-      window.removeEventListener('online', handleReconnect)
-      document.removeEventListener('visibilitychange', handleVisibility)
+      stopResync()
       supabase.removeChannel(channel)
     }
   }, [userId, goalId])

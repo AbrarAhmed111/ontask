@@ -6,6 +6,7 @@ import { SNAPSHOTS } from '@/lib/cache/workspaceSnapshots'
 import { markIdeaPlannedFromExecution } from '@/lib/ideas/status'
 import type { AuthUser } from '@/hooks/useAuth'
 import { Goal, GoalStatus } from '@/types/workspace'
+import { onResync } from '@/lib/realtime/onResync'
 
 type GoalRow = {
   id: string
@@ -98,20 +99,7 @@ export function useWorkspaceGoals(workspaceId: string, user: AuthUser | null) {
 
     fetchGoals()
 
-    const handleReconnect = () => fetchGoals()
-    const handleVisibility = () => {
-      if (
-        typeof document !== 'undefined' &&
-        document.visibilityState === 'visible'
-      )
-        handleReconnect()
-    }
-    if (typeof window !== 'undefined') {
-      window.addEventListener('online', handleReconnect)
-    }
-    if (typeof document !== 'undefined') {
-      document.addEventListener('visibilitychange', handleVisibility)
-    }
+    const stopResync = onResync(() => fetchGoals())
 
     const channel = supabase
       .channel(`workspace-goals-${workspaceId}`)
@@ -144,12 +132,7 @@ export function useWorkspaceGoals(workspaceId: string, user: AuthUser | null) {
 
     return () => {
       cancelled = true
-      if (typeof window !== 'undefined') {
-        window.removeEventListener('online', handleReconnect)
-      }
-      if (typeof document !== 'undefined') {
-        document.removeEventListener('visibilitychange', handleVisibility)
-      }
+      stopResync()
       supabase.removeChannel(channel)
     }
   }, [

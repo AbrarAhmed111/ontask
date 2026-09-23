@@ -17,6 +17,7 @@ import {
   uploadQueueReducer,
 } from '@/lib/resourceUploads'
 import { WorkspaceResource } from '@/types/workspace'
+import { onResync } from '@/lib/realtime/onResync'
 
 type WorkspaceResourceRow = {
   id: string
@@ -133,12 +134,7 @@ export function useWorkspaceResources(
 
     fetchResources()
 
-    const handleReconnect = () => fetchResources()
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') handleReconnect()
-    }
-    window.addEventListener('online', handleReconnect)
-    document.addEventListener('visibilitychange', handleVisibility)
+    const stopResync = onResync(() => fetchResources())
 
     const channel = supabase
       .channel(`workspace-resources-${workspaceId}`)
@@ -166,8 +162,7 @@ export function useWorkspaceResources(
 
     return () => {
       cancelled = true
-      window.removeEventListener('online', handleReconnect)
-      document.removeEventListener('visibilitychange', handleVisibility)
+      stopResync()
       supabase.removeChannel(channel)
     }
   }, [

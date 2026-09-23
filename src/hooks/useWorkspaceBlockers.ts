@@ -15,6 +15,7 @@ import {
   removeById,
 } from '@/lib/tasks/blockers'
 import type { AuthUser } from '@/hooks/useAuth'
+import { onResync } from '@/lib/realtime/onResync'
 
 // The mutation surface the per-list action hooks (useTaskBlockerActions) use to
 // keep blocker state in step with what they are about to ask the server to do.
@@ -140,12 +141,7 @@ export function useWorkspaceBlockers(
 
     fetchAll(true)
 
-    const handleReconnect = () => fetchAll(false)
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') handleReconnect()
-    }
-    window.addEventListener('online', handleReconnect)
-    document.addEventListener('visibilitychange', handleVisibility)
+    const stopResync = onResync(() => fetchAll(false))
 
     const channel = supabase
       .channel(`workspace-blockers-${workspaceId}`)
@@ -193,8 +189,7 @@ export function useWorkspaceBlockers(
 
     return () => {
       cancelled = true
-      window.removeEventListener('online', handleReconnect)
-      document.removeEventListener('visibilitychange', handleVisibility)
+      stopResync()
       supabase.removeChannel(channel)
     }
   }, [enabled, userId, workspaceId])
