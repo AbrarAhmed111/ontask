@@ -9,7 +9,7 @@ import { ParentTaskShell } from '@/components/tasks/ParentTaskShell'
 import type { TaskMoveOption } from '@/components/tasks/TaskMoveSelect'
 import { TaskNotesPanel } from '@/components/tasks/TaskNotesPanel'
 import type { AuthUser } from '@/hooks/useAuth'
-import { useTaskNoteCount } from '@/hooks/useTaskNotes'
+import { useTaskNoteCount } from '@/components/workspaces/TaskNoteCountsContext'
 
 function AssigneeStack({ members }: { members: WorkspaceMember[] }) {
   const shown = members.slice(0, 3)
@@ -80,7 +80,7 @@ export function WorkspaceParentTaskCard({
   onManageDependencies?: (task: WorkspaceTask) => void
 }) {
   const [notesOpen, setNotesOpen] = useState(false)
-  const noteCount = useTaskNoteCount(parent.id, user)
+  const noteCount = useTaskNoteCount(parent.id)
   const assignees = Array.from(
     new Map(
       subtasks

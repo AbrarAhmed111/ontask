@@ -47,7 +47,7 @@ import {
   TaskMoveSelect,
 } from '@/components/tasks/TaskMoveSelect'
 import { TaskNotesPanel } from '@/components/tasks/TaskNotesPanel'
-import { useTaskNoteCount } from '@/hooks/useTaskNotes'
+import { useTaskNoteCount } from '@/components/workspaces/TaskNoteCountsContext'
 import type { AuthUser } from '@/hooks/useAuth'
 
 function formatCollaboratorFocusTime(seconds: number) {
@@ -109,7 +109,7 @@ export function WorkspaceTaskCard({
   const [blockerDialog, setBlockerDialog] = useState<BlockerDialogKind | null>(
     null,
   )
-  const noteCount = useTaskNoteCount(task.id, user)
+  const noteCount = useTaskNoteCount(task.id)
   const completed = task.status === 'completed' || task.status === 'skipped'
   // Two different things read as "blocked" and stay separate: waiting on an
   // incomplete Goal dependency (derived, `blockedBy`) and having a blocker

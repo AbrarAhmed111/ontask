@@ -5,6 +5,7 @@ import { useFetchStatus } from '@/hooks/useFetchStatus'
 import { SNAPSHOTS } from '@/lib/cache/workspaceSnapshots'
 import type { AuthUser } from '@/hooks/useAuth'
 import { TaskNote } from '@/types/workspace'
+import { onResync } from '@/lib/realtime/onResync'
 
 type TaskNoteRow = {
   id: string
@@ -88,12 +89,7 @@ export function useTaskNotes(
 
     fetchNotes()
 
-    const handleReconnect = () => fetchNotes()
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') handleReconnect()
-    }
-    window.addEventListener('online', handleReconnect)
-    document.addEventListener('visibilitychange', handleVisibility)
+    const stopResync = onResync(() => fetchNotes())
 
     const channel = supabase
       .channel(`task-notes-${taskId}`)
@@ -128,8 +124,7 @@ export function useTaskNotes(
 
     return () => {
       cancelled = true
-      window.removeEventListener('online', handleReconnect)
-      document.removeEventListener('visibilitychange', handleVisibility)
+      stopResync()
       supabase.removeChannel(channel)
     }
   }, [
@@ -211,66 +206,4 @@ export function useTaskNotes(
   }
 
   return { notes, ready, error, addNote, updateNote, deleteNote }
-}
-
-export function useTaskNoteCount(taskId: string, user: AuthUser | null) {
-  const userId = user?.id
-  const [count, setCount] = useState(0)
-
-  useEffect(() => {
-    if (!userId || !taskId) {
-      setCount(0)
-      return
-    }
-    let cancelled = false
-    const supabase = createClient()
-
-    const fetchCount = () => {
-      supabase
-        .from('task_notes')
-        .select('id', { count: 'exact', head: true })
-        .eq('task_id', taskId)
-        .then(({ count: nextCount }) => {
-          if (!cancelled) setCount(nextCount ?? 0)
-        })
-    }
-
-    fetchCount()
-    const handleReconnect = () => fetchCount()
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') handleReconnect()
-    }
-    window.addEventListener('online', handleReconnect)
-    document.addEventListener('visibilitychange', handleVisibility)
-
-    const channel = supabase
-      .channel(`task-note-count-${taskId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'task_notes',
-          filter: `task_id=eq.${taskId}`,
-        },
-        payload => {
-          if (cancelled) return
-          if (payload.eventType === 'INSERT') {
-            setCount(current => current + 1)
-          } else if (payload.eventType === 'DELETE') {
-            setCount(current => Math.max(0, current - 1))
-          }
-        },
-      )
-      .subscribe()
-
-    return () => {
-      cancelled = true
-      window.removeEventListener('online', handleReconnect)
-      document.removeEventListener('visibilitychange', handleVisibility)
-      supabase.removeChannel(channel)
-    }
-  }, [userId, taskId])
-
-  return count
 }
