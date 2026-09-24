@@ -6,6 +6,7 @@ import { WorkspaceMember, WorkspaceTask } from '@/types/workspace'
 import { Avatar } from '@/components/ui/Avatar'
 import { WorkspaceTaskCard } from '@/components/workspaces/WorkspaceTaskCard'
 import { ParentTaskShell } from '@/components/tasks/ParentTaskShell'
+import type { TaskDragProps } from '@/components/tasks/TaskCardShell'
 import type { TaskMoveOption } from '@/components/tasks/TaskMoveSelect'
 import { TaskNotesPanel } from '@/components/tasks/TaskNotesPanel'
 import type { AuthUser } from '@/hooks/useAuth'
@@ -58,6 +59,7 @@ export function WorkspaceParentTaskCard({
   onMoveTo,
   getBlockedBy,
   onManageDependencies,
+  drag,
 }: {
   parent: WorkspaceTask
   subtasks: WorkspaceTask[]
@@ -78,6 +80,7 @@ export function WorkspaceParentTaskCard({
   onMoveTo: (taskId: string, parentId: string | null) => void
   getBlockedBy?: (task: WorkspaceTask) => string[]
   onManageDependencies?: (task: WorkspaceTask) => void
+  drag?: TaskDragProps
 }) {
   const [notesOpen, setNotesOpen] = useState(false)
   const noteCount = useTaskNoteCount(parent.id)
@@ -98,6 +101,7 @@ export function WorkspaceParentTaskCard({
       getWorkedSeconds={getWorkedSeconds}
       onAddSubtask={onAddSubtask}
       onDelete={onDeleteParent}
+      drag={drag}
       extras={
         <>
           {assignees.length > 0 && <AssigneeStack members={assignees} />}

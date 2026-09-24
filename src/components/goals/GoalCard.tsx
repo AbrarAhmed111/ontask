@@ -113,6 +113,7 @@ export function GoalCard({
     updateTask,
     deleteTask,
     moveTask,
+    reorderTasks,
     reassignTask,
     blockerActions,
     getLiveSeconds,
@@ -519,7 +520,7 @@ export function GoalCard({
                   onEdit={openEditTask}
                   onDelete={handleDeleteTask}
                   onReassign={reassignTask}
-                  onReorder={() => {}}
+                  onReorder={reorderTasks}
                   onAddSubtask={openAddSubtask}
                   onDeleteParent={handleDeleteParent}
                   onMoveTo={handleMoveTo}

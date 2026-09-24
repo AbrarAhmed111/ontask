@@ -2,6 +2,7 @@
 
 import { ReactNode, useState } from 'react'
 import { ChevronDown, ChevronRight, CirclePlus, Trash2 } from 'lucide-react'
+import type { TaskDragProps } from '@/components/tasks/TaskCardShell'
 
 // The frame for a task that groups subtasks. Parents are containers, not
 // runnable — no Start button anywhere on this card. Progress is always shown
@@ -20,6 +21,7 @@ export function ParentTaskShell<T extends { status: string }>({
   panel,
   onAddSubtask,
   onDelete,
+  drag,
   children,
 }: {
   title: string
@@ -32,6 +34,7 @@ export function ParentTaskShell<T extends { status: string }>({
   panel?: ReactNode
   onAddSubtask: () => void
   onDelete: () => void
+  drag?: TaskDragProps
   // The subtask rows, shown while expanded.
   children: ReactNode
 }) {
@@ -45,7 +48,13 @@ export function ParentTaskShell<T extends { status: string }>({
   )
 
   return (
-    <div className="rounded-2xl border border-line bg-panel shadow-sm">
+    <div
+      draggable={Boolean(drag)}
+      onDragStart={drag?.onDragStart}
+      onDragOver={drag?.onDragOver}
+      onDrop={drag?.onDrop}
+      className="rounded-2xl border border-line bg-panel shadow-sm"
+    >
       <div className="flex items-center gap-3 px-4 py-4 sm:px-5">
         <button
           type="button"

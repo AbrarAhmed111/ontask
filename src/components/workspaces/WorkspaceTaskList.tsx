@@ -55,7 +55,7 @@ export function WorkspaceTaskList({
     <TaskTree
       tasks={tasks}
       onReorder={onReorder}
-      renderParent={(parent, subtasks, moveOptions) => (
+      renderParent={(parent, subtasks, moveOptions, { drag }) => (
         <WorkspaceParentTaskCard
           parent={parent}
           subtasks={subtasks}
@@ -76,6 +76,7 @@ export function WorkspaceTaskList({
           onMoveTo={(taskId, parentId) => onMoveTo?.(taskId, parentId)}
           getBlockedBy={getBlockedBy}
           onManageDependencies={onManageDependencies}
+          drag={drag}
         />
       )}
       renderTask={(task, { index, moveOptions, drag }) => (

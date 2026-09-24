@@ -35,6 +35,7 @@ export function TaskTree<T extends TaskTreeNode>({
     parent: T,
     subtasks: T[],
     moveOptions: TaskMoveOption[],
+    context: { index: number; drag: TaskDragProps },
   ) => ReactNode
 }) {
   const rootTasks = tasks.filter(task => !task.parentTaskId)
@@ -51,7 +52,26 @@ export function TaskTree<T extends TaskTreeNode>({
         return (
           <Fragment key={task.id}>
             {subtasks.length > 0
-              ? renderParent(task, subtasks, moveOptions)
+              ? renderParent(task, subtasks, moveOptions, {
+                  index,
+                  drag: {
+                    onDragStart: event => {
+                      event.dataTransfer.effectAllowed = 'move'
+                      event.dataTransfer.setData(
+                        'text/task-index',
+                        String(index),
+                      )
+                    },
+                    onDragOver: event => event.preventDefault(),
+                    onDrop: event => {
+                      event.preventDefault()
+                      const fromIndex = Number(
+                        event.dataTransfer.getData('text/task-index'),
+                      )
+                      onReorder(fromIndex, index)
+                    },
+                  },
+                })
               : renderTask(task, {
                   index,
                   moveOptions,

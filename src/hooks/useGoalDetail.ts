@@ -326,6 +326,46 @@ export function useGoalDetail(
     assignedTo: string | string[] | null = null,
   ) => addTaskAction(event, form, parentTaskId, assignedTo, goalId, ideaId)
 
+  const reorderTasks = (fromIndex: number, toIndex: number) => {
+    if (!userId) return
+    const rootTasks = tasks.filter(task => task.parentTaskId === null)
+    if (
+      fromIndex === toIndex ||
+      fromIndex < 0 ||
+      toIndex < 0 ||
+      fromIndex >= rootTasks.length ||
+      toIndex >= rootTasks.length
+    )
+      return
+
+    const reorderedRoots = [...rootTasks]
+    const [movedTask] = reorderedRoots.splice(fromIndex, 1)
+    reorderedRoots.splice(toIndex, 0, movedTask)
+    const positionById = new Map(
+      reorderedRoots.map((task, index) => [task.id, (index + 1) * 1000]),
+    )
+
+    setTasks(current => {
+      const remaining = current.filter(task => task.parentTaskId !== null)
+      return [
+        ...reorderedRoots,
+        ...remaining.filter(task => !positionById.has(task.id)),
+      ]
+    })
+
+    const supabase = createClient()
+    void Promise.all(
+      reorderedRoots.map((task, index) =>
+        supabase
+          .from('workspace_tasks')
+          .update({ position: (index + 1) * 1000 })
+          .eq('id', task.id),
+      ),
+    ).then(results => {
+      if (results.some(r => r.error)) setError("Couldn't save the new order.")
+    })
+  }
+
   // Same auto-complete-on-planned-time behavior as flat tasks (useWorkspaceTasks.ts) —
   // goal tasks use the identical execution model, and now the identical code.
   useTaskAutoCompletion({
@@ -355,6 +395,7 @@ export function useGoalDetail(
     clearCompletedTasks,
     deleteTask,
     moveTask,
+    reorderTasks,
     reassignTask,
     blockerActions,
     getLiveSeconds: (task: WorkspaceTask) => getWorkspaceLiveSeconds(task, now),
