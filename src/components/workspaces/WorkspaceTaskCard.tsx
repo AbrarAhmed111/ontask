@@ -118,23 +118,33 @@ export function WorkspaceTaskCard({
   const dependencyBlocked =
     Boolean(blockedBy && blockedBy.length > 0) && !completed
   const hasBlocker = task.status === 'blocked'
-  const blocked = dependencyBlocked || hasBlocker
-  const running = task.status === 'working'
-  const statusLabel = blocked
-    ? 'Blocked'
-    : running
-      ? 'In focus'
-      : completed
-        ? task.status === 'skipped'
-          ? 'Skipped'
-          : 'Complete'
-        : task.status === 'paused'
-          ? 'Paused'
-          : 'Queued'
   const assignee = members.find(member => member.userId === task.assignedTo)
   const collaborators = (task.collaborators ?? []).filter(
     collaborator => collaborator.removedAt === null,
   )
+  const ownCollaborator = collaborators.find(
+    collaborator => collaborator.userId === user?.id,
+  )
+  const ownCompleted =
+    ownCollaborator?.participationStatus === 'completed' ||
+    ownCollaborator?.participationStatus === 'skipped'
+  const blocked = dependencyBlocked || hasBlocker
+  const running = task.status === 'working'
+  const statusLabel = ownCompleted
+    ? ownCollaborator?.participationStatus === 'skipped'
+      ? 'Skipped'
+      : 'Complete'
+    : blocked
+      ? 'Blocked'
+      : running
+        ? 'In focus'
+        : completed
+          ? task.status === 'skipped'
+            ? 'Skipped'
+            : 'Complete'
+          : task.status === 'paused'
+            ? 'Paused'
+            : 'Queued'
   const assignees =
     collaborators.length > 0
       ? collaborators
@@ -199,7 +209,7 @@ export function WorkspaceTaskCard({
     isOwner: workspaceDetail?.isOwner ?? false,
   }
   const canTimer = canControlTimer(task, timerActor)
-  const canReopen = canReopenTask(task, timerActor)
+  const canReopen = ownCompleted || canReopenTask(task, timerActor)
   const canStop = canEmergencyStop(task, timerActor)
 
   // Blockers: everyone sees the active one; who may raise, edit or resolve it
@@ -242,7 +252,13 @@ export function WorkspaceTaskCard({
       title={task.name}
       description={task.description}
       index={index}
-      tone={running ? 'running' : completed ? 'done' : 'idle'}
+      tone={
+        running && !ownCompleted
+          ? 'running'
+          : completed || ownCompleted
+            ? 'done'
+            : 'idle'
+      }
       blocked={blocked}
       statusLabel={statusLabel}
       focusLabel={isCollaborative ? 'All Focus Time' : 'Focused time'}
@@ -313,12 +329,12 @@ export function WorkspaceTaskCard({
               </span>
             )}
           </button>
-          {completed && canReopen && onReopen && (
+          {(completed || ownCompleted) && canReopen && onReopen && (
             <Button variant="secondary" onClick={onReopen}>
               <RotateCcw size={15} /> Continue
             </Button>
           )}
-          {!completed && canTimer && (
+          {!completed && !ownCompleted && canTimer && (
             <button
               onClick={onFinish}
               disabled={hasBlocker}
@@ -332,7 +348,7 @@ export function WorkspaceTaskCard({
               Finish
             </button>
           )}
-          {!completed && canTimer && (
+          {!completed && !ownCompleted && canTimer && (
             <Button
               variant={running ? 'danger' : 'primary'}
               onClick={running ? onPause : onStart}
@@ -357,7 +373,7 @@ export function WorkspaceTaskCard({
               )}
             </Button>
           )}
-          {!completed && !canTimer && !running && (
+          {!completed && !ownCompleted && !canTimer && !running && (
             <Button
               disabled
               title={timerLockReason(task, timerActor) ?? undefined}

@@ -26,6 +26,23 @@ function collaboratorIdsForTask(task: WorkspaceTask | undefined) {
   return task.assignedTo ? [task.assignedTo] : []
 }
 
+function resolveOptimisticCollaborativeStatus(
+  collaborators: NonNullable<WorkspaceTask['collaborators']>,
+): WorkspaceTask['status'] {
+  if (collaborators.length === 0) return 'queued'
+  if (collaborators.every(c => c.participationStatus === 'completed'))
+    return 'completed'
+  if (collaborators.every(c => c.participationStatus === 'skipped'))
+    return 'skipped'
+  if (collaborators.some(c => c.participationStatus === 'working'))
+    return 'working'
+  if (collaborators.some(c => c.participationStatus === 'blocked'))
+    return 'blocked'
+  if (collaborators.some(c => c.participationStatus === 'paused'))
+    return 'paused'
+  return 'queued'
+}
+
 // The timer RPCs reject a caller who isn't allowed with 42501 and a message
 // meant to be read ("only the member this task is assigned to..."); anything
 // else stays the generic fallback.
@@ -401,17 +418,44 @@ export function useWorkspaceTaskActions({
     if (!canControlTimer(task, timerActor)) return
     const workedSeconds = Math.round(getWorkspaceLiveSeconds(task, now))
     setTasks(current =>
-      current.map(t =>
-        t.id === task.id
-          ? {
-              ...t,
-              status: early ? 'skipped' : 'completed',
-              workedSeconds,
-              startedAt: null,
-              completedAt: Date.now(),
-            }
-          : t,
-      ),
+      current.map(t => {
+        if (t.id !== task.id) return t
+        const collaborators = t.collaborators?.map(collaborator =>
+          collaborator.userId === userId && collaborator.removedAt === null
+            ? {
+                ...collaborator,
+                participationStatus: early
+                  ? ('skipped' as const)
+                  : ('completed' as const),
+                startedAt: null,
+                completedAt: Date.now(),
+              }
+            : collaborator,
+        )
+        const hasOtherActiveCollaborators =
+          collaborators &&
+          collaborators.some(
+            collaborator =>
+              collaborator.userId !== userId &&
+              collaborator.removedAt === null &&
+              collaborator.participationStatus !== 'completed' &&
+              collaborator.participationStatus !== 'skipped',
+          )
+
+        return {
+          ...t,
+          status:
+            collaborators && hasOtherActiveCollaborators
+              ? resolveOptimisticCollaborativeStatus(collaborators)
+              : early
+                ? 'skipped'
+                : 'completed',
+          workedSeconds,
+          startedAt: hasOtherActiveCollaborators ? t.startedAt : null,
+          completedAt: hasOtherActiveCollaborators ? t.completedAt : Date.now(),
+          collaborators,
+        }
+      }),
     )
     const supabase = createClient()
     void supabase
