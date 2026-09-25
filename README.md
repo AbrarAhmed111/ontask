@@ -383,6 +383,40 @@ Connect any Shared Workspace to a Slack workspace to receive real-time updates a
 - **Security & Token Isolation** — Sensitive Slack access tokens remain encrypted and isolated in Supabase with RLS/RPC bounds; client-side state receives only safe metadata (`connected`, `slack_team_name`, `channel_name`, `connection_status`).
 - **Rich Slack Block Kit Formatting** — Formatted notification blocks with workspace accent headers, direct clickable task/report links, actor display names, and blocker reason quotes.
 
+### Development & GitHub
+
+An optional module for Shared Workspaces that connects development work to
+OnTask tasks while developers keep working in GitHub as usual. The owner turns
+it on in **Settings → Modules**; turning it off hides it and keeps every
+Development Task and its tracking.
+
+- **Development Tasks** are always created new, and are ordinary workspace
+  tasks underneath (timers, notes, blockers, Goals and Activity all work
+  unchanged). Each has a type — Feature, Bug, Hotfix, Improvement, Refactor,
+  Chore or Docs — a priority, and a generated branch name whose prefix follows
+  the type: "Implement Google OAuth" for Abrar Ahmed →
+  `feature/google-oauth-abrar`; a Bug "Login button broken" →
+  `fix/login-button-broken-abrar`. If another task in the workspace already
+  has that name, the new one is numbered `-02`, `-03`, … The final name is shown
+  with a copy button once the task is created.
+- **OnTask never creates the branch.** The developer copies the name and
+  creates it themselves; that exact name is how OnTask recognises the branch
+  and the Pull Request opened from it.
+- **Tracking is automatic:** branch created → In Development; Pull Request
+  opened → In Review; Pull Request merged → Completed. A Pull Request closed
+  without merging goes back to In Development and never completes the task.
+  Commits never change a task's status.
+- The **Development** section on the Overview, right after Goals, shows every
+  Development Task by stage; each task has a Code Tracking panel with the branch, the Pull Request and short "how does
+  tracking work?" help.
+- **GitHub connection** (Settings → GitHub, owner only) installs the OnTask
+  GitHub App on the repositories the owner picks. OnTask stores only the
+  installation id and the chosen repository; short-lived tokens are minted on
+  the server when needed, and no GitHub credential ever reaches the browser or
+  the database. Webhooks are signature-verified and processed idempotently, and
+  opening a task re-checks GitHub (at most once a minute) in case a webhook was
+  missed.
+
 ### Settings
 
 **Guest dashboard.** Open the settings icon in the header to configure:
@@ -399,6 +433,10 @@ Connect any Shared Workspace to a Slack workspace to receive real-time updates a
   them read-only. A Personal Workspace keeps its fixed name.
 - **Daily Reports** — an On/Off switch for the workspace's automatic Daily
   Report. Only the owner can change it; it saves immediately.
+- **Modules** — switch the optional Development module on or off (Shared
+  Workspaces only, owner only).
+- **GitHub** — connect a repository for Development Task tracking (shown while
+  Development is on; owner only).
 - **Slack Integration** — connect Slack workspace, select destination channel, toggle notification event types, and manage authorization (Shared Workspaces only).
 - **Your preferences** — the completion sound, saved on this device.
 - **Help & guidance** — replay the workspace's guided tour.
@@ -556,6 +594,16 @@ app works without it — it then re-reads the task and completes it with
 or due — but apply it so the database, not the browser, has the last word. To
 check it, run `supabase/tests/0043_guarded_task_auto_completion.sql` against a
 scratch project.
+
+The Development module needs migrations
+`20260926120000_development_module.sql`,
+`20260926150000_development_task_types.sql` and
+`20260926160000_development_branch_numbering.sql` (in that order), and a GitHub
+App: see the `GITHUB_*`
+variables in `.env.example` for the URLs, permissions and events to configure.
+To check the migration, run
+`supabase/tests/20260926120000_development_module.sql` against a scratch
+project.
 
 Start the development server:
 

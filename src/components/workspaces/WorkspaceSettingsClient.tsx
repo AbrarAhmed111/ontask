@@ -20,6 +20,7 @@ export function WorkspaceSettingsClient() {
   const [editing, setEditing] = useState(false)
   const [settingsError, setSettingsError] = useState<string | null>(null)
   const [dailyReportsSaving, setDailyReportsSaving] = useState(false)
+  const [modulesSaving, setModulesSaving] = useState(false)
 
   const handleUpdateWorkspace: typeof updateWorkspace = async patch => {
     const result = await updateWorkspace(patch)
@@ -38,6 +39,17 @@ export function WorkspaceSettingsClient() {
     if (result.success) {
       showSuccessToast(
         enabled ? 'Daily Reports turned on.' : 'Daily Reports turned off.',
+      )
+    }
+  }
+
+  const handleDevelopmentChange = async (enabled: boolean) => {
+    setModulesSaving(true)
+    const result = await handleUpdateWorkspace({ developmentEnabled: enabled })
+    setModulesSaving(false)
+    if (result.success) {
+      showSuccessToast(
+        enabled ? 'Development turned on.' : 'Development turned off.',
       )
     }
   }
@@ -68,6 +80,10 @@ export function WorkspaceSettingsClient() {
         dailyReports={{
           saving: dailyReportsSaving,
           onChange: handleDailyReportsChange,
+        }}
+        modules={{
+          saving: modulesSaving,
+          onDevelopmentChange: handleDevelopmentChange,
         }}
         guidance={{ label: tour.label, onReplay: handleReplayTour }}
         onEdit={() => {

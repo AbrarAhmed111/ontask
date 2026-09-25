@@ -15,6 +15,7 @@ const workspace = (overrides: Partial<Workspace> = {}): Workspace => ({
   timezone: 'Europe/London',
   reportTime: '09:00:00',
   dailyReportsEnabled: true,
+  developmentEnabled: false,
   accent: 'ocean',
   createdAt: '2026-01-01',
   updatedAt: '2026-01-01',
@@ -44,6 +45,13 @@ describe('WorkspaceSettingsSection', () => {
     const html = render()
     expect(html).toContain('md:grid-cols-2')
     expect(html).toContain('xl:grid-cols-3')
+  })
+
+  it('centres the page like the other workspace pages, without stretching short cards', () => {
+    const html = render()
+    expect(html).toContain('mx-auto')
+    expect(html).toContain('max-w-6xl')
+    expect(html).toContain('items-start')
   })
 
   it('offers editing the workspace to its owner only', () => {
@@ -223,5 +231,41 @@ describe('WorkspaceSettingsSection — Daily Reports', () => {
 
   it('shows the report time it will run at', () => {
     expect(renderDaily()).toContain('9:00 AM')
+  })
+})
+
+describe('WorkspaceSettingsSection — Modules', () => {
+  const modules = { saving: false, onDevelopmentChange: noop }
+
+  it('lets the owner switch Development on in a shared workspace', () => {
+    const html = render({ modules })
+    expect(html).toContain('Modules')
+    expect(html).toContain('Development')
+    expect(html).not.toMatch(/type="checkbox"[^>]*disabled/)
+  })
+
+  it('shows a member the switch read-only', () => {
+    const html = render({ modules, canManage: false })
+    expect(html).toMatch(/type="checkbox"[^>]*disabled/)
+    expect(html).toContain('Only the workspace owner can change this.')
+  })
+
+  it('has no Modules card in a personal workspace', () => {
+    const html = render({
+      modules,
+      isPersonal: true,
+      workspace: workspace({ type: 'personal' }),
+    })
+    expect(html).not.toContain('Modules')
+  })
+
+  it('shows the GitHub card only while Development is on', () => {
+    expect(render({ modules })).not.toContain('>GitHub<')
+    const on = render({
+      modules,
+      workspace: workspace({ developmentEnabled: true }),
+    })
+    expect(on).toContain('GitHub')
+    expect(on).toMatch(/type="checkbox"[^>]*checked/)
   })
 })

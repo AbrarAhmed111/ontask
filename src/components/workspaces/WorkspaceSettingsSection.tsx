@@ -1,8 +1,10 @@
 import { ReactNode } from 'react'
 import {
   Bell,
+  Blocks,
   CircleHelp,
   FileText,
+  GitBranch,
   Settings2,
   Sparkles,
   SlidersHorizontal,
@@ -16,6 +18,8 @@ import { getWorkspaceTheme } from '@/lib/workspaceThemes'
 import { PERSONAL_WORKSPACE_NAME } from '@/lib/workspaces'
 import { Workspace } from '@/types/workspace'
 import { SlackIntegrationCard } from '@/components/settings/SlackIntegrationCard'
+import { SettingsCard } from '@/components/settings/SettingsCard'
+import { GithubIntegrationCard } from '@/components/settings/GithubIntegrationCard'
 
 function DetailRow({ label, value }: { label: string; value: ReactNode }) {
   return (
@@ -24,30 +28,6 @@ function DetailRow({ label, value }: { label: string; value: ReactNode }) {
         {label}
       </p>
       <p className="max-w-[60%] truncate text-xs font-bold text-ink">{value}</p>
-    </div>
-  )
-}
-
-function SettingsCard({
-  icon: Icon,
-  title,
-  action,
-  children,
-}: {
-  icon: typeof Settings2
-  title: string
-  action?: ReactNode
-  children: ReactNode
-}) {
-  return (
-    <div className="rounded-2xl border border-line bg-panel shadow-sm">
-      <div className="flex min-h-[57px] items-center justify-between border-b border-line/70 px-5 py-3">
-        <h2 className="flex items-center gap-2 text-sm font-bold tracking-tight text-ink">
-          <Icon size={15} /> {title}
-        </h2>
-        {action}
-      </div>
-      {children}
     </div>
   )
 }
@@ -76,6 +56,7 @@ export function WorkspaceSettingsSection({
   canManage,
   preferences,
   dailyReports,
+  modules,
   guidance,
   onEdit,
 }: {
@@ -95,12 +76,21 @@ export function WorkspaceSettingsSection({
   guidance?: { label: string; onReplay: () => void }
   // Turning the Daily Report on or off; omit to leave the card out.
   dailyReports?: { saving: boolean; onChange: (enabled: boolean) => void }
+  // Switching optional modules (Development) on or off; shared workspaces
+  // only. Omit to leave the card out.
+  modules?: {
+    saving: boolean
+    onDevelopmentChange: (enabled: boolean) => void
+  }
   onEdit: () => void
 }) {
   const theme = getWorkspaceTheme(workspace?.accent)
 
   return (
-    <div className="grid w-full max-w-[1200px] gap-6 md:grid-cols-2 xl:grid-cols-3">
+    // Centred and capped like the other workspace pages (Ideas is max-w-6xl);
+    // `items-start` so a tall card (GitHub, Slack) doesn't stretch the short
+    // ones beside it into empty boxes.
+    <div className="mx-auto grid w-full max-w-6xl items-start gap-6 md:grid-cols-2 xl:grid-cols-3">
       <SettingsCard
         icon={Settings2}
         title={isPersonal ? 'Personal Workspace settings' : 'Workspace details'}
@@ -177,6 +167,35 @@ export function WorkspaceSettingsSection({
             </p>
           </div>
         </SettingsCard>
+      )}
+
+      {modules && !isPersonal && workspace && (
+        <SettingsCard icon={Blocks} title="Modules">
+          <div className="space-y-3 px-5 py-4">
+            <PreferenceToggle
+              icon={GitBranch}
+              title="Development"
+              description="Development Tasks with generated branch names, tracked automatically through GitHub branches and Pull Requests."
+              checked={workspace.developmentEnabled}
+              disabled={!ready || !canManage || modules.saving}
+              onChange={modules.onDevelopmentChange}
+            />
+            <p className="text-[10px] leading-4 text-muted">
+              {!canManage
+                ? 'Only the workspace owner can change this.'
+                : workspace.developmentEnabled
+                  ? 'Turning this off hides Development from the workspace. Development Tasks and their tracking are kept, and come back when it is turned on again.'
+                  : 'Tasks, Goals, Resources, Activity and Notifications are always on.'}
+            </p>
+          </div>
+        </SettingsCard>
+      )}
+
+      {!isPersonal && workspace?.developmentEnabled && (
+        <GithubIntegrationCard
+          workspaceId={workspace.id}
+          canManage={canManage}
+        />
       )}
 
       {!isPersonal && workspace && (
