@@ -265,6 +265,7 @@ export function useWorkspaceTaskActions({
     if (update.progressPercentage !== undefined)
       row.progress_percentage = update.progressPercentage ?? null
     if (update.ideaId !== undefined) row.idea_id = update.ideaId ?? null
+    if (update.priority !== undefined) row.priority = update.priority ?? null
     if (Object.keys(row).length === 0) return
     const supabase = createClient()
     void supabase

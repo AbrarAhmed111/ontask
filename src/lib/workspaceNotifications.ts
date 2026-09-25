@@ -38,18 +38,26 @@ export type NotificationRow = {
 
 // Where a notification leads. Always its workspace; for one about a task, also
 // that task, so the page can bring it into view (and open the Goal it's in);
-// for a Daily Update mention, the Daily Updates page.
+// for a Daily Update mention, the Daily Updates page; for GitHub progress on a
+// Development Task, that task opened in the Overview's Development section.
 // Routing is slug-based -- the notification's workspaceSlug is already the
 // personal alias for a personal workspace.
 export function notificationHref(
   notification: Pick<
     NotificationWithWorkspace,
     'workspaceSlug' | 'entityType' | 'entityId'
-  >,
+  > &
+    Partial<Pick<NotificationWithWorkspace, 'notificationType'>>,
 ): string {
   const base = `/workspaces/${notification.workspaceSlug}`
   // Being tagged in a Daily Update leads to the Daily Updates page.
   if (notification.entityType === 'daily_update') return `${base}/daily-updates`
+  if (
+    notification.notificationType?.startsWith('development_') &&
+    notification.entityId
+  ) {
+    return `${base}?devtask=${encodeURIComponent(notification.entityId)}`
+  }
   return notification.entityType === 'task' && notification.entityId
     ? `${base}?task=${encodeURIComponent(notification.entityId)}`
     : base

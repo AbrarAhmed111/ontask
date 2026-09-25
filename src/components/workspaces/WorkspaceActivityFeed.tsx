@@ -9,6 +9,11 @@ function withDetail(value: unknown): string {
 
 type NamedMember = { name?: string }
 
+// " #142" when the event names its Pull Request.
+function prNumber(metadata: Record<string, unknown>): string {
+  return typeof metadata.pr_number === 'number' ? ` #${metadata.pr_number}` : ''
+}
+
 // What an edit to a blocker changed, in words: who was added or removed. A
 // wording-only edit adds nothing after the sentence.
 function describeBlockerUpdate(metadata: Record<string, unknown>): string {
@@ -47,6 +52,9 @@ function describeEvent(event: ActivityEvent, actorName: string): string {
     case 'resumed':
       return `${actorName} resumed "${title}"${under}`
     case 'completed':
+      // A merged Pull Request finished it, not a person.
+      if (event.metadata.source === 'github')
+        return `"${title}"${under} was completed — Pull Request${prNumber(event.metadata)} was merged`
       return `${actorName} completed "${title}"${under}`
     case 'skipped':
       return `${actorName} skipped "${title}"${under}`
@@ -125,6 +133,20 @@ function describeEvent(event: ActivityEvent, actorName: string): string {
       return `${actorName} updated "${event.metadata.file_name}"`
     case 'resource_deleted':
       return `${actorName} deleted "${event.metadata.file_name}"`
+    // Development Tasks. GitHub is what happened; the actor recorded is the
+    // task's assignee, whose branch it is.
+    case 'development_tracking_enabled':
+      return `${actorName} started tracking "${title}" on branch ${event.metadata.branch}`
+    case 'development_branch_detected':
+      return `${actorName}'s branch ${event.metadata.branch} was detected — "${title}" is in development`
+    case 'development_pr_opened':
+      return event.metadata.reopened
+        ? `Pull Request${prNumber(event.metadata)} was reopened — "${title}" is in review`
+        : `Pull Request${prNumber(event.metadata)} was opened — "${title}" moved to In Review`
+    case 'development_pr_closed':
+      return `Pull Request${prNumber(event.metadata)} was closed without merging — "${title}" is back in development`
+    case 'development_pr_merged':
+      return `Pull Request${prNumber(event.metadata)} was merged for "${title}"`
     default:
       return `${actorName} updated "${title}"${under}`
   }

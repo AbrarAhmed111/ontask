@@ -13,6 +13,7 @@ const workspace: Workspace = {
   timezone: 'Europe/London',
   reportTime: '12:00:00',
   dailyReportsEnabled: true,
+  developmentEnabled: false,
   accent: 'ocean',
   createdAt: '2026-01-01T00:00:00Z',
   updatedAt: '2026-01-02T00:00:00Z',

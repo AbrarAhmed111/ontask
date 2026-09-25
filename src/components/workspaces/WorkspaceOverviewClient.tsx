@@ -7,6 +7,7 @@ import { useOptionalWorkspaceBlockers } from '@/components/workspaces/WorkspaceB
 import { TaskBlockerActionsContext } from '@/components/blockers/TaskBlockerActionsContext'
 import type { BlockedNowItem } from '@/components/blockers/BlockedNowPanel'
 import { WorkspaceGoalsSection } from '@/components/workspaces/WorkspaceGoalsSection'
+import { WorkspaceDevelopmentSection } from '@/components/development/WorkspaceDevelopmentSection'
 import { WorkspaceResourcesSection } from '@/components/workspaces/WorkspaceResourcesSection'
 import { WorkspaceActivitySection } from '@/components/workspaces/WorkspaceActivitySection'
 import { WorkspaceSummarySection } from '@/components/workspaces/WorkspaceSummarySection'
@@ -403,6 +404,9 @@ export function WorkspaceOverviewClient() {
         onAddGoal={openAddGoal}
         ideas={linkableIdeas}
       />
+
+      {/* Only renders while the workspace has the Development module on. */}
+      <WorkspaceDevelopmentSection goals={goals} />
 
       <WorkspaceResourcesSection
         ready={ready && resourcesReady}

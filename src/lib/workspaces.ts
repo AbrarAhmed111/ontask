@@ -21,6 +21,8 @@ export type WorkspaceRow = {
   report_time: string
   // Absent until migration 0042 is applied; see rowToWorkspace.
   daily_reports_enabled?: boolean
+  // Absent until the Development module migration is applied.
+  development_enabled?: boolean
   accent: string
   created_at: string
   updated_at: string
@@ -41,6 +43,7 @@ export function rowToWorkspace(row: WorkspaceRow): Workspace {
     // Until the migration is applied there is no column: report the product
     // default (a personal workspace opt-in, a shared one on) rather than guess.
     dailyReportsEnabled: row.daily_reports_enabled ?? row.type !== 'personal',
+    developmentEnabled: row.development_enabled ?? false,
     accent: row.accent,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -57,6 +60,7 @@ export type WorkspacePatch = Partial<
     | 'reportTime'
     | 'accent'
     | 'dailyReportsEnabled'
+    | 'developmentEnabled'
   >
 >
 
@@ -73,6 +77,8 @@ export function workspacePatchToRow(
   if (patch.accent !== undefined) row.accent = patch.accent
   if (patch.dailyReportsEnabled !== undefined)
     row.daily_reports_enabled = patch.dailyReportsEnabled
+  if (patch.developmentEnabled !== undefined)
+    row.development_enabled = patch.developmentEnabled
   return row
 }
 

@@ -27,6 +27,10 @@ export type Workspace = {
   // (supabase/migrations/0042). Turning it off hides the report section and
   // stops new reports, and keeps the ones already stored.
   dailyReportsEnabled: boolean
+  // Whether the optional Development module (GitHub branch/PR tracking) is on.
+  // Owner-configurable, shared workspaces only, off by default. Turning it off
+  // hides the module; its tasks and tracking data are kept.
+  developmentEnabled: boolean
   accent: string
   createdAt: string
   updatedAt: string
@@ -107,6 +111,9 @@ export type WorkspaceInvitation = {
 export type WorkspaceTaskStatus =
   'queued' | 'working' | 'paused' | 'blocked' | 'completed' | 'skipped'
 
+// OnTask's one priority scale. Optional on any task; set by Development Tasks.
+export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent'
+
 export type TaskCollaborator = {
   id: string
   taskId: string
@@ -146,8 +153,67 @@ export type WorkspaceTask = {
   // workspace Goal".
   progressLabel?: string
   progressPercentage?: number
+  priority?: TaskPriority | null
   startedAt: number | null
   completedAt: number | null
+}
+
+// ── Development module ──────────────────────────────────────────────────────
+// A Development Task is an ordinary WorkspaceTask plus one TaskDevelopment
+// record: the branch name OnTask generated and what GitHub has reported about
+// that branch and its Pull Request. See
+// supabase/migrations/20260926120000_development_module.sql.
+
+// GitHub progress, kept apart from the task's own (timer) status.
+export type DevelopmentTrackingStatus =
+  | 'waiting'
+  | 'branch_detected'
+  | 'in_review'
+  // The PR was closed WITHOUT merging -- the work is back in development.
+  | 'pr_closed'
+  | 'merged'
+
+export type PullRequestState = 'open' | 'closed' | 'merged'
+
+// What kind of change a Development Task is. Also decides its branch prefix
+// (feature/, fix/, ...) -- see lib/development/tracking.ts.
+export type DevelopmentWorkType =
+  'feature' | 'bug' | 'hotfix' | 'improvement' | 'refactor' | 'chore' | 'docs'
+
+export type TaskDevelopment = {
+  taskId: string
+  workspaceId: string
+  branchName: string
+  workType: DevelopmentWorkType
+  repositoryFullName: string | null
+  branchDetectedAt: string | null
+  prNumber: number | null
+  prUrl: string | null
+  prTitle: string | null
+  prState: PullRequestState | null
+  prOpenedAt: string | null
+  prClosedAt: string | null
+  prMergedAt: string | null
+  trackingStatus: DevelopmentTrackingStatus
+  createdAt: string
+}
+
+export type GithubConnectionStatus =
+  | 'connected'
+  | 'repository_required'
+  | 'repository_access_lost'
+  | 'suspended'
+  | 'disconnected'
+
+// A workspace's GitHub connection as members see it. It holds no credential:
+// the server mints short-lived tokens from the GitHub App on demand.
+export type GithubConnection = {
+  workspaceId: string
+  accountLogin: string | null
+  repositoryFullName: string | null
+  repositoryUrl: string | null
+  status: GithubConnectionStatus
+  updatedAt: string
 }
 
 export type GoalStatus = 'active' | 'completed' | 'archived'
@@ -317,6 +383,11 @@ export type NotificationType =
   // Tagged in a member's Daily Update (once per update, however often it is
   // edited -- supabase/migrations/0049_daily_updates.sql).
   | 'daily_update_mention'
+  // The assignee's own development work, as GitHub reported it -- one each per
+  // Development Task, never one per commit.
+  | 'development_branch_detected'
+  | 'development_pr_opened'
+  | 'development_pr_merged'
 
 export type NotificationEntityType =
   'task' | 'goal' | 'resource' | 'note' | 'workspace' | 'daily_update'

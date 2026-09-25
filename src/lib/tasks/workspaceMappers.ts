@@ -1,5 +1,6 @@
 import {
   TaskCollaborator,
+  TaskPriority,
   WorkspaceTask,
   WorkspaceTaskStatus,
 } from '@/types/workspace'
@@ -19,6 +20,7 @@ export type WorkspaceTaskRow = {
   status: WorkspaceTaskStatus
   progress_label: string | null
   progress_percentage: number | null
+  priority?: TaskPriority | null
   started_at: string | null
   completed_at: string | null
   completed_cleared_at?: string | null
@@ -120,6 +122,7 @@ export function rowToTask(row: WorkspaceTaskRow): WorkspaceTask {
       : null,
     progressLabel: row.progress_label ?? undefined,
     progressPercentage: row.progress_percentage ?? undefined,
+    priority: row.priority ?? null,
     startedAt: row.started_at ? new Date(row.started_at).getTime() : null,
     completedAt: row.completed_at ? new Date(row.completed_at).getTime() : null,
   }
