@@ -1,6 +1,6 @@
 'use client'
 
-import { KeyboardEvent, useRef, useState } from 'react'
+import { KeyboardEvent, ReactNode, useRef, useState } from 'react'
 import { AtSign, X } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
 import { MemberMentionPicker } from '@/components/mentions/MemberMentionPicker'
@@ -11,10 +11,22 @@ export function IdeaCreditsPicker({
   members,
   creditedUserIds,
   onChange,
+  label = (
+    <>
+      Credits To{' '}
+      <span className="font-normal text-muted/80">
+        (who came up with this idea?)
+      </span>
+    </>
+  ),
+  listId = 'idea-credits-picker',
 }: {
   members: WorkspaceMember[]
   creditedUserIds: string[]
   onChange: (userIds: string[]) => void
+  // The field's heading; defaults to the Idea form's wording.
+  label?: ReactNode
+  listId?: string
 }) {
   const [query, setQuery] = useState('')
   const [isOpen, setIsOpen] = useState(false)
@@ -68,12 +80,7 @@ export function IdeaCreditsPicker({
 
   return (
     <div className="space-y-2">
-      <label className="block text-xs font-semibold text-muted">
-        Credits To{' '}
-        <span className="font-normal text-muted/80">
-          (who came up with this idea?)
-        </span>
-      </label>
+      <label className="block text-xs font-semibold text-muted">{label}</label>
 
       {/* Selected Member Chips */}
       {creditedMembers.length > 0 && (
@@ -124,7 +131,7 @@ export function IdeaCreditsPicker({
 
         {isOpen && filtered.length > 0 && (
           <MemberMentionPicker
-            id="idea-credits-picker"
+            id={listId}
             members={filtered}
             activeIndex={activeIndex}
             onSelect={selectUser}
