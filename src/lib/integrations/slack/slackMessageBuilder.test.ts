@@ -712,6 +712,30 @@ describe('buildSlackEventMessage — Development Tasks', () => {
       ) as { elements: { text: { text: string }; url: string }[] }
     ).elements.map(button => [button.text.text, button.url])
 
+  it('creation: looks like a Development Task, not a normal Goal Task', () => {
+    const message = buildSlackEventMessage({
+      ...base,
+      eventType: 'development_task_created',
+      development: {
+        workType: 'feature',
+        branch: 'feature/google-oauth-abrar',
+      },
+    })
+    const rendered = JSON.stringify(message.blocks)
+
+    expect(rendered).toContain('Development Task Created')
+    expect(rendered).toContain('as a *Feature* development task')
+    expect(rendered).toContain('*Branch:* `feature/google-oauth-abrar`')
+    expect(rendered).toContain('*Goal:* Auth v2')
+    expect(rendered).toContain(
+      'http://localhost:3000/workspaces/devabby?devtask=task-9',
+    )
+    expect(rendered).not.toContain('Goal Task Added')
+    expect(message.fallbackText).toBe(
+      '[DevAbby] Abrar created Development Task "Implement Google OAuth" (feature/google-oauth-abrar) in goal "Auth v2"',
+    )
+  })
+
   it('In Development: the branch, linked, and a View Branch button', () => {
     const message = buildSlackEventMessage({
       ...base,
@@ -740,6 +764,60 @@ describe('buildSlackEventMessage — Development Tasks', () => {
     expect(message.fallbackText).toBe(
       '[DevAbby] Development Task — In Development: "Implement Google OAuth" (feature/google-oauth-abrar)',
     )
+  })
+
+  it('Needs Attention, branch deleted: the reason, and no dead GitHub link', () => {
+    const message = buildSlackEventMessage({
+      ...base,
+      development: {
+        ...development,
+        status: 'needs_attention',
+        attentionReason: 'branch_deleted',
+      },
+    })
+    const rendered = JSON.stringify(message.blocks)
+
+    expect(rendered).toContain('Development Task — Needs Attention')
+    expect(rendered).toContain('*Branch:* `feature/google-oauth-abrar`')
+    expect(rendered).toContain(
+      '*Reason:* Tracked branch was deleted before the PR was merged.',
+    )
+    expect(rendered).not.toContain('github.com/acme/ontask/tree')
+    expect(buttons(message)).toEqual([
+      [
+        'Open in OnTask',
+        'http://localhost:3000/workspaces/devabby?devtask=task-9',
+      ],
+    ])
+    expect(message.fallbackText).toBe(
+      '[DevAbby] Development Task — Needs Attention: "Implement Google OAuth" (feature/google-oauth-abrar) — Tracked branch was deleted before the PR was merged.',
+    )
+  })
+
+  it('Needs Attention, PR closed: the reason and the closed Pull Request', () => {
+    const message = buildSlackEventMessage({
+      ...base,
+      development: {
+        ...development,
+        status: 'needs_attention',
+        attentionReason: 'pr_closed',
+        prNumber: 142,
+        prUrl: 'https://github.com/acme/ontask/pull/142',
+        prTitle: 'Add Google sign-in',
+      },
+    })
+    const rendered = JSON.stringify(message.blocks)
+
+    expect(rendered).toContain(
+      '*Pull Request:* <https://github.com/acme/ontask/pull/142|#142 Add Google sign-in>',
+    )
+    expect(rendered).toContain(
+      '*Reason:* Pull request was closed without being merged.',
+    )
+    expect(buttons(message)[0]).toEqual([
+      'View Pull Request',
+      'https://github.com/acme/ontask/pull/142',
+    ])
   })
 
   it('In Review: the Pull Request, and a View Pull Request button', () => {

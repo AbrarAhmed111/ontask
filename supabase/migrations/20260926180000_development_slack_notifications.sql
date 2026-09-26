@@ -22,6 +22,93 @@
 
 alter table public.task_development add column if not exists pr_base_branch text;
 
+create or replace function public.create_development_task(
+  p_id uuid,
+  p_workspace_id uuid,
+  p_title text,
+  p_description text,
+  p_goal_id uuid,
+  p_assignee_id uuid,
+  p_priority text,
+  p_work_type text,
+  p_branch_name text
+)
+returns public.task_development
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_actor_id uuid := auth.uid();
+  v_task public.workspace_tasks%rowtype;
+  v_result public.task_development%rowtype;
+begin
+  perform public.assert_development_enabled(p_workspace_id, v_actor_id);
+
+  if p_priority is not null and p_priority not in ('low', 'medium', 'high', 'urgent') then
+    raise exception 'invalid priority' using errcode = '22023';
+  end if;
+
+  if coalesce(p_work_type, '') not in (
+    'feature', 'bug', 'hotfix', 'improvement', 'refactor', 'chore', 'docs'
+  ) then
+    raise exception 'invalid task type' using errcode = '22023';
+  end if;
+
+  if p_goal_id is not null and not exists (
+    select 1 from public.goals
+    where id = p_goal_id and workspace_id = p_workspace_id and status = 'active'
+  ) then
+    raise exception 'goal not found in this workspace' using errcode = '22023';
+  end if;
+
+  -- The shared task RPC writes the ordinary created/goal_task_created event
+  -- before task_development exists. Suppress only that Slack payload in this
+  -- transaction, then write the Development-specific event below once the
+  -- branch/work type are available.
+  perform set_config('ontask.suppress_development_task_base_created_slack', 'on', true);
+
+  v_task := public.create_workspace_task_with_collaborators(
+    p_id, p_workspace_id, null, p_goal_id, null,
+    p_title, nullif(btrim(coalesce(p_description, '')), ''),
+    null, null, null,
+    case when p_assignee_id is null then array[]::uuid[] else array[p_assignee_id] end
+  );
+
+  if p_priority is not null then
+    update public.workspace_tasks set priority = p_priority where id = v_task.id;
+  end if;
+
+  insert into public.task_development (task_id, workspace_id, branch_name, work_type, created_by)
+  values (
+    v_task.id, p_workspace_id,
+    public.claim_development_branch_name(p_workspace_id, p_branch_name, v_task.id),
+    p_work_type,
+    v_actor_id
+  )
+  returning * into v_result;
+
+  insert into public.task_events (task_id, workspace_id, goal_id, actor_id, event_type, metadata)
+  values (
+    v_task.id, v_task.workspace_id, v_task.goal_id, v_actor_id,
+    'development_tracking_enabled',
+    jsonb_build_object(
+      'title', v_task.title,
+      'branch', v_result.branch_name,
+      'work_type', v_result.work_type,
+      'source', 'create_development_task'
+    )
+  );
+
+  return v_result;
+end;
+$$;
+
+revoke all on function public.create_development_task(
+  uuid, uuid, text, text, uuid, uuid, text, text, text
+) from public, anon;
+grant execute on function public.create_development_task(
+  uuid, uuid, text, text, uuid, uuid, text, text, text
+) to authenticated;
+
 create or replace function public.apply_development_pull_request(
   p_task_id uuid, p_repository_id bigint, p_repository_full_name text, p_pr jsonb
 )
@@ -175,10 +262,17 @@ declare
   v_parent_task_id uuid;
   v_dev public.task_development%rowtype;
   v_dev_status text;
+  v_dev_created boolean := false;
   v_development jsonb;
 begin
+  if new.event_type in ('created', 'goal_task_created', 'goal_subtask_created')
+     and current_setting('ontask.suppress_development_task_base_created_slack', true) = 'on' then
+    return null;
+  end if;
+
   -- A Development Task's stage, as OnTask recorded it. Only these three
   -- events move a Development Task forward in a way worth announcing:
+  --   development_tracking_enabled -> Created with a branch to copy
   --   development_branch_detected  -> In Development
   --   development_pr_opened        -> In Review
   --   completed (source = github)  -> Completed. This is the task's own
@@ -190,14 +284,18 @@ begin
   -- by the completion it causes rather than twice. A commit or push never
   -- writes an event at all.
   if new.task_id is not null and (
+    new.event_type = 'development_tracking_enabled'
+    or
     new.event_type in ('development_branch_detected', 'development_pr_opened')
     or (new.event_type = 'completed' and new.metadata->>'source' = 'github')
   ) then
     select * into v_dev from public.task_development where task_id = new.task_id;
     if v_dev.task_id is not null then
+      v_dev_created := new.event_type = 'development_tracking_enabled';
       v_dev_status := case new.event_type
         when 'development_branch_detected' then 'in_development'
         when 'development_pr_opened' then 'in_review'
+        when 'development_tracking_enabled' then null
         else 'completed'
       end;
     end if;
@@ -230,6 +328,7 @@ begin
   end if;
 
   v_slack_event_type := case
+    when v_dev_created then 'development_task_created'
     when v_dev_status is not null then 'development_status_changed'
     else case new.event_type
       when 'created' then 'task_created'
@@ -284,7 +383,7 @@ begin
     nullif(new.metadata->>'removed_user_id', '')
   );
   -- Everyone the Development Task is assigned to.
-  if v_dev_status is not null then
+  if v_dev_status is not null or v_dev_created then
     select coalesce(jsonb_agg(c.user_id order by c.created_at), '[]'::jsonb)
       into v_recipient_user_ids
       from public.task_collaborators c
@@ -298,7 +397,7 @@ begin
   end if;
 
   v_recipient_user_ids := case
-    when v_dev_status is not null then coalesce(v_recipient_user_ids, '[]'::jsonb)
+    when v_dev_status is not null or v_dev_created then coalesce(v_recipient_user_ids, '[]'::jsonb)
     when jsonb_typeof(new.metadata->'to_user_ids') = 'array'
       then new.metadata->'to_user_ids'
     when v_recipient_user_id is not null
@@ -348,7 +447,7 @@ begin
     select name into v_goal_name from public.goals where id = new.goal_id;
   end if;
 
-  if v_dev_status is not null then
+  if v_dev_status is not null or v_dev_created then
     v_entity_type := 'development_task';
     v_entity_id := new.task_id::text;
     -- The branch, always; the Pull Request only once there is one to review

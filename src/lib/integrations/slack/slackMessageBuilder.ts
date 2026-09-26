@@ -39,10 +39,23 @@ export type SlackEntityType =
  * OnTask's own; GitHub only supplied what moved it there.
  */
 export type SlackDevelopmentStatus =
-  'in_development' | 'in_review' | 'completed'
+  'in_development' | 'in_review' | 'completed' | 'needs_attention'
+
+/** Why a Development Task Needs Attention (migration 20260926190000). */
+export type SlackDevelopmentAttentionReason = 'branch_deleted' | 'pr_closed'
+
+const DEVELOPMENT_ATTENTION_REASONS: Record<
+  SlackDevelopmentAttentionReason,
+  string
+> = {
+  branch_deleted: 'Tracked branch was deleted before the PR was merged.',
+  pr_closed: 'Pull request was closed without being merged.',
+}
 
 export interface SlackDevelopmentDetails {
-  status: SlackDevelopmentStatus
+  status?: SlackDevelopmentStatus | null
+  /** Needs Attention only. */
+  attentionReason?: SlackDevelopmentAttentionReason | null
   workType?: string | null
   branch?: string | null
   /** owner/name of the connected repository, once the branch has been seen. */
@@ -58,6 +71,7 @@ const DEVELOPMENT_STATUS_LABELS: Record<SlackDevelopmentStatus, string> = {
   in_development: 'In Development',
   in_review: 'In Review',
   completed: 'Completed',
+  needs_attention: 'Needs Attention',
 }
 
 export interface EventSlackPayload {
@@ -93,7 +107,7 @@ export interface EventSlackPayload {
    *  stored report by the dispatcher. Absent means there was no report to read
    *  — never "summarise it here instead". */
   report?: DailyReportDigest | null
-  /** Present for 'development_status_changed' only. */
+  /** Present for the development_* event types only. */
   development?: SlackDevelopmentDetails | null
 }
 
@@ -399,6 +413,30 @@ export function buildSlackEventMessage(
     }
 
     // ── Development Tasks ────────────────────────────────────────────────
+    case 'development_task_created': {
+      const development = payload.development
+      const branch = str(development?.branch)
+      const workType = str(development?.workType)
+      const typeLabel = workType
+        ? workType.charAt(0).toUpperCase() + workType.slice(1)
+        : 'Code'
+      const devTaskUrl = taskId
+        ? getDevelopmentTaskUrl(workspaceSlug, taskId)
+        : workspaceUrl
+      const assigned = assigneeText ? ` Assigned to *${assigneeText}*.` : ''
+      const branchLine = branch
+        ? `\n*Branch:* \`${escapeSlackText(branch)}\``
+        : ''
+
+      return message({
+        heading: '💻 Development Task Created',
+        body: `*${actor}* created ${taskLink} as a *${escapeSlackText(typeLabel)}* development task.${assigned}${branchLine}`,
+        fallback: `${actorName} created Development Task "${taskTitle}"${branch ? ` (${branch})` : ''}${goalName ? ` in goal "${goalName}"` : ''}`,
+        url: devTaskUrl,
+        goal: goalName,
+      })
+    }
+
     // One message per stage OnTask moved the task to. It is about the code as
     // much as the task, so it carries the branch and, once there is one, the
     // Pull Request -- with a button straight to it on GitHub, and one back to
@@ -430,8 +468,11 @@ export function buildSlackEventMessage(
       const devTaskUrl = taskId
         ? getDevelopmentTaskUrl(workspaceSlug, taskId)
         : workspaceUrl
+      const branchGone =
+        status === 'needs_attention' &&
+        development.attentionReason === 'branch_deleted'
       const branchUrl =
-        branch && repository
+        branch && repository && !branchGone
           ? getGithubBranchUrl(repository, branch)
           : undefined
 
@@ -448,6 +489,22 @@ export function buildSlackEventMessage(
         lines.push(
           `*Pull Request:* <${prUrl}|${escapeSlackText(name || 'View on GitHub')}>`,
         )
+      }
+      if (status === 'needs_attention') {
+        const reason = development.attentionReason
+        const reasonText =
+          reason && reason in DEVELOPMENT_ATTENTION_REASONS
+            ? DEVELOPMENT_ATTENTION_REASONS[reason]
+            : 'Something on GitHub needs a person to look at it.'
+        if (reason === 'pr_closed' && prUrl) {
+          const name = [prNumber !== null ? `#${prNumber}` : null, prTitle]
+            .filter(Boolean)
+            .join(' ')
+          lines.push(
+            `*Pull Request:* <${prUrl}|${escapeSlackText(name || 'View on GitHub')}>`,
+          )
+        }
+        lines.push(`*Reason:* ${escapeSlackText(reasonText)}`)
       }
       if (status === 'completed') {
         const pr = prNumber !== null ? `PR #${prNumber}` : 'PR'
@@ -476,11 +533,14 @@ export function buildSlackEventMessage(
       })
 
       // The GitHub button is what the stage is about: the branch while it is
-      // being built, the Pull Request once there is one.
+      // being built, the Pull Request once there is one. A deleted branch has
+      // nothing left on GitHub to link to.
       const githubButton =
         status === 'in_development'
           ? branchUrl && { text: 'View Branch', url: branchUrl }
-          : prUrl && { text: 'View Pull Request', url: prUrl }
+          : branchGone
+            ? undefined
+            : prUrl && { text: 'View Pull Request', url: prUrl }
       const buttons = [
         ...(githubButton
           ? [
@@ -505,7 +565,7 @@ export function buildSlackEventMessage(
 
       const heading = `💻 Development Task — ${label}`
       return {
-        fallbackText: `[${workspaceName}] Development Task — ${label}: "${taskTitle}"${branch ? ` (${branch})` : ''}${status === 'completed' && baseBranch ? `, merged into ${baseBranch}` : ''}`,
+        fallbackText: `[${workspaceName}] Development Task — ${label}: "${taskTitle}"${branch ? ` (${branch})` : ''}${status === 'completed' && baseBranch ? `, merged into ${baseBranch}` : ''}${status === 'needs_attention' && development.attentionReason && development.attentionReason in DEVELOPMENT_ATTENTION_REASONS ? ` — ${DEVELOPMENT_ATTENTION_REASONS[development.attentionReason]}` : ''}`,
         blocks: [
           {
             type: 'header',

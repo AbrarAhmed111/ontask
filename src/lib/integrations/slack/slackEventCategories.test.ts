@@ -41,6 +41,7 @@ const DISPATCHED_EVENT_TYPES = [
   'work_session_started',
   'work_session_ended',
   // Development Tasks (migration 20260926180000).
+  'development_task_created',
   'development_status_changed',
   'daily_report_ready',
 ]
@@ -63,7 +64,10 @@ describe('slackPreferenceKeyFor', () => {
     }
   })
 
-  it('gives Development Task status changes their own switch', () => {
+  it('gives Development Task notifications their own switch', () => {
+    expect(slackPreferenceKeyFor('development_task_created')).toBe(
+      'development',
+    )
     expect(slackPreferenceKeyFor('development_status_changed')).toBe(
       'development',
     )
