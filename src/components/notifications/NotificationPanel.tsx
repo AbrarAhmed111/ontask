@@ -4,6 +4,8 @@ import { timeAgo } from '@/lib/time'
 import { getWorkspaceTheme } from '@/lib/workspaceThemes'
 import {
   groupNotificationsByWorkspace,
+  notificationAction,
+  notificationBody,
   notificationHref,
 } from '@/lib/workspaceNotifications'
 import { NotificationWithWorkspace, WorkspaceType } from '@/types/workspace'
@@ -44,6 +46,8 @@ function NotificationItem({
   onNavigate: () => void
 }) {
   const unread = !notification.readAt
+  const body = notificationBody(notification)
+  const action = notificationAction(notification)
   return (
     <li className="animate-[slideInFade_260ms_ease-out]">
       <Link
@@ -63,9 +67,9 @@ function NotificationItem({
               {notification.title}
             </p>
             {/* A blocker's body is the task, then its reason, one per line. */}
-            {notification.body && (
+            {body && (
               <p className="mt-0.5 line-clamp-2 whitespace-pre-line break-words text-[11px] text-muted">
-                {notification.body}
+                {body}
               </p>
             )}
             <div className="mt-1.5 flex items-center gap-2">
@@ -77,6 +81,19 @@ function NotificationItem({
           </div>
         </div>
       </Link>
+      {/* A sibling of the main link, never inside it: links don't nest. */}
+      {action && (
+        <Link
+          href={action.href}
+          onClick={() => {
+            if (unread) onMarkRead(notification.id)
+            onNavigate()
+          }}
+          className="-mt-1.5 mb-2 ml-[26px] inline-block text-[11px] font-semibold text-[var(--ws-accent,#375b4b)] hover:underline"
+        >
+          {action.label}
+        </Link>
+      )}
     </li>
   )
 }

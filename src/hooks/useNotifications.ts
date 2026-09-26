@@ -12,6 +12,11 @@ import {
   rowsToNotifications,
 } from '@/lib/workspaceNotifications'
 import { onResync } from '@/lib/realtime/onResync'
+import {
+  browserPreferenceFor,
+  rememberBrowserPreference,
+  showBrowserNotification,
+} from '@/lib/browserNotifications'
 
 const LIMIT = 50
 const NO_NOTIFICATIONS: NotificationWithWorkspace[] = []
@@ -87,6 +92,20 @@ export function useNotifications(
 
     fetchNotifications()
 
+    // The desktop-notification preference, read once per user per session.
+    if (browserPreferenceFor(userId) === null) {
+      void supabase
+        .from('user_notification_preferences')
+        .select('enabled')
+        .eq('user_id', userId)
+        .eq('preference_key', 'browser')
+        .maybeSingle()
+        .then(({ data, error: prefError }) => {
+          if (!prefError)
+            rememberBrowserPreference(userId, data?.enabled !== false)
+        })
+    }
+
     const stopResync = onResync(() => fetchNotifications())
 
     // The scope is in the channel name so a workspace switch never reuses --
@@ -109,6 +128,13 @@ export function useNotifications(
               setLoaded(current => current.filter(n => n.id !== deletedId))
             return
           }
+          // A new notification can also pop up on the desktop -- from any
+          // workspace, before this bell's own scope is applied: a personal
+          // event's reminder matters wherever the user happens to be.
+          if (payload.eventType === 'INSERT')
+            showBrowserNotification(
+              payload.new as Parameters<typeof showBrowserNotification>[0],
+            )
           // Realtime can only filter on one column, so a shared workspace's
           // bell skips other workspaces' changes here rather than refetching
           // for something it won't display.

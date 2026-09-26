@@ -8,6 +8,7 @@ import {
   PERSONAL_WORKSPACE_NAME,
   PERSONAL_WORKSPACE_SLUG,
 } from '@/lib/workspaces'
+import { formatOccurrence } from '@/lib/events'
 
 type EmbeddedWorkspace = {
   slug: string
@@ -30,6 +31,8 @@ export type NotificationRow = {
   actor_id: string | null
   read_at: string | null
   created_at: string
+  // Absent until the Events migration is applied.
+  metadata?: Record<string, unknown> | null
   // Embedded via the workspaces(id) FK. Routing is entirely slug-based (never
   // workspace_id), so the slug is what a notification deep-links with; a
   // personal workspace is addressed by its alias, not its stored slug.
@@ -52,6 +55,12 @@ export function notificationHref(
   const base = `/workspaces/${notification.workspaceSlug}`
   // Being tagged in a Daily Update leads to the Daily Updates page.
   if (notification.entityType === 'daily_update') return `${base}/daily-updates`
+  // An event opens on its workspace's Events page. A deleted one isn't in the
+  // list any more, so the page simply shows the list.
+  if (notification.entityType === 'event')
+    return notification.entityId
+      ? `${base}/events?event=${encodeURIComponent(notification.entityId)}`
+      : `${base}/events`
   if (
     notification.notificationType?.startsWith('development_') &&
     notification.entityId
@@ -90,11 +99,72 @@ export function rowToNotification(
     actorId: row.actor_id,
     readAt: row.read_at,
     createdAt: row.created_at,
+    metadata: row.metadata ?? null,
     workspaceSlug: personal ? PERSONAL_WORKSPACE_SLUG : workspace.slug,
     workspaceName: personal ? PERSONAL_WORKSPACE_NAME : workspace.name,
     workspaceType: workspace.type,
     workspaceAccent: workspace.accent,
   }
+}
+
+const EVENT_REMINDER_TYPES = new Set([
+  'event_reminder',
+  'personal_event_reminder',
+])
+
+// What a notification says under its title. An event reminder is re-worded
+// from its occurrence instant at read time -- "Today · 9:00 AM" stays true
+// however long it waits in the bell -- on the event's own clock; everything
+// else shows the body it was written with.
+export function notificationBody(
+  notification: Pick<
+    NotificationWithWorkspace,
+    'notificationType' | 'body' | 'metadata'
+  >,
+  now: number = Date.now(),
+): string | null {
+  const meta = notification.metadata
+  const occurrenceAt =
+    typeof meta?.occurrenceAt === 'string' ? meta.occurrenceAt : null
+  const timezone = typeof meta?.timezone === 'string' ? meta.timezone : null
+  if (
+    !EVENT_REMINDER_TYPES.has(notification.notificationType) ||
+    !occurrenceAt ||
+    !timezone ||
+    Number.isNaN(Date.parse(occurrenceAt))
+  )
+    return notification.body
+  const label =
+    notification.notificationType === 'personal_event_reminder'
+      ? 'Personal Event'
+      : 'Workspace Event'
+  const when = formatOccurrence(
+    new Date(occurrenceAt).toISOString(),
+    timezone,
+    now,
+  )
+  return meta?.dailyUpdatePrompt === true
+    ? `${label} · ${when}\nMake sure your Daily Update is ready.`
+    : `${label} · ${when}`
+}
+
+// A second action a notification offers besides opening it, if any.
+export function notificationAction(
+  notification: Pick<
+    NotificationWithWorkspace,
+    'notificationType' | 'metadata' | 'workspaceSlug' | 'workspaceType'
+  >,
+): { label: string; href: string } | null {
+  if (
+    notification.notificationType === 'event_reminder' &&
+    notification.metadata?.dailyUpdatePrompt === true &&
+    notification.workspaceType === 'shared'
+  )
+    return {
+      label: 'Write Daily Update',
+      href: `/workspaces/${notification.workspaceSlug}/daily-updates`,
+    }
+  return null
 }
 
 export function rowsToNotifications(
