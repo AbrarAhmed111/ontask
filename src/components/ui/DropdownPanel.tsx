@@ -18,6 +18,16 @@ export function DropdownPanel({
   className?: string
   children: ReactNode
 }) {
+  const horizontal = align === 'right' ? 'right-0' : 'left-0'
+  const origin =
+    placement === 'above'
+      ? align === 'right'
+        ? 'origin-bottom-right'
+        : 'origin-bottom-left'
+      : align === 'right'
+        ? 'origin-top-right'
+        : 'origin-top-left'
+
   return (
     <>
       <button
@@ -27,7 +37,7 @@ export function DropdownPanel({
         onClick={onClose}
       />
       <div
-        className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} ${placement === 'above' ? 'bottom-full mb-2' : 'mt-2'} z-50 rounded-xl border border-line bg-panel shadow-xl animate-[fadeIn_150ms_ease-out] ${className}`}
+        className={`absolute ${horizontal} ${origin} ${placement === 'above' ? 'bottom-full mb-2' : 'mt-2'} z-50 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-line bg-panel shadow-xl animate-[dropdownIn_140ms_ease-out] ${className}`}
       >
         {children}
       </div>

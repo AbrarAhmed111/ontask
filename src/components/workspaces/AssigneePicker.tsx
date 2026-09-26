@@ -136,7 +136,7 @@ export function AssigneePicker({
       {open && (
         <DropdownPanel
           onClose={() => setOpen(false)}
-          align="left"
+          align="right"
           className="w-56 p-1.5"
         >
           {canUnassign && (

@@ -195,7 +195,7 @@ export function SelectMenu<T extends string>({
           onClose={() => close(false)}
           align="left"
           placement={placement}
-          className="w-full min-w-[220px] p-1"
+          className="w-full min-w-0 p-1"
         >
           <ul
             ref={listRef}
@@ -205,7 +205,7 @@ export function SelectMenu<T extends string>({
             tabIndex={-1}
             aria-activedescendant={`${listId}-${active}`}
             onKeyDown={onListKeyDown}
-            className="max-h-64 overflow-y-auto outline-none"
+            className="max-h-64 overflow-y-auto overflow-x-hidden outline-none"
           >
             {options.map((option, index) => {
               const isSelected = option.value === value

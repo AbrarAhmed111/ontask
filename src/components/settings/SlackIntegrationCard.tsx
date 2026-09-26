@@ -15,6 +15,7 @@ import {
 import { Button } from '@/components/ui/Button'
 import { ErrorBanner } from '@/components/ui/ErrorBanner'
 import { Skeleton } from '@/components/ui/Skeleton'
+import { SettingsCard } from '@/components/settings/SettingsCard'
 import { SlackChannel } from '@/lib/integrations/slack/slackClient'
 import type {
   SlackNotificationSettings,
@@ -100,9 +101,11 @@ function SlackLogo({ className = 'h-5 w-5' }: { className?: string }) {
 export function SlackIntegrationCard({
   workspaceId,
   canManage,
+  className = '',
 }: {
   workspaceId: string
   canManage: boolean
+  className?: string
 }) {
   const detail = useOptionalWorkspaceDetail()
 
@@ -326,13 +329,12 @@ export function SlackIntegrationCard({
   }
 
   return (
-    <div className="rounded-2xl border border-line bg-panel shadow-sm divide-y divide-line/70">
-      {/* Card Header */}
-      <div className="flex min-h-[52px] items-center justify-between px-5 py-3 shrink-0">
-        <h2 className="flex items-center gap-2.5 text-sm font-bold tracking-tight text-ink">
-          <SlackLogo className="h-5 w-5" /> Slack Integration
-        </h2>
-        {status?.connected ? (
+    <SettingsCard
+      icon={Share2}
+      title="Slack"
+      className={className}
+      action={
+        status?.connected ? (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
             Connected
@@ -341,8 +343,9 @@ export function SlackIntegrationCard({
           <span className="inline-flex items-center gap-1.5 rounded-full bg-subtle px-2.5 py-0.5 text-[11px] font-medium text-muted">
             Not Connected
           </span>
-        )}
-      </div>
+        )
+      }
+    >
 
       {error && <ErrorBanner variant="flush">{error}</ErrorBanner>}
 
@@ -575,6 +578,6 @@ export function SlackIntegrationCard({
           )}
         </div>
       )}
-    </div>
+    </SettingsCard>
   )
 }
