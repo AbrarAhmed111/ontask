@@ -293,8 +293,17 @@ workspace activity, never by a client insert. Each one opens the task, Goal, or
 page it is about and is marked read when opened. They cover tasks assigned or
 reassigned, tasks completed or reopened, tasks unblocked, new notes, Goals
 completed, invitation responses, members joining or leaving, a Daily Report
-becoming ready, an owner stopping your timer, and blocker mentions and
-resolutions.
+becoming ready, an owner stopping your timer, blocker mentions and resolutions,
+Development Task progress, and Event reminders, changes and cancellations.
+
+**Your notification settings** (Settings → Notifications) are per person and the
+same in every workspace: each category can be switched off, and "Browser
+notifications" also pops a desktop notification while an OnTask tab is open.
+Workspace owners decide what a workspace sends; members decide what reaches
+them. The choice is enforced in one place in the database — a trigger on
+`notifications` drops a row whose category the recipient switched off
+(`20260926210000_notification_preferences.sql`) — so every sender respects it.
+Losing access to a workspace can't be switched off.
 
 ### Guided Tours
 
@@ -432,6 +441,41 @@ Development Task and its tracking.
   opening a task re-checks GitHub (at most once a minute) in case a webhook was
   missed.
 
+### Events
+
+Events help people remember what is happening next without turning OnTask into a
+calendar: an Event is _what is happening and when_; its reminder is _when before
+it people are told_. There is an **Events** page in every workspace (a list
+grouped by day, with Upcoming / All / Workspace / Personal / Past filters) — no
+month grid.
+
+- **Personal events** are private to their creator — nobody else, not even the
+  owner, can see or change them — and remind only them. They can be created in a
+  Shared Workspace or the Personal Workspace; the Personal Workspace's Events
+  page lists all of them.
+- **Workspace events** belong to a Shared Workspace and every member sees them.
+  Reminders go to **everyone** or to **selected members**. Every member can
+  create them unless the owner turns that off (Settings → Events).
+- **Timing** — a date and time in a timezone (the workspace's by default), so
+  9:00 AM stays 9:00 AM across daylight-saving changes. Repeats: none, daily,
+  every weekday, weekly or monthly. Reminders: at event time, 5/10/15/30
+  minutes, 1 hour or 1 day before (several allowed).
+- **Reminders are sent by the database**, not a browser tab: a `pg_cron` job
+  runs every minute, sends what has come due to the notification center, and
+  records each send, so nobody is reminded twice. A reminder missed by more than
+  ten minutes is dropped rather than sent late. Moving or cancelling an event
+  tells the people it's for; cancelling or deleting stops its reminders.
+- **Overview** — the next workspace event you're part of, with a live countdown
+  that runs in the browser. It shows "Live now" once it starts, then moves on to
+  the next occurrence. The Personal Workspace shows your next personal event.
+- **Daily Updates** — a workspace event can ask people to have their Daily
+  Update ready; its reminder then links to Daily Updates.
+- Owners control Events per workspace (Settings → Events): on/off, the Overview
+  card and its countdown, event notifications, and whether members can create
+  workspace events. Creating a workspace event, and moving, cancelling or
+  deleting one, appears in Activity. Personal events never do, and events never
+  count as Daily Report activity.
+
 ### Settings
 
 **Guest dashboard.** Open the settings icon in the header to configure:
@@ -450,6 +494,11 @@ Development Task and its tracking.
   Report. Only the owner can change it; it saves immediately.
 - **Modules** — switch the optional Development module on or off (Shared
   Workspaces only, owner only).
+- **Events** — turn Events on or off, show the upcoming event (and its
+  countdown) on the Overview, workspace event notifications, and whether members
+  can create workspace events (Shared Workspaces only, owner only).
+- **Notifications** — your own notification categories and browser
+  notifications, saved to your account and applied in every workspace.
 - **GitHub** — connect a repository for Development Task tracking (shown while
   Development is on; owner only).
 - **Slack Integration** — connect Slack workspace, select destination channel,
@@ -618,6 +667,12 @@ App: see the `GITHUB_*` variables in `.env.example` for the URLs, permissions
 and events to configure. To check the migration, run
 `supabase/tests/20260926120000_development_module.sql` against a scratch
 project.
+
+Events need migrations `20260926210000_notification_preferences.sql` and
+`20260926220000_workspace_events.sql` (in that order). The second schedules the
+`workspace-event-reminders` `pg_cron` job, which calls a database function
+directly — no URL or secret to configure. To check both, run
+`supabase/tests/20260926220000_workspace_events.sql` against a scratch project.
 
 Start the development server:
 
