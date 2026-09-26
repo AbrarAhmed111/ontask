@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useCallback, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
