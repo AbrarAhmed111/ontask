@@ -8,6 +8,7 @@ import { TaskBlockerActionsContext } from '@/components/blockers/TaskBlockerActi
 import type { BlockedNowItem } from '@/components/blockers/BlockedNowPanel'
 import { WorkspaceGoalsSection } from '@/components/workspaces/WorkspaceGoalsSection'
 import { WorkspaceDevelopmentSection } from '@/components/development/WorkspaceDevelopmentSection'
+import { DevelopmentDataProvider } from '@/components/development/DevelopmentDataContext'
 import { WorkspaceResourcesSection } from '@/components/workspaces/WorkspaceResourcesSection'
 import { WorkspaceSummarySection } from '@/components/workspaces/WorkspaceSummarySection'
 import { WorkspaceTaskForm } from '@/components/workspaces/WorkspaceTaskForm'
@@ -349,159 +350,162 @@ export function WorkspaceOverviewClient() {
   }
 
   return (
-    <div className="space-y-8">
-      <TaskBlockerActionsContext.Provider value={blockerActions}>
-        <WorkspaceTasksSection
-          ready={ready && tasksReady}
-          error={tasksError}
+    <DevelopmentDataProvider>
+      <div className="space-y-8">
+        <TaskBlockerActionsContext.Provider value={blockerActions}>
+          <WorkspaceTasksSection
+            ready={ready && tasksReady}
+            error={tasksError}
+            isPersonal={isPersonal}
+            stats={stats}
+            workingNow={workingNow}
+            workingGoalTasks={workingGoalTasks}
+            blockedItems={blockedItems}
+            tasks={tasks}
+            members={members}
+            user={user}
+            queueTasks={queueTasks}
+            completedTasks={completedTasks}
+            getLiveSeconds={getLiveSeconds}
+            onAddTask={openAddTask}
+            onStart={startTask}
+            onPause={pauseTask}
+            onEmergencyStop={emergencyStopTask}
+            onFinish={handleFinishTask}
+            onReopen={handleReopenTask}
+            onEdit={openEditTask}
+            onDelete={handleDeleteTask}
+            onClearCompleted={() => clearCompletedTasks(null)}
+            onReassign={reassignTask}
+            onReorder={reorderTasks}
+          />
+        </TaskBlockerActionsContext.Provider>
+
+        <WorkspaceGoalsSection
+          ready={ready && goalsReady}
+          error={goalsError}
+          goals={goals}
+          workspaceId={workspaceId}
           isPersonal={isPersonal}
-          stats={stats}
-          workingNow={workingNow}
-          workingGoalTasks={workingGoalTasks}
-          blockedItems={blockedItems}
-          tasks={tasks}
-          members={members}
+          soundEnabled={settings.soundEnabled}
           user={user}
-          queueTasks={queueTasks}
-          completedTasks={completedTasks}
-          getLiveSeconds={getLiveSeconds}
-          onAddTask={openAddTask}
-          onStart={startTask}
-          onPause={pauseTask}
-          onEmergencyStop={emergencyStopTask}
-          onFinish={handleFinishTask}
-          onReopen={handleReopenTask}
-          onEdit={openEditTask}
-          onDelete={handleDeleteTask}
-          onClearCompleted={() => clearCompletedTasks(null)}
-          onReassign={reassignTask}
-          onReorder={reorderTasks}
-        />
-      </TaskBlockerActionsContext.Provider>
-
-      <WorkspaceGoalsSection
-        ready={ready && goalsReady}
-        error={goalsError}
-        goals={goals}
-        workspaceId={workspaceId}
-        isPersonal={isPersonal}
-        soundEnabled={settings.soundEnabled}
-        user={user}
-        members={members}
-        updateGoal={updateGoal}
-        setGoalStatus={setGoalStatus}
-        deleteGoal={deleteGoal}
-        onWorkingTasksChange={handleWorkingTasksChange}
-        onBlockedTasksChange={handleBlockedTasksChange}
-        onAddGoal={openAddGoal}
-        ideas={linkableIdeas}
-      />
-
-      {/* Only renders while the workspace has the Development module on. */}
-      <WorkspaceDevelopmentSection key={workspaceId} goals={goals} />
-
-      <WorkspaceResourcesSection
-        ready={ready && resourcesReady}
-        error={resourcesError}
-        isPersonal={isPersonal}
-        resources={resources}
-        onOpen={() => setResourcesModalOpen(true)}
-        onAddResource={() => setResourcesModalOpen(true)}
-      />
-
-      <WorkspaceSummarySection
-        enabled={dailyReportsEnabled}
-        ready={ready && summaryReady}
-        error={summaryError}
-        summary={summary}
-        members={members}
-        isPersonal={isPersonal}
-        nextReportLabel={nextReportLabel}
-        reportTimeLabel={formatTimeOfDay(workspace?.reportTime ?? '12:00:00')}
-        generating={summaryGenerating}
-        onRegenerate={handleRegenerateSummary}
-      />
-
-      {taskModal === 'add' && (
-        <Modal
-          eyebrow="New task"
-          title="Add a task"
-          onClose={closeTaskModal}
-          fill
-        >
-          <WorkspaceTaskForm
-            values={taskForm}
-            setValues={setTaskForm}
-            isPersonal={isPersonal}
-            members={members}
-            assignedTo={taskAssignees}
-            setAssignedTo={setTaskAssignees}
-            submitLabel="Add task"
-            onSubmit={handleAddTask}
-            onCancel={closeTaskModal}
-            ideas={linkableIdeas}
-          />
-        </Modal>
-      )}
-      {taskModal === 'edit' && (
-        <Modal
-          eyebrow="Edit task"
-          title="Refine this task"
-          onClose={closeTaskModal}
-          fill
-        >
-          <WorkspaceTaskForm
-            values={taskForm}
-            setValues={setTaskForm}
-            isPersonal={isPersonal}
-            members={members}
-            assignedTo={taskAssignees}
-            setAssignedTo={setTaskAssignees}
-            submitLabel="Save changes"
-            onSubmit={handleEditTask}
-            onCancel={closeTaskModal}
-            ideas={linkableIdeas}
-          />
-        </Modal>
-      )}
-      {goalModalOpen && (
-        <Modal
-          eyebrow="New goal"
-          title="Create a goal"
-          onClose={() => setGoalModalOpen(false)}
-        >
-          <GoalForm
-            values={goalForm}
-            setValues={setGoalForm}
-            submitLabel="Create goal"
-            onSubmit={handleAddGoal}
-            onCancel={() => setGoalModalOpen(false)}
-            ideas={linkableIdeas}
-          />
-        </Modal>
-      )}
-      {completionAlert.task && (
-        <CompletionModal
-          taskName={completionAlert.task.name}
-          onStop={completionAlert.dismiss}
-        />
-      )}
-      {resourcesModalOpen && (
-        <ResourcesModal
-          resources={resources}
           members={members}
-          userId={user?.id}
-          isOwner={isOwner}
-          loading={!(ready && resourcesReady)}
-          uploads={resourceUploads}
-          onUpload={handleUploadResources}
-          onDismissUploads={dismissResourceUploads}
-          onDelete={handleDeleteResource}
-          getSignedUrl={getSignedUrl}
-          onClose={() => setResourcesModalOpen(false)}
+          updateGoal={updateGoal}
+          setGoalStatus={setGoalStatus}
+          deleteGoal={deleteGoal}
+          onWorkingTasksChange={handleWorkingTasksChange}
+          onBlockedTasksChange={handleBlockedTasksChange}
+          onAddGoal={openAddGoal}
+          ideas={linkableIdeas}
         />
-      )}
-      <TourLayer />
-    </div>
+
+        {/* Only renders while the workspace has the Development module on (or
+          while the Development tour shows its sample board). */}
+        <WorkspaceDevelopmentSection key={workspaceId} goals={goals} />
+
+        <WorkspaceResourcesSection
+          ready={ready && resourcesReady}
+          error={resourcesError}
+          isPersonal={isPersonal}
+          resources={resources}
+          onOpen={() => setResourcesModalOpen(true)}
+          onAddResource={() => setResourcesModalOpen(true)}
+        />
+
+        <WorkspaceSummarySection
+          enabled={dailyReportsEnabled}
+          ready={ready && summaryReady}
+          error={summaryError}
+          summary={summary}
+          members={members}
+          isPersonal={isPersonal}
+          nextReportLabel={nextReportLabel}
+          reportTimeLabel={formatTimeOfDay(workspace?.reportTime ?? '12:00:00')}
+          generating={summaryGenerating}
+          onRegenerate={handleRegenerateSummary}
+        />
+
+        {taskModal === 'add' && (
+          <Modal
+            eyebrow="New task"
+            title="Add a task"
+            onClose={closeTaskModal}
+            fill
+          >
+            <WorkspaceTaskForm
+              values={taskForm}
+              setValues={setTaskForm}
+              isPersonal={isPersonal}
+              members={members}
+              assignedTo={taskAssignees}
+              setAssignedTo={setTaskAssignees}
+              submitLabel="Add task"
+              onSubmit={handleAddTask}
+              onCancel={closeTaskModal}
+              ideas={linkableIdeas}
+            />
+          </Modal>
+        )}
+        {taskModal === 'edit' && (
+          <Modal
+            eyebrow="Edit task"
+            title="Refine this task"
+            onClose={closeTaskModal}
+            fill
+          >
+            <WorkspaceTaskForm
+              values={taskForm}
+              setValues={setTaskForm}
+              isPersonal={isPersonal}
+              members={members}
+              assignedTo={taskAssignees}
+              setAssignedTo={setTaskAssignees}
+              submitLabel="Save changes"
+              onSubmit={handleEditTask}
+              onCancel={closeTaskModal}
+              ideas={linkableIdeas}
+            />
+          </Modal>
+        )}
+        {goalModalOpen && (
+          <Modal
+            eyebrow="New goal"
+            title="Create a goal"
+            onClose={() => setGoalModalOpen(false)}
+          >
+            <GoalForm
+              values={goalForm}
+              setValues={setGoalForm}
+              submitLabel="Create goal"
+              onSubmit={handleAddGoal}
+              onCancel={() => setGoalModalOpen(false)}
+              ideas={linkableIdeas}
+            />
+          </Modal>
+        )}
+        {completionAlert.task && (
+          <CompletionModal
+            taskName={completionAlert.task.name}
+            onStop={completionAlert.dismiss}
+          />
+        )}
+        {resourcesModalOpen && (
+          <ResourcesModal
+            resources={resources}
+            members={members}
+            userId={user?.id}
+            isOwner={isOwner}
+            loading={!(ready && resourcesReady)}
+            uploads={resourceUploads}
+            onUpload={handleUploadResources}
+            onDismissUploads={dismissResourceUploads}
+            onDelete={handleDeleteResource}
+            getSignedUrl={getSignedUrl}
+            onClose={() => setResourcesModalOpen(false)}
+          />
+        )}
+        <TourLayer />
+      </div>
+    </DevelopmentDataProvider>
   )
 }

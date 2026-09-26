@@ -25,6 +25,16 @@ export const TOUR_ANCHORS = [
   'page-overview',
   'page-daily-updates',
   'page-ideas',
+  // The Development tour (sample board rendered only while it runs).
+  'dev-overview',
+  'dev-new-task',
+  'dev-connection',
+  'dev-branch-name',
+  'dev-stage-queued',
+  'dev-stage-in-development',
+  'dev-stage-in-review',
+  'dev-stage-completed',
+  'dev-journey',
 ] as const
 
 export type TourAnchor = (typeof TOUR_ANCHORS)[number]

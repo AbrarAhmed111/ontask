@@ -27,6 +27,15 @@ describe('tourAnchor', () => {
         'work-session',
         'workspace-members',
         'working-now',
+        'dev-overview',
+        'dev-new-task',
+        'dev-connection',
+        'dev-branch-name',
+        'dev-stage-queued',
+        'dev-stage-in-development',
+        'dev-stage-in-review',
+        'dev-stage-completed',
+        'dev-journey',
       ].sort(),
     )
   })
