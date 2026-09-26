@@ -1,7 +1,9 @@
 'use client'
 
 import { ReactNode, useEffect, useState } from 'react'
-import { Target } from 'lucide-react'
+import { Target, Trash2 } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
+import { ConfirmModal } from '@/components/ui/ConfirmModal'
 import { Modal } from '@/components/ui/Modal'
 import { AssigneePicker } from '@/components/workspaces/AssigneePicker'
 import { SelectMenu } from '@/components/ui/SelectMenu'
@@ -46,6 +48,7 @@ export function DevelopmentTaskDetail({
   onPriorityChange,
   onUpdateBranchName,
   onReconcile,
+  onDelete,
   onClose,
 }: {
   task: WorkspaceTask
@@ -59,9 +62,11 @@ export function DevelopmentTaskDetail({
     name: string,
   ) => Promise<{ success: boolean; error?: string }>
   onReconcile: (taskId: string) => Promise<string>
+  onDelete: () => void
   onClose: () => void
 }) {
   const [checking, setChecking] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const assignee = members.find(member => member.userId === task.assignedTo)
   const stage = developmentStage(task, development)
 
@@ -86,8 +91,9 @@ export function DevelopmentTaskDetail({
   }
 
   return (
-    <Modal eyebrow="Development Task" title={task.name} onClose={onClose}>
-      <div className="space-y-5">
+    <>
+      <Modal eyebrow="Development Task" title={task.name} onClose={onClose}>
+        <div className="space-y-5">
         {task.description && (
           <p className="whitespace-pre-line text-xs leading-5 text-muted">
             {task.description}
@@ -149,7 +155,32 @@ export function DevelopmentTaskDetail({
             <p className="mt-3 text-[10px] text-muted">Checking GitHub…</p>
           )}
         </div>
-      </div>
-    </Modal>
+
+        <div className="flex justify-end border-t border-line pt-4">
+          <Button
+            type="button"
+            variant="danger"
+            onClick={() => setConfirmDelete(true)}
+          >
+            <Trash2 size={14} /> Delete Code Task
+          </Button>
+        </div>
+        </div>
+      </Modal>
+
+      {confirmDelete && (
+        <ConfirmModal
+          title="Delete this Code Task?"
+          message="This permanently deletes the task and its code tracking record. GitHub branches and Pull Requests are not changed."
+          confirmLabel="Delete Code Task"
+          onConfirm={() => {
+            onDelete()
+            setConfirmDelete(false)
+            onClose()
+          }}
+          onClose={() => setConfirmDelete(false)}
+        />
+      )}
+    </>
   )
 }

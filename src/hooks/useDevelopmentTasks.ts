@@ -80,6 +80,11 @@ export function useDevelopmentTasks(
     let cancelled = false
     let timer: ReturnType<typeof setTimeout> | null = null
     const supabase = createClient()
+    // A different workspace starts empty: nothing from the last one shows.
+    setTasks([])
+    setDevelopments(new Map())
+    setReady(false)
+    taskIdsRef.current = new Set()
 
     const fetchAll = async () => {
       const { data: devRows, error: devError } = await supabase
@@ -285,5 +290,6 @@ export function useDevelopmentTasks(
     reconcile,
     reassignTask: actions.reassignTask,
     updateTask: actions.updateTask,
+    deleteTask: actions.deleteTask,
   }
 }

@@ -418,6 +418,7 @@ export function WorkspaceDevelopmentSection({ goals }: { goals: Goal[] }) {
             development.updateBranchName(openItem.task.id, name)
           }
           onReconcile={development.reconcile}
+          onDelete={() => development.deleteTask(openItem.task.id)}
           onClose={() => setOpenTaskId(null)}
         />
       )}

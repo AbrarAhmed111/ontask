@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import { CheckCircle2, GitBranch, Terminal } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { CopyButton } from '@/components/ui/CopyButton'
@@ -20,6 +21,12 @@ export function DevelopmentTaskCreated({
   onDone: () => void
 }) {
   const command = checkoutCommand(branchName)
+
+  useEffect(() => {
+    const timer = window.setTimeout(onDone, 4000)
+    return () => window.clearTimeout(timer)
+  }, [onDone])
+
   return (
     <div className="space-y-4">
       <p className="flex items-start gap-2 text-xs leading-5 text-ink">

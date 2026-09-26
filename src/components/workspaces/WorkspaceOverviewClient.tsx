@@ -398,7 +398,7 @@ export function WorkspaceOverviewClient() {
       />
 
       {/* Only renders while the workspace has the Development module on. */}
-      <WorkspaceDevelopmentSection goals={goals} />
+      <WorkspaceDevelopmentSection key={workspaceId} goals={goals} />
 
       <WorkspaceResourcesSection
         ready={ready && resourcesReady}

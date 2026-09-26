@@ -57,7 +57,7 @@ function BranchRow({
 // the user only needs to know what to do.
 function HowTrackingWorks() {
   return (
-    <div className="rounded-lg bg-[var(--ws-accent-soft,#e9f0ec)] px-3 py-2.5 text-[11px] leading-5 text-ink">
+    <div className="origin-top rounded-lg bg-[var(--ws-accent-soft,#e9f0ec)] px-3 py-2.5 text-[11px] leading-5 text-ink animate-[dropdownIn_150ms_ease-out]">
       <p className="font-bold">Track your code automatically</p>
       <ol className="mt-1 list-decimal space-y-0.5 pl-4">
         <li>Copy the branch name.</li>
