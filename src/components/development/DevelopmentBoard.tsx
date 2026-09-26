@@ -61,9 +61,7 @@ function TaskRow({
       onClick={onOpen}
       className={clsx(
         'w-full rounded-xl border bg-panel px-3 py-2.5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[var(--ws-accent,#375b4b)]',
-        reason
-          ? 'border-coral/45 bg-coral/5 shadow-coral/10'
-          : 'border-line',
+        reason ? 'border-coral/45 bg-coral/5 shadow-coral/10' : 'border-line',
       )}
     >
       <div className="flex items-start justify-between gap-2">
@@ -114,8 +112,7 @@ function TaskRow({
                 size={10}
                 className="shrink-0 text-[var(--ws-accent,#375b4b)]"
               />
-              #
-              {development.prNumber}
+              #{development.prNumber}
             </>
           ) : (
             <>
