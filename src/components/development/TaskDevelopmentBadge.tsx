@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
+  AlertTriangle,
   Code2,
   ExternalLink,
   GitBranch,
@@ -19,8 +20,10 @@ import {
   WorkTypeBadge,
 } from '@/components/development/DevelopmentBadges'
 import {
+  ATTENTION_MESSAGES,
   STAGE_LABELS,
   branchUrl,
+  developmentAttention,
   developmentStage,
   isTracking,
 } from '@/lib/development/tracking'
@@ -48,12 +51,14 @@ export function TaskDevelopmentSummary({
   connection: GithubConnection | null
   onOpen?: () => void
 }) {
-  const stage = developmentStage(task, development)
+  const stage = developmentStage(task, development, connection)
+  const attention = developmentAttention(task, development, connection)
   const detected = development.branchDetectedAt !== null
+  const branchGone = development.branchDeletedAt !== null
   const repository =
     development.repositoryFullName ?? connection?.repositoryFullName ?? null
   const branchHref =
-    detected && repository && development.prState !== 'merged'
+    detected && !branchGone && repository && development.prState !== 'merged'
       ? branchUrl(repository, development.branchName)
       : null
   const PrIcon =
@@ -76,6 +81,13 @@ export function TaskDevelopmentSummary({
         <StageBadge stage={stage} />
       </div>
 
+      {attention && (
+        <p className="flex items-start gap-1.5 rounded-lg bg-coral/10 px-2.5 py-1.5 text-[11px] font-semibold leading-4 text-coral">
+          <AlertTriangle size={12} className="mt-px shrink-0" aria-hidden />
+          {ATTENTION_MESSAGES[attention]}
+        </p>
+      )}
+
       <div className="space-y-1">
         <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted">
           Branch
@@ -88,7 +100,9 @@ export function TaskDevelopmentSummary({
           <CopyButton value={development.branchName} />
         </div>
         <p className="text-[10px] text-muted">
-          {detected ? (
+          {detected && branchGone ? (
+            'Deleted on GitHub.'
+          ) : detected ? (
             <>
               Connected
               {repository && (
@@ -175,7 +189,7 @@ export function TaskDevelopmentBadge({
   const [open, setOpen] = useState<'hover' | 'pinned' | null>(null)
   const closeTimer = useRef<number | null>(null)
   const router = useRouter()
-  const stage = developmentStage(task, development)
+  const stage = developmentStage(task, development, connection)
 
   const cancelClose = () => {
     if (closeTimer.current !== null) window.clearTimeout(closeTimer.current)

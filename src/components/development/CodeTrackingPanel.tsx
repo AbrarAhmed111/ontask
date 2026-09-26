@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import {
+  AlertTriangle,
   CheckCircle2,
   Circle,
   CircleDot,
@@ -14,7 +15,13 @@ import {
 } from 'lucide-react'
 import { CopyButton } from '@/components/ui/CopyButton'
 import { isNumberedVariant } from '@/lib/development/branchName'
-import { branchUrl, isTracking } from '@/lib/development/tracking'
+import {
+  ATTENTION_MESSAGES,
+  ATTENTION_NEXT_STEPS,
+  branchUrl,
+  developmentAttention,
+  isTracking,
+} from '@/lib/development/tracking'
 import type {
   GithubConnection,
   TaskDevelopment,
@@ -98,8 +105,10 @@ export function CodeTrackingPanel({
   const repository =
     development.repositoryFullName ?? connection?.repositoryFullName ?? null
   const detected = development.branchDetectedAt !== null
+  const branchGone = development.branchDeletedAt !== null
+  const attention = developmentAttention(task, development, connection)
   const branchHref =
-    detected && repository
+    detected && !branchGone && repository
       ? branchUrl(repository, development.branchName)
       : null
   const finished = task.status === 'completed' || task.status === 'skipped'
@@ -138,6 +147,25 @@ export function CodeTrackingPanel({
       </div>
 
       {explaining && <HowTrackingWorks />}
+
+      {attention && (
+        <div
+          role="status"
+          className="flex items-start gap-2 rounded-lg border border-coral/25 bg-coral/5 px-3 py-2.5 text-[11px] leading-5"
+        >
+          <AlertTriangle
+            size={13}
+            className="mt-1 shrink-0 text-coral"
+            aria-hidden
+          />
+          <div>
+            <p className="font-bold text-coral">
+              Needs Attention — {ATTENTION_MESSAGES[attention]}
+            </p>
+            <p className="text-muted">{ATTENTION_NEXT_STEPS[attention]}</p>
+          </div>
+        </div>
+      )}
 
       {!detected ? (
         <div className="space-y-2">
@@ -183,13 +211,19 @@ export function CodeTrackingPanel({
         </div>
       ) : (
         <div className="space-y-2">
-          <p className="flex items-center gap-1.5 text-xs font-bold text-emerald-700">
-            <CheckCircle2 size={13} /> Branch connected
-          </p>
+          {branchGone ? (
+            <p className="flex items-center gap-1.5 text-xs font-bold text-muted">
+              <Circle size={12} /> Branch deleted on GitHub
+            </p>
+          ) : (
+            <p className="flex items-center gap-1.5 text-xs font-bold text-emerald-700">
+              <CheckCircle2 size={13} /> Branch connected
+            </p>
+          )}
           <BranchRow
             name={development.branchName}
             href={development.prState === 'merged' ? null : branchHref}
-            copy={false}
+            copy={branchGone && !finished}
           />
         </div>
       )}
@@ -229,11 +263,10 @@ export function CodeTrackingPanel({
               <CircleDot size={12} /> In Review
             </p>
           )}
-          {development.prState === 'closed' && !finished && (
+          {development.prState === 'closed' && !finished && !attention && (
             <p className="text-[11px] leading-5 text-muted">
-              This Pull Request was closed without merging, so the task is back
-              In Development. Open a new Pull Request from the same branch when
-              it&apos;s ready.
+              This Pull Request was closed without merging. Open a new Pull
+              Request from the same branch when it&apos;s ready.
             </p>
           )}
           {development.prState === 'merged' &&

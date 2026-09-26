@@ -55,6 +55,7 @@ const STAGE_CLASSES: Record<DevelopmentStage, string> = {
   in_development: 'bg-amber-50 text-amber-700',
   in_review: 'bg-sky-50 text-sky-700',
   completed: 'bg-emerald-50 text-emerald-700',
+  needs_attention: 'bg-coral/10 text-coral',
 }
 
 const STAGE_DOTS: Record<DevelopmentStage, string> = {
@@ -62,6 +63,7 @@ const STAGE_DOTS: Record<DevelopmentStage, string> = {
   in_development: 'bg-amber-500',
   in_review: 'bg-sky-500',
   completed: 'bg-emerald-500',
+  needs_attention: 'bg-coral',
 }
 
 export function StageDot({ stage }: { stage: DevelopmentStage }) {

@@ -29,6 +29,8 @@ const development = (
   workType: 'feature',
   repositoryFullName: null,
   branchDetectedAt: null,
+  branchDeletedAt: null,
+  branchReleasedAt: null,
   prNumber: null,
   prUrl: null,
   prTitle: null,
@@ -57,6 +59,39 @@ describe('TaskDevelopmentBadge', () => {
     // Closed until hovered or clicked.
     expect(html).toContain('aria-expanded="false"')
     expect(html).not.toContain('feature/google-oauth-abrar')
+  })
+
+  // The same badge a Goal's task list shows: the Goal Task IS the Development
+  // Task (one row), so its stage comes from the one record.
+  it('shows Needs Attention on a Goal Task whose branch was deleted before a PR', () => {
+    const html = renderToStaticMarkup(
+      <TaskDevelopmentBadge
+        task={task}
+        development={development({
+          trackingStatus: 'branch_detected',
+          branchDetectedAt: '2026-09-26T01:00:00Z',
+          branchDeletedAt: '2026-09-26T02:00:00Z',
+          repositoryFullName: 'acme/ontask',
+        })}
+        connection={connected}
+      />,
+    )
+    expect(html).toContain('Code task, Needs Attention')
+  })
+
+  it('shows In Development once the matching branch is detected', () => {
+    const html = renderToStaticMarkup(
+      <TaskDevelopmentBadge
+        task={{ id: 't1', status: 'queued' }}
+        development={development({
+          trackingStatus: 'branch_detected',
+          branchDetectedAt: '2026-09-26T01:00:00Z',
+          repositoryFullName: 'acme/ontask',
+        })}
+        connection={connected}
+      />,
+    )
+    expect(html).toContain('Code task, In Development')
   })
 
   it('renders nothing for a task that is not a Development Task here', () => {
@@ -114,6 +149,27 @@ describe('TaskDevelopmentSummary', () => {
     expect(html).toContain('href="https://github.com/acme/ontask/pull/42"')
     expect(html).toContain('In Review')
     expect(html).toContain('Open Development Task')
+  })
+
+  it('gives the reason when the task Needs Attention', () => {
+    const html = renderToStaticMarkup(
+      <TaskDevelopmentSummary
+        task={task}
+        development={development({
+          trackingStatus: 'branch_detected',
+          branchDetectedAt: '2026-09-26T01:00:00Z',
+          branchDeletedAt: '2026-09-26T02:00:00Z',
+          repositoryFullName: 'acme/ontask',
+        })}
+        connection={connected}
+      />,
+    )
+    expect(html).toContain('Needs Attention')
+    expect(html).toContain(
+      'Tracked branch was deleted or is no longer accessible.',
+    )
+    expect(html).toContain('Deleted on GitHub.')
+    expect(html).not.toContain('/tree/feature/google-oauth-abrar')
   })
 
   it('reads Completed once the task is finished after a merge', () => {

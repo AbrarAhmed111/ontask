@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
+import { DevelopmentBoard } from '@/components/development/DevelopmentBoard'
 import { DevelopmentTourDemo } from '@/components/development/DevelopmentTourDemo'
 import {
   DEVELOPMENT_STAGES,
@@ -53,5 +54,50 @@ describe('DevelopmentTourDemo', () => {
     expect(html).toContain('git checkout -b feature/')
     expect(html).toContain('#128')
     expect(html).toContain('#121 merged')
+  })
+})
+
+describe('DevelopmentBoard — Needs Attention', () => {
+  const [first, second] = buildDemoItems(Date.parse('2026-09-26T12:00:00Z'))
+  const open = { ...first.task, status: 'working' as const }
+  const render = (branchDeletedAt: string | null) =>
+    renderToStaticMarkup(
+      <DevelopmentBoard
+        items={[
+          {
+            task: open,
+            development: {
+              ...first.development,
+              trackingStatus: 'branch_detected',
+              branchDetectedAt: '2026-09-26T09:00:00Z',
+              branchDeletedAt,
+              prNumber: null,
+              prState: null,
+            },
+          },
+          second,
+        ]}
+        goals={[]}
+        members={[]}
+        onOpen={() => {}}
+      />,
+    )
+
+  it('keeps a task that needs a person in its lifecycle column, with the reason', () => {
+    const html = render('2026-09-26T10:00:00Z')
+    expect(html).not.toContain('aria-label="Needs Attention"')
+    expect(html).toContain('aria-label="In Development"')
+    expect(html).toContain(
+      'Tracked branch was deleted or is no longer accessible.',
+    )
+    expect(html).toContain('role="alert"')
+    expect(html).toContain('animate-pulse')
+    // Once, because Needs Attention is a card state rather than a duplicate lane.
+    expect(html.split(open.name).length - 1).toBe(1)
+  })
+
+  it('shows no alert when nothing needs attention', () => {
+    expect(render(null)).not.toContain('Needs Attention')
+    expect(render(null)).not.toContain('role="alert"')
   })
 })

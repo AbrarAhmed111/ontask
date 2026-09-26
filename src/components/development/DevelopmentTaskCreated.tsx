@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/Button'
 import { CopyButton } from '@/components/ui/CopyButton'
 import { checkoutCommand } from '@/lib/development/branchName'
 
+const AUTO_DISMISS_MS = 4000
+
 // What the create dialog turns into once the task exists: the exact branch to
 // create (the final name, numbered if it had to be), ready to copy, plus the
 // git command for anyone who wants it. OnTask never creates the branch.
@@ -23,7 +25,7 @@ export function DevelopmentTaskCreated({
   const command = checkoutCommand(branchName)
 
   useEffect(() => {
-    const timer = window.setTimeout(onDone, 4000)
+    const timer = window.setTimeout(onDone, AUTO_DISMISS_MS)
     return () => window.clearTimeout(timer)
   }, [onDone])
 

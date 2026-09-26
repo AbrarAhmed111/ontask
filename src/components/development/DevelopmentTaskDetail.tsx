@@ -67,7 +67,7 @@ export function DevelopmentTaskDetail({
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const assignee = members.find(member => member.userId === task.assignedTo)
-  const stage = developmentStage(task, development)
+  const stage = developmentStage(task, development, connection)
 
   // Opening the task is when a missed GitHub update is worth catching up on
   // (at most once a minute per task). Quietly: what is shown is the cached
