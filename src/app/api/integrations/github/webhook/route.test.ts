@@ -89,6 +89,30 @@ describe('GitHub webhook', () => {
     })
   })
 
+  it('refreshes repository metadata on a signed rename event', async () => {
+    rpc.mockResolvedValue({ data: 3, error: null })
+    const response = await deliver('repository', {
+      action: 'renamed',
+      installation: { id: 11 },
+      repository: {
+        id: 22,
+        full_name: 'acme/new-name',
+        html_url: 'https://github.com/acme/new-name',
+      },
+    })
+    expect(response.status).toBe(200)
+    expect(rpc).toHaveBeenCalledWith('refresh_github_repository_metadata', {
+      p_installation_id: 11,
+      p_repository_id: 22,
+      p_repository_full_name: 'acme/new-name',
+      p_repository_url: 'https://github.com/acme/new-name',
+    })
+    await expect(response.json()).resolves.toEqual({
+      outcome: 'repository_metadata',
+      updated: 3,
+    })
+  })
+
   it('acknowledges events it does not act on without calling the database', async () => {
     const response = await deliver('issues', {
       action: 'opened',

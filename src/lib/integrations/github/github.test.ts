@@ -194,6 +194,26 @@ describe('normalizeGithubEvent', () => {
     })
   })
 
+  it('maps repository rename events to metadata refresh by stable id', () => {
+    expect(
+      normalizeGithubEvent('repository', {
+        action: 'renamed',
+        installation: INSTALLATION,
+        repository: {
+          id: 22,
+          full_name: 'acme/new-name',
+          html_url: 'https://github.com/acme/new-name',
+        },
+      }),
+    ).toEqual({
+      kind: 'repository_metadata',
+      installation_id: 11,
+      repository_id: 22,
+      repository_full_name: 'acme/new-name',
+      repository_url: 'https://github.com/acme/new-name',
+    })
+  })
+
   it('ignores events without an installation, and unknown events', () => {
     expect(
       normalizeGithubEvent('create', {

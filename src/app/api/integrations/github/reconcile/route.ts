@@ -51,11 +51,11 @@ export async function POST(request: Request) {
       .eq('workspace_id', development.workspace_id)
       .maybeSingle(),
   ])
-  if (
-    !workspace?.development_enabled ||
-    connection?.status !== 'connected' ||
-    !connection.repository_id
-  ) {
+  const canAskGithub =
+    connection !== null &&
+    ['connected', 'repository_access_lost'].includes(connection.status) &&
+    connection.repository_id
+  if (!workspace?.development_enabled || !canAskGithub) {
     return NextResponse.json({ status: 'not_tracking' })
   }
 

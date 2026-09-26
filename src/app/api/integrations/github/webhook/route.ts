@@ -42,16 +42,26 @@ export async function POST(request: Request) {
   )
   if (!event) return NextResponse.json({ outcome: 'ignored' }, { status: 202 })
 
-  const { data, error } = await createServiceRoleClient().rpc(
-    'apply_github_development_event',
-    {
-      p_delivery_id: request.headers.get('x-github-delivery'),
-      p_event: event,
-    },
-  )
+  const service = createServiceRoleClient()
+  const { data, error } =
+    event.kind === 'repository_metadata'
+      ? await service.rpc('refresh_github_repository_metadata', {
+          p_installation_id: event.installation_id,
+          p_repository_id: event.repository_id,
+          p_repository_full_name: event.repository_full_name,
+          p_repository_url: event.repository_url,
+        })
+      : await service.rpc('apply_github_development_event', {
+          p_delivery_id: request.headers.get('x-github-delivery'),
+          p_event: event,
+        })
   if (error) {
     console.error('[GitHub Webhook] Processing failed:', error)
     return NextResponse.json({ error: 'Processing failed' }, { status: 500 })
   }
-  return NextResponse.json(data ?? { outcome: 'processed' })
+  return NextResponse.json(
+    event.kind === 'repository_metadata'
+      ? { outcome: 'repository_metadata', updated: data ?? 0 }
+      : (data ?? { outcome: 'processed' }),
+  )
 }

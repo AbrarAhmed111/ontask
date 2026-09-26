@@ -32,6 +32,16 @@ export async function reconcileDevelopmentTask(
     prState: target.prState,
   })
   for (const event of events) {
+    if (event.kind === 'repository_metadata') {
+      const { error } = await service.rpc('refresh_github_repository_metadata', {
+        p_installation_id: event.installation_id,
+        p_repository_id: event.repository_id,
+        p_repository_full_name: event.repository_full_name,
+        p_repository_url: event.repository_url,
+      })
+      if (error) throw error
+      continue
+    }
     const { error } = await service.rpc('apply_github_development_event', {
       p_delivery_id: null,
       p_event: event,

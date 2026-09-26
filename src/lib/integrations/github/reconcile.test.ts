@@ -11,6 +11,7 @@ import { reconcileEvents } from '@/lib/integrations/github/githubApp'
 type Route = { status: number; body?: unknown } | Error
 
 const REPO = 'acme/ontask'
+const RENAMED_REPO = 'acme/renamed'
 const BRANCH = 'feature/google-oauth-abrar'
 
 const pr = (overrides: Record<string, unknown> = {}) => ({
@@ -50,7 +51,30 @@ function mockGithub(routes: Record<string, Route>) {
         )
       }
       const key = Object.keys(routes).find(prefix => path.startsWith(prefix))
-      const route = key ? routes[key] : { status: 500 }
+      if (key) {
+        const route = routes[key]
+        if (route instanceof Error) throw route
+        return new Response(JSON.stringify(route.body ?? {}), {
+          status: route.status,
+        })
+      }
+      if (path.startsWith('/installation/repositories')) {
+        return new Response(
+          JSON.stringify({
+            total_count: 1,
+            repositories: [
+              {
+                id: 22,
+                full_name: REPO,
+                html_url: `https://github.com/${REPO}`,
+                private: false,
+              },
+            ],
+          }),
+          { status: 200 },
+        )
+      }
+      const route: Route = { status: 500 }
       if (route instanceof Error) throw route
       return new Response(JSON.stringify(route.body ?? {}), {
         status: route.status,
@@ -77,6 +101,9 @@ const PULLS = `/repos/${REPO}/pulls?`
 const PR_142 = `/repos/${REPO}/pulls/142`
 const REF = `/repos/${REPO}/git/ref/heads/`
 const REPOSITORY = `/repos/${REPO}`
+const RENAMED_PULLS = `/repos/${RENAMED_REPO}/pulls?`
+const RENAMED_REF = `/repos/${RENAMED_REPO}/git/ref/heads/`
+const INSTALLATION_REPOSITORIES = '/installation/repositories'
 
 beforeAll(() => {
   const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 })
@@ -124,7 +151,22 @@ describe('reconcileEvents', () => {
   })
 
   it('a repository the installation can no longer see is reported as access removed', async () => {
-    mockGithub({ [PULLS]: { status: 404 }, [REPOSITORY]: { status: 404 } })
+    mockGithub({
+      [INSTALLATION_REPOSITORIES]: {
+        status: 200,
+        body: {
+          total_count: 1,
+          repositories: [
+            {
+              id: 33,
+              full_name: 'acme/other',
+              html_url: 'https://github.com/acme/other',
+              private: false,
+            },
+          ],
+        },
+      },
+    })
     expect(await reconcileEvents(input())).toEqual([
       {
         kind: 'repositories_removed',
@@ -132,6 +174,38 @@ describe('reconcileEvents', () => {
         repository_ids: [22],
       },
     ])
+  })
+
+  it('a renamed repository is found by stable id and refreshed before API calls', async () => {
+    const calls = mockGithub({
+      [INSTALLATION_REPOSITORIES]: {
+        status: 200,
+        body: {
+          total_count: 1,
+          repositories: [
+            {
+              id: 22,
+              full_name: RENAMED_REPO,
+              html_url: `https://github.com/${RENAMED_REPO}`,
+              private: false,
+            },
+          ],
+        },
+      },
+      [RENAMED_PULLS]: { status: 200, body: [] },
+      [RENAMED_REF]: { status: 200 },
+    })
+    expect(await reconcileEvents(input())).toEqual([
+      {
+        kind: 'repository_metadata',
+        installation_id: expect.any(Number),
+        repository_id: 22,
+        repository_full_name: RENAMED_REPO,
+        repository_url: `https://github.com/${RENAMED_REPO}`,
+      },
+      expect.objectContaining({ kind: 'branch', branch: BRANCH }),
+    ])
+    expect(calls.some(path => path.startsWith(`/repos/${REPO}/`))).toBe(false)
   })
 
   it('an open PR is what counts: the branch is not even asked about', async () => {

@@ -26,6 +26,13 @@ export type NormalizedPullRequest = {
 
 export type GithubDevelopmentEvent =
   | {
+      kind: 'repository_metadata'
+      installation_id: number
+      repository_id: number
+      repository_full_name: string
+      repository_url: string
+    }
+  | {
       kind: 'branch' | 'branch_deleted'
       installation_id: number
       repository_id: number
@@ -217,6 +224,24 @@ export function normalizeGithubEvent(
         installation_id: installationId,
         repository_ids: ids,
       }
+    }
+
+    case 'repository': {
+      if (payload.action !== 'renamed' || repositoryId === null) return null
+      const repository = isObject(payload.repository)
+        ? payload.repository
+        : null
+      const fullName = repository ? str(repository.full_name) : null
+      const url = repository ? str(repository.html_url) : null
+      return fullName && url
+        ? {
+            kind: 'repository_metadata',
+            installation_id: installationId,
+            repository_id: repositoryId,
+            repository_full_name: fullName,
+            repository_url: url,
+          }
+        : null
     }
 
     default:

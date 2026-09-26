@@ -190,6 +190,14 @@ export async function listInstallationRepositories(installationId: number) {
   }
 }
 
+export async function findInstallationRepository(
+  installationId: number,
+  repositoryId: number,
+) {
+  const { repositories } = await listInstallationRepositories(installationId)
+  return repositories.find(repo => repo.id === repositoryId) ?? null
+}
+
 export type UserInstallation = {
   id: number
   account: string | null
@@ -281,10 +289,29 @@ export async function reconcileEvents(input: {
   if (input.prState === 'merged') return []
 
   const token = await installationToken(input.installationId)
-  const repo = input.repositoryFullName
+  const currentRepository = await findInstallationRepository(
+    input.installationId,
+    input.repositoryId,
+  )
+  if (!currentRepository) {
+    return [
+      {
+        kind: 'repositories_removed',
+        installation_id: input.installationId,
+        repository_ids: [input.repositoryId],
+      },
+    ]
+  }
+  const repo = currentRepository.fullName
   const base = {
     installation_id: input.installationId,
     repository_id: input.repositoryId,
+  }
+  const repositoryMetadata: GithubDevelopmentEvent = {
+    kind: 'repository_metadata',
+    ...base,
+    repository_full_name: currentRepository.fullName,
+    repository_url: currentRepository.htmlUrl,
   }
   const repositoryGone: GithubDevelopmentEvent[] = [
     {
@@ -359,5 +386,10 @@ export async function reconcileEvents(input: {
     }
   }
 
-  return events
+  return [
+    ...(currentRepository.fullName !== input.repositoryFullName
+      ? [repositoryMetadata]
+      : []),
+    ...events,
+  ]
 }
