@@ -1,6 +1,7 @@
 'use client'
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import {
@@ -8,10 +9,10 @@ import {
   CirclePlus,
   GitBranch,
   GitPullRequest,
-  Github,
   PlugZap,
   Target,
 } from 'lucide-react'
+import githubIcon from '@/assets/img/github-icon.png'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -48,6 +49,18 @@ import type {
 } from '@/types/workspace'
 
 type Item = { task: WorkspaceTask; development: TaskDevelopment }
+
+function GithubLogo({ className = 'h-3.5 w-3.5' }: { className?: string }) {
+  return (
+    <Image
+      src={githubIcon}
+      alt=""
+      width={14}
+      height={14}
+      className={className}
+    />
+  )
+}
 
 // `?devtask=<id>` (a development notification's link) opens that task, once;
 // the parameter is then dropped so the URL reads cleanly. Kept in its own
@@ -107,7 +120,7 @@ function ConnectionNotice({
           href={settingsHref}
           className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--ws-accent-soft,#e9f0ec)] px-3 py-2 text-[11px] font-semibold text-[var(--ws-accent,#375b4b)] transition hover:opacity-80"
         >
-          <Github size={13} /> {connection ? 'Open settings' : 'Connect GitHub'}
+          <GithubLogo /> {connection ? 'Open settings' : 'Connect GitHub'}
         </Link>
       )}
     </div>

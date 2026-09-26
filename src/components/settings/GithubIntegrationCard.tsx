@@ -2,14 +2,9 @@
 
 import { ReactNode, Suspense, useCallback, useEffect, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import {
-  Check,
-  ExternalLink,
-  Github,
-  Loader2,
-  LogOut,
-  RefreshCw,
-} from 'lucide-react'
+import { Check, ExternalLink, Loader2, LogOut, RefreshCw } from 'lucide-react'
+import Image from 'next/image'
+import githubIcon from '@/assets/img/github-icon.png'
 import { Button } from '@/components/ui/Button'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
 import { ErrorBanner } from '@/components/ui/ErrorBanner'
@@ -31,6 +26,18 @@ const LINK_CLASS =
   'inline-flex items-center gap-1.5 text-[11px] font-semibold text-[var(--ws-accent,#375b4b)] hover:underline disabled:opacity-50'
 const QUIET_LINK_CLASS =
   'text-[11px] font-semibold text-muted transition hover:text-ink disabled:opacity-50'
+
+function GithubLogo({ className = 'h-4 w-4' }: { className?: string }) {
+  return (
+    <Image
+      src={githubIcon}
+      alt=""
+      width={16}
+      height={16}
+      className={className}
+    />
+  )
+}
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -174,7 +181,7 @@ export function GithubIntegrationCard({
 
   return (
     <SettingsCard
-      icon={Github}
+      iconNode={<GithubLogo className="h-[15px] w-[15px]" />}
       title="GitHub"
       className={className}
       action={
@@ -214,7 +221,7 @@ export function GithubIntegrationCard({
                 onClick={() => void chooseInstallation(option.id)}
                 className="flex w-full items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-left text-xs font-semibold text-ink transition hover:border-[var(--ws-accent,#375b4b)] disabled:opacity-50"
               >
-                <Github size={14} className="shrink-0 text-muted" />
+                <GithubLogo className="h-3.5 w-3.5 shrink-0" />
                 <span className="truncate">
                   {option.account ?? `Installation ${option.id}`}
                 </span>
@@ -251,7 +258,8 @@ export function GithubIntegrationCard({
               href={github.connectUrl}
               className="inline-flex items-center gap-2 rounded-lg bg-[var(--ws-accent,#375b4b)] px-3.5 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:opacity-90"
             >
-              <Github size={14} /> Connect GitHub
+              <GithubLogo className="h-3.5 w-3.5 brightness-0 invert" /> Connect
+              GitHub
             </a>
           ) : (
             <p className="text-[10px] text-muted">
@@ -370,7 +378,7 @@ export function GithubIntegrationCard({
                         value: String(repo.id),
                         label: repo.fullName,
                         description: repo.private ? 'Private' : 'Public',
-                        icon: <Github size={13} className="text-muted" />,
+                        icon: <GithubLogo className="h-3.5 w-3.5" />,
                       }))}
                       className="min-w-0 flex-1"
                     />
