@@ -225,16 +225,18 @@ export function draftFromUpdate(
       mentions: mentionsFromText(item.content, mentioned),
       task: item.task
         ? taskRefFromTask(item.task)
-        : item.taskId
-          ? {
-              id: item.taskId,
-              title: null,
-              kind: 'task',
-              status: null,
-              goalName: null,
-              parentTitle: null,
-            }
-          : null,
+        : item.taskSnapshot
+          ? taskRefFromTask(item.taskSnapshot)
+          : item.taskId
+            ? {
+                id: item.taskId,
+                title: null,
+                kind: 'task',
+                status: null,
+                goalName: null,
+                parentTitle: null,
+              }
+            : null,
     })
   }
   // A section with nothing keeps one empty row to type into.
@@ -302,6 +304,7 @@ function readItem(value: unknown): DailyUpdateItem | null {
     content,
     position: typeof value.position === 'number' ? value.position : 0,
     taskId: asString(value.task_id),
+    taskSnapshot: readTask(value.task_snapshot),
     task: readTask(value.task),
     mentionedUserIds: Array.isArray(value.mentioned_user_ids)
       ? value.mentioned_user_ids.filter(
@@ -425,7 +428,13 @@ export type TaskReferenceView =
       kind: DailyUpdateTaskKind
     }
   // The item pointed at a task that has since been deleted.
-  | { state: 'unavailable' }
+  | {
+      state: 'unavailable'
+      title: string | null
+      goalName: string | null
+      parentTitle: string | null
+      kind: DailyUpdateTaskKind
+    }
 
 export function referenceOf(item: DailyUpdateItem): TaskReferenceView | null {
   if (item.task) {
@@ -438,7 +447,15 @@ export function referenceOf(item: DailyUpdateItem): TaskReferenceView | null {
       kind: item.task.kind,
     }
   }
-  return item.taskId ? { state: 'unavailable' } : null
+  return item.taskId
+    ? {
+        state: 'unavailable',
+        title: item.taskSnapshot?.title ?? null,
+        goalName: item.taskSnapshot?.goalName ?? null,
+        parentTitle: item.taskSnapshot?.parentTitle ?? null,
+        kind: item.taskSnapshot?.kind ?? 'task',
+      }
+    : null
 }
 
 export const TASK_UNAVAILABLE_LABEL = 'Referenced task no longer available'

@@ -54,6 +54,22 @@ export function TaskReference({
   workspaceSlug: string
 }) {
   if (reference.state === 'unavailable') {
+    if (reference.title) {
+      return (
+        <span
+          title={TASK_UNAVAILABLE_LABEL}
+          className="inline-flex max-w-full items-center gap-1 rounded-md border border-dashed border-line bg-white/40 px-2 py-0.5 text-[11px]"
+        >
+          <CircleSlash size={11} aria-hidden className="shrink-0 text-muted" />
+          <TaskContext
+            title={reference.title}
+            goalName={reference.goalName}
+            parentTitle={reference.parentTitle}
+            kind={reference.kind}
+          />
+        </span>
+      )
+    }
     return (
       <span className="inline-flex items-center gap-1 rounded-md border border-dashed border-line px-2 py-0.5 text-[11px] italic text-muted">
         <CircleSlash size={11} aria-hidden /> {TASK_UNAVAILABLE_LABEL}

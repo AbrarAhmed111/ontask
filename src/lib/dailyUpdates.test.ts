@@ -67,6 +67,7 @@ const item = (overrides: Partial<DailyUpdateItem> = {}): DailyUpdateItem => ({
   content: 'Completed Slack integration',
   position: 0,
   taskId: null,
+  taskSnapshot: null,
   task: null,
   mentionedUserIds: [],
   ...overrides,
@@ -274,9 +275,27 @@ describe('editing a submitted update', () => {
   })
 
   it('keeps a reference to a deleted task, so editing does not silently drop it', () => {
-    const stale = update('abrar', [item({ taskId: 'task-gone', task: null })])
+    const stale = update('abrar', [
+      item({
+        taskId: 'task-gone',
+        taskSnapshot: {
+          id: 'task-gone',
+          title: 'Archived launch task',
+          status: 'completed',
+          kind: 'task',
+          goalId: null,
+          goalName: null,
+          parentTaskId: null,
+          parentTitle: null,
+        },
+        task: null,
+      }),
+    ])
     const draft = draftFromUpdate(stale, [ABRAR])
-    expect(draft.done[0].task).toMatchObject({ id: 'task-gone', title: null })
+    expect(draft.done[0].task).toMatchObject({
+      id: 'task-gone',
+      title: 'Archived launch task',
+    })
     expect(draftToPayload(draft)[0].task_id).toBe('task-gone')
   })
 
@@ -304,6 +323,16 @@ describe('reading the server answer', () => {
             content: 'Finished onboarding copy',
             position: 0,
             task_id: 'task-sub',
+            task_snapshot: {
+              id: 'task-sub',
+              title: 'Finish onboarding copy',
+              status: 'working',
+              kind: 'goal_subtask',
+              goal_id: 'g-1',
+              goal_name: 'Launch Product',
+              parent_task_id: 'task-parent',
+              parent_title: 'Build the onboarding flow',
+            },
             task: {
               id: 'task-sub',
               title: 'Finish onboarding copy',
@@ -395,6 +424,33 @@ describe('task references', () => {
     expect(referenceOf(item())).toBeNull()
     expect(referenceOf(item({ taskId: 'gone', task: null }))).toEqual({
       state: 'unavailable',
+      title: null,
+      goalName: null,
+      parentTitle: null,
+      kind: 'task',
+    })
+    expect(
+      referenceOf(
+        item({
+          taskId: 'gone',
+          taskSnapshot: {
+            id: 'gone',
+            title: 'Cleared payment QA',
+            status: 'completed',
+            kind: 'goal_task',
+            goalId: 'g',
+            goalName: 'Payments',
+            parentTaskId: null,
+            parentTitle: null,
+          },
+          task: null,
+        }),
+      ),
+    ).toMatchObject({
+      state: 'unavailable',
+      title: 'Cleared payment QA',
+      goalName: 'Payments',
+      kind: 'goal_task',
     })
     expect(
       referenceOf(

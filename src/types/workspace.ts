@@ -344,6 +344,10 @@ export type DailyUpdateItem = {
   position: number
   // Set while the item references a task, even after that task was deleted.
   taskId: string | null
+  // The task context captured when the update was submitted. Used when the
+  // live task can no longer be resolved, so older updates still say what the
+  // member was referring to.
+  taskSnapshot: DailyUpdateTaskRef | null
   // null when there is no reference, or when the task no longer exists
   // (`taskId` set and `task` null: "Referenced task no longer available").
   task: DailyUpdateTaskRef | null

@@ -56,6 +56,7 @@ const item = (overrides: Partial<DailyUpdateItem> = {}): DailyUpdateItem => ({
   content: 'Completed Slack integration',
   position: 0,
   taskId: null,
+  taskSnapshot: null,
   task: null,
   mentionedUserIds: [],
   ...overrides,
@@ -257,12 +258,22 @@ describe('the Daily Updates page', () => {
         item({
           content: 'Wrapped up the old work',
           taskId: 'gone',
+          taskSnapshot: {
+            id: 'gone',
+            title: 'Retired onboarding checklist',
+            status: 'completed',
+            kind: 'task',
+            goalId: null,
+            goalName: null,
+            parentTaskId: null,
+            parentTitle: null,
+          },
           task: null,
         }),
       ]),
     ])
     expect(html).toContain('Wrapped up the old work')
-    expect(html).toContain('Referenced task no longer available')
+    expect(html).toContain('Retired onboarding checklist')
     expect(html).not.toContain('task=gone')
   })
 
