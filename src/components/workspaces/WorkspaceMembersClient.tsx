@@ -4,9 +4,11 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { showErrorToast, showSuccessToast } from '@/lib/toast'
 import { WorkspaceMembersSection } from '@/components/workspaces/WorkspaceMembersSection'
+import { WorkspaceActivitySection } from '@/components/workspaces/WorkspaceActivitySection'
 import { MemberAvailabilityModal } from '@/components/workspaces/MemberAvailabilityModal'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
 import { useWorkspaceDetail } from '@/components/workspaces/WorkspaceDetailContext'
+import { useWorkspaceActivity } from '@/hooks/useWorkspaceActivity'
 import { WorkspaceMember } from '@/types/workspace'
 
 type PendingAction =
@@ -15,6 +17,7 @@ type PendingAction =
 export function WorkspaceMembersClient() {
   const router = useRouter()
   const {
+    workspaceId,
     user,
     members,
     ready,
@@ -31,6 +34,11 @@ export function WorkspaceMembersClient() {
     workSessionsByUserId,
     activeTasksByUserId,
   } = useWorkspaceDetail()
+  const {
+    events: activityEvents,
+    ready: activityReady,
+    error: activityError,
+  } = useWorkspaceActivity(workspaceId, user)
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null)
   const [editingAvailability, setEditingAvailability] =
     useState<WorkspaceMember | null>(null)
@@ -108,24 +116,35 @@ export function WorkspaceMembersClient() {
 
   return (
     <>
-      <WorkspaceMembersSection
-        ready={ready}
-        error={memberActionError}
-        members={members}
-        currentUserId={user.id}
-        onlineUserIds={onlineUserIds}
-        workSessionsByUserId={workSessionsByUserId}
-        activeTasksByUserId={activeTasksByUserId}
-        isOwner={isOwner}
-        onRemoveMember={member => openMemberAction({ type: 'remove', member })}
-        onEditAvailability={setEditingAvailability}
-        invitationsReady={invitationsReady}
-        invitations={invitations}
-        onInvite={openInvite}
-        onCancelInvitation={handleCancelInvitation}
-        onDeleteInvitation={handleDeleteInvitation}
-        onLeave={() => openMemberAction({ type: 'leave' })}
-      />
+      <div className="space-y-8">
+        <WorkspaceMembersSection
+          ready={ready}
+          error={memberActionError}
+          members={members}
+          currentUserId={user.id}
+          onlineUserIds={onlineUserIds}
+          workSessionsByUserId={workSessionsByUserId}
+          activeTasksByUserId={activeTasksByUserId}
+          isOwner={isOwner}
+          onRemoveMember={member =>
+            openMemberAction({ type: 'remove', member })
+          }
+          onEditAvailability={setEditingAvailability}
+          invitationsReady={invitationsReady}
+          invitations={invitations}
+          onInvite={openInvite}
+          onCancelInvitation={handleCancelInvitation}
+          onDeleteInvitation={handleDeleteInvitation}
+          onLeave={() => openMemberAction({ type: 'leave' })}
+        />
+
+        <WorkspaceActivitySection
+          ready={ready && activityReady}
+          error={activityError}
+          events={activityEvents}
+          members={members}
+        />
+      </div>
 
       {editingAvailability && (
         <MemberAvailabilityModal

@@ -9,7 +9,6 @@ import type { BlockedNowItem } from '@/components/blockers/BlockedNowPanel'
 import { WorkspaceGoalsSection } from '@/components/workspaces/WorkspaceGoalsSection'
 import { WorkspaceDevelopmentSection } from '@/components/development/WorkspaceDevelopmentSection'
 import { WorkspaceResourcesSection } from '@/components/workspaces/WorkspaceResourcesSection'
-import { WorkspaceActivitySection } from '@/components/workspaces/WorkspaceActivitySection'
 import { WorkspaceSummarySection } from '@/components/workspaces/WorkspaceSummarySection'
 import { WorkspaceTaskForm } from '@/components/workspaces/WorkspaceTaskForm'
 import { CompletionModal } from '@/components/tasks/CompletionModal'
@@ -25,7 +24,6 @@ import { useWorkspaceTasks } from '@/hooks/useWorkspaceTasks'
 import { useWorkspaceGoals, GoalFormValues } from '@/hooks/useWorkspaceGoals'
 import { useWorkspaceIdeas } from '@/hooks/useWorkspaceIdeas'
 import { useWorkspaceResources } from '@/hooks/useWorkspaceResources'
-import { useWorkspaceActivity } from '@/hooks/useWorkspaceActivity'
 import { useWorkspaceSummary } from '@/hooks/useWorkspaceSummary'
 import { formatTimeOfDay } from '@/lib/dailyReportWindow'
 import { describeUploadOutcome } from '@/lib/resourceUploads'
@@ -113,11 +111,6 @@ export function WorkspaceOverviewClient() {
     getSignedUrl,
   } = useWorkspaceResources(workspaceId, user)
   const {
-    events: activityEvents,
-    ready: activityReady,
-    error: activityError,
-  } = useWorkspaceActivity(workspaceId, user)
-  const {
     summary,
     ready: summaryReady,
     error: summaryError,
@@ -135,8 +128,7 @@ export function WorkspaceOverviewClient() {
   // The tour's steps point at things these sections render, so it waits until
   // every one of them has its data (each shows a placeholder until then).
   useWorkspaceTour({
-    contentReady:
-      ready && tasksReady && goalsReady && resourcesReady && activityReady,
+    contentReady: ready && tasksReady && goalsReady && resourcesReady,
   })
 
   const [taskModal, setTaskModal] = useState<'add' | 'edit' | null>(null)
@@ -428,13 +420,6 @@ export function WorkspaceOverviewClient() {
         reportTimeLabel={formatTimeOfDay(workspace?.reportTime ?? '12:00:00')}
         generating={summaryGenerating}
         onRegenerate={handleRegenerateSummary}
-      />
-
-      <WorkspaceActivitySection
-        ready={ready && activityReady}
-        error={activityError}
-        events={activityEvents}
-        members={members}
       />
 
       {taskModal === 'add' && (

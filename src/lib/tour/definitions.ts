@@ -60,7 +60,7 @@ const SHARED_WORKSPACE_TOUR: TourDefinition = {
       target: 'page-overview',
       title: 'Overview',
       description:
-        'Start here for the live workspace: tasks, goals, resources, activity, and who is working now.',
+        'Start here for the live workspace: tasks, goals, resources, and who is working now.',
     },
     {
       target: 'page-daily-updates',
@@ -92,8 +92,14 @@ const SHARED_WORKSPACE_TOUR: TourDefinition = {
       target: 'workspace-members',
       title: 'Members',
       description:
-        "See who is on the team and read each avatar's live status at a glance.",
+        "See who is on the team, read each avatar's live status, and review workspace activity.",
       hint: 'Gray is offline, green online or working, yellow break, and orange blocked.',
+    },
+    {
+      target: 'activity',
+      title: 'Activity',
+      description:
+        'See what has changed across the workspace in real time, including task updates, assignments, and other important activity.',
     },
     {
       target: 'working-now',
@@ -126,12 +132,6 @@ const SHARED_WORKSPACE_TOUR: TourDefinition = {
       title: 'Resources',
       description:
         'Keep workspace documents and other shared resources here so your team can easily access them.',
-    },
-    {
-      target: 'activity',
-      title: 'Activity',
-      description:
-        'See what has changed across the workspace in real time, including task updates, assignments, and other important activity.',
     },
   ],
 }

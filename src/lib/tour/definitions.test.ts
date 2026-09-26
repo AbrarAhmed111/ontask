@@ -79,12 +79,12 @@ describe('shared workspace tour', () => {
       'settings',
       'work-session',
       'workspace-members',
+      'activity',
       'working-now',
       'today-tasks',
       'task-notes',
       'goals',
       'resources',
-      'activity',
     ])
   })
 

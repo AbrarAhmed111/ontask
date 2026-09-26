@@ -22,7 +22,7 @@ import {
 
 // What the overview's task cards read from context. Both are specific to the
 // overview — that is the only page with task cards — so, like the tasks, goals
-// and activity it fetches for itself, they are mounted here rather than in the
+// and Daily Reports it fetches for itself, they are mounted here rather than in the
 // shared workspace layout, where the Members and Settings pages would pay for a
 // realtime subscription they never use.
 //
