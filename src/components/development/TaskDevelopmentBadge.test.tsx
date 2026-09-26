@@ -14,6 +14,7 @@ vi.mock('next/navigation', () => ({
 const connected: GithubConnection = {
   workspaceId: 'w1',
   accountLogin: 'acme',
+  repositoryId: 22,
   repositoryFullName: 'acme/ontask',
   repositoryUrl: 'https://github.com/acme/ontask',
   status: 'connected',
@@ -27,7 +28,9 @@ const development = (
   workspaceId: 'w1',
   branchName: 'feature/google-oauth-abrar',
   workType: 'feature',
+  repositoryId: null,
   repositoryFullName: null,
+  repositoryUrl: null,
   branchDetectedAt: null,
   branchDeletedAt: null,
   branchReleasedAt: null,
@@ -71,6 +74,7 @@ describe('TaskDevelopmentBadge', () => {
           trackingStatus: 'branch_detected',
           branchDetectedAt: '2026-09-26T01:00:00Z',
           branchDeletedAt: '2026-09-26T02:00:00Z',
+          repositoryId: 22,
           repositoryFullName: 'acme/ontask',
         })}
         connection={connected}
@@ -86,6 +90,7 @@ describe('TaskDevelopmentBadge', () => {
         development={development({
           trackingStatus: 'branch_detected',
           branchDetectedAt: '2026-09-26T01:00:00Z',
+          repositoryId: 22,
           repositoryFullName: 'acme/ontask',
         })}
         connection={connected}
@@ -132,6 +137,7 @@ describe('TaskDevelopmentSummary', () => {
         development={development({
           trackingStatus: 'in_review',
           branchDetectedAt: '2026-09-26T01:00:00Z',
+          repositoryId: 22,
           repositoryFullName: 'acme/ontask',
           prNumber: 42,
           prTitle: 'Google sign-in',
@@ -151,6 +157,29 @@ describe('TaskDevelopmentSummary', () => {
     expect(html).toContain('Open Development Task')
   })
 
+  it('uses the refreshed repository name when the stable id matches after a rename', () => {
+    const html = renderToStaticMarkup(
+      <TaskDevelopmentSummary
+        task={task}
+        development={development({
+          trackingStatus: 'branch_detected',
+          branchDetectedAt: '2026-09-26T01:00:00Z',
+          repositoryId: 22,
+          repositoryFullName: 'acme/old-name',
+        })}
+        connection={{
+          ...connected,
+          repositoryFullName: 'acme/new-name',
+          repositoryUrl: 'https://github.com/acme/new-name',
+        }}
+      />,
+    )
+    expect(html).toContain('acme/new-name')
+    expect(html).not.toContain(
+      'The repository is no longer accessible through the connected GitHub installation.',
+    )
+  })
+
   it('gives the reason when the task Needs Attention', () => {
     const html = renderToStaticMarkup(
       <TaskDevelopmentSummary
@@ -159,6 +188,7 @@ describe('TaskDevelopmentSummary', () => {
           trackingStatus: 'branch_detected',
           branchDetectedAt: '2026-09-26T01:00:00Z',
           branchDeletedAt: '2026-09-26T02:00:00Z',
+          repositoryId: 22,
           repositoryFullName: 'acme/ontask',
         })}
         connection={connected}
@@ -179,6 +209,7 @@ describe('TaskDevelopmentSummary', () => {
         development={development({
           trackingStatus: 'merged',
           branchDetectedAt: '2026-09-26T01:00:00Z',
+          repositoryId: 22,
           repositoryFullName: 'acme/ontask',
           prNumber: 42,
           prState: 'merged',

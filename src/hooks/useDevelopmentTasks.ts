@@ -60,6 +60,25 @@ function failure(error: { message?: string } | null, fallback: string): Result {
 
 const EMPTY: DevelopmentSnapshot = { tasks: [], developments: [] }
 
+export function normalizeDevelopmentSnapshot(
+  snapshot: DevelopmentSnapshot,
+): DevelopmentSnapshot {
+  const tasksById = new Map<string, WorkspaceTask>()
+  for (const task of snapshot.tasks) {
+    tasksById.set(task.id, task)
+  }
+
+  const developmentsByTaskId = new Map<string, TaskDevelopment>()
+  for (const development of snapshot.developments) {
+    developmentsByTaskId.set(development.taskId, development)
+  }
+
+  return {
+    tasks: [...tasksById.values()],
+    developments: [...developmentsByTaskId.values()],
+  }
+}
+
 // How long a task's GitHub check counts as fresh on this device. The server
 // throttles to once a minute per task anyway; skipping the request here means
 // reopening a task doesn't even ask.
@@ -95,10 +114,6 @@ export function useDevelopmentTasks(
   })
   const { confirm, setData } = snapshot
   const { tasks, developments: developmentList } = snapshot.data
-  const developments = useMemo(
-    () => new Map(developmentList.map(item => [item.taskId, item])),
-    [developmentList],
-  )
   const fetchStatus = useFetchStatus(
     snapshot,
     active ? `${userId}|${workspaceId}` : null,
@@ -155,8 +170,14 @@ export function useDevelopmentTasks(
           ),
         )
       }
-      taskIdsRef.current = new Set(ids)
-      confirm({ tasks: taskList, developments: rows.map(rowToTaskDevelopment) })
+      const nextSnapshot = normalizeDevelopmentSnapshot({
+        tasks: taskList,
+        developments: rows.map(rowToTaskDevelopment),
+      })
+      taskIdsRef.current = new Set(
+        nextSnapshot.developments.map(item => item.taskId),
+      )
+      confirm(nextSnapshot)
       succeeded()
       setError(null)
     }
@@ -304,8 +325,15 @@ export function useDevelopmentTasks(
   }, [])
 
   const items = useMemo(
-    () =>
-      tasks
+    () => {
+      const normalized = normalizeDevelopmentSnapshot({
+        tasks,
+        developments: developmentList,
+      })
+      const developments = new Map(
+        normalized.developments.map(item => [item.taskId, item]),
+      )
+      return normalized.tasks
         .map(task => {
           const development = developments.get(task.id)
           return development ? { task, development } : null
@@ -315,8 +343,9 @@ export function useDevelopmentTasks(
             item,
           ): item is { task: WorkspaceTask; development: TaskDevelopment } =>
             item !== null,
-        ),
-    [tasks, developments],
+        )
+    },
+    [tasks, developmentList],
   )
 
   return {

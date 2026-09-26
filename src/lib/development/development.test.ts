@@ -151,6 +151,7 @@ describe('developmentStage', () => {
   ) => ({
     trackingStatus,
     branchDeletedAt: null,
+    repositoryId: 22,
     repositoryFullName: 'acme/ontask',
     ...overrides,
   })
@@ -160,12 +161,13 @@ describe('developmentStage', () => {
     overrides: Partial<TaskDevelopment> = {},
     connection: Pick<
       GithubConnection,
-      'status' | 'repositoryFullName'
+      'status' | 'repositoryId' | 'repositoryFullName'
     > | null = null,
   ) =>
     developmentStage({ status }, tracked(trackingStatus, overrides), connection)
   const connected = {
     status: 'connected' as const,
+    repositoryId: 22,
     repositoryFullName: 'acme/ontask',
   }
   const deleted = { branchDeletedAt: '2026-09-26T10:00:00Z' }
@@ -229,7 +231,7 @@ describe('developmentStage', () => {
       'suspended',
       'disconnected',
     ] as const) {
-      const connection = { status, repositoryFullName: 'acme/ontask' }
+      const connection = { status, repositoryId: 22, repositoryFullName: 'acme/ontask' }
       expect(stage('working', 'in_review', {}, connection)).toBe(
         'needs_attention',
       )
@@ -243,10 +245,26 @@ describe('developmentStage', () => {
         {},
         {
           status: 'connected',
+          repositoryId: 23,
           repositoryFullName: 'acme/other',
         },
       ),
     ).toBe('needs_attention')
+  })
+
+  it('a renamed repository with the same stable id is still accessible', () => {
+    expect(
+      stage(
+        'working',
+        'branch_detected',
+        { repositoryId: 22, repositoryFullName: 'acme/old-name' },
+        {
+          status: 'connected',
+          repositoryId: 22,
+          repositoryFullName: 'acme/new-name',
+        },
+      ),
+    ).toBe('in_development')
   })
 
   it('no connection at all is "not tracked", not an alarm on every task', () => {

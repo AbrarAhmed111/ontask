@@ -10,9 +10,11 @@ import { DevelopmentTaskCreated } from '@/components/development/DevelopmentTask
 import { SelectMenu } from '@/components/ui/SelectMenu'
 import { WorkspaceActivityFeed } from '@/components/workspaces/WorkspaceActivityFeed'
 import { notificationHref } from '@/lib/workspaceNotifications'
+import { normalizeDevelopmentSnapshot } from '@/hooks/useDevelopmentTasks'
 import type {
   GithubConnection,
   TaskDevelopment,
+  WorkspaceTask,
   WorkspaceMember,
   WorkspaceTaskStatus,
 } from '@/types/workspace'
@@ -20,6 +22,7 @@ import type {
 const connected: GithubConnection = {
   workspaceId: 'w1',
   accountLogin: 'acme',
+  repositoryId: 22,
   repositoryFullName: 'acme/ontask',
   repositoryUrl: 'https://github.com/acme/ontask',
   status: 'connected',
@@ -33,7 +36,9 @@ const development = (
   workspaceId: 'w1',
   branchName: 'feature/google-oauth-abrar',
   workType: 'feature',
+  repositoryId: null,
   repositoryFullName: null,
+  repositoryUrl: null,
   branchDetectedAt: null,
   branchDeletedAt: null,
   branchReleasedAt: null,
@@ -49,12 +54,37 @@ const development = (
   ...overrides,
 })
 
+const task = (overrides: Partial<WorkspaceTask> = {}): WorkspaceTask => ({
+  id: 't1',
+  workspaceId: 'w1',
+  parentTaskId: null,
+  goalId: null,
+  createdBy: 'u-abrar',
+  assignedTo: 'u-abrar',
+  name: 'Implement Google OAuth',
+  description: null,
+  plannedMinutes: null,
+  workedSeconds: 0,
+  status: 'queued',
+  progressLabel: undefined,
+  progressPercentage: undefined,
+  startedAt: null,
+  completedAt: null,
+  completedClearedAt: null,
+  priority: null,
+  collaborators: [],
+  totalFocusSeconds: 0,
+  ...overrides,
+})
+
 const withPr = (
   prState: TaskDevelopment['prState'],
   trackingStatus: TaskDevelopment['trackingStatus'],
 ) =>
   development({
     repositoryFullName: 'acme/ontask',
+    repositoryId: 22,
+    repositoryUrl: 'https://github.com/acme/ontask',
     branchDetectedAt: '2026-09-26T09:00:00Z',
     prNumber: 142,
     prUrl: 'https://github.com/acme/ontask/pull/142',
@@ -122,6 +152,8 @@ describe('CodeTrackingPanel', () => {
     const html = panel(
       development({
         repositoryFullName: 'acme/ontask',
+        repositoryId: 22,
+        repositoryUrl: 'https://github.com/acme/ontask',
         branchDetectedAt: '2026-09-26T09:00:00Z',
         trackingStatus: 'branch_detected',
       }),
@@ -154,6 +186,8 @@ describe('CodeTrackingPanel', () => {
     const html = panel(
       development({
         repositoryFullName: 'acme/ontask',
+        repositoryId: 22,
+        repositoryUrl: 'https://github.com/acme/ontask',
         branchDetectedAt: '2026-09-26T09:00:00Z',
         branchDeletedAt: '2026-09-26T10:00:00Z',
         trackingStatus: 'branch_detected',
@@ -214,6 +248,23 @@ describe('CodeTrackingPanel', () => {
     expect(html).toContain('Pull Request #142 was merged.')
     expect(html).toContain('active blocker')
     expect(html).not.toContain('Completed')
+  })
+})
+
+describe('development task snapshots', () => {
+  it('keeps one task and development record per task id', () => {
+    const normalized = normalizeDevelopmentSnapshot({
+      tasks: [task({ name: 'Old title' }), task({ name: 'Latest title' })],
+      developments: [
+        development({ branchName: 'feature/old' }),
+        development({ branchName: 'feature/latest' }),
+      ],
+    })
+
+    expect(normalized.tasks).toHaveLength(1)
+    expect(normalized.tasks[0].name).toBe('Latest title')
+    expect(normalized.developments).toHaveLength(1)
+    expect(normalized.developments[0].branchName).toBe('feature/latest')
   })
 })
 

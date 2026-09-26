@@ -81,7 +81,7 @@ export function useWorkspaceGithub(
     const { data, error } = await createClient()
       .from('workspace_github_connections')
       .select(
-        'workspace_id, account_login, repository_full_name, repository_url, status, updated_at',
+        'workspace_id, account_login, repository_id, repository_full_name, repository_url, status, updated_at',
       )
       .eq('workspace_id', workspaceId)
       .maybeSingle()

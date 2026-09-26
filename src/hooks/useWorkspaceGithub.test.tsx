@@ -34,6 +34,7 @@ vi.mock('@/lib/supabase/client', () => ({
 const rowFor = (workspaceId: string, repo: string) => ({
   workspace_id: workspaceId,
   account_login: 'abrar',
+  repository_id: 22,
   repository_full_name: repo,
   repository_url: `https://github.com/${repo}`,
   status: 'connected',
@@ -114,6 +115,7 @@ describe('useWorkspaceGithub — cached', () => {
         connection: {
           workspaceId: 'ws-a',
           accountLogin: 'abrar',
+          repositoryId: 22,
           repositoryFullName: 'acme/cached',
           repositoryUrl: 'https://github.com/acme/cached',
           status: 'connected',

@@ -55,8 +55,14 @@ export function TaskDevelopmentSummary({
   const attention = developmentAttention(task, development, connection)
   const detected = development.branchDetectedAt !== null
   const branchGone = development.branchDeletedAt !== null
+  const sameRepository =
+    development.repositoryId !== null &&
+    connection?.repositoryId !== null &&
+    development.repositoryId === connection?.repositoryId
   const repository =
-    development.repositoryFullName ?? connection?.repositoryFullName ?? null
+    sameRepository && connection?.repositoryFullName
+      ? connection.repositoryFullName
+      : (development.repositoryFullName ?? connection?.repositoryFullName ?? null)
   const branchHref =
     detected && !branchGone && repository && development.prState !== 'merged'
       ? branchUrl(repository, development.branchName)

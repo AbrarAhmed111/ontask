@@ -102,8 +102,14 @@ export function CodeTrackingPanel({
 }) {
   const [explaining, setExplaining] = useState(false)
   const tracking = isTracking(connection)
+  const sameRepository =
+    development.repositoryId !== null &&
+    connection?.repositoryId !== null &&
+    development.repositoryId === connection?.repositoryId
   const repository =
-    development.repositoryFullName ?? connection?.repositoryFullName ?? null
+    sameRepository && connection?.repositoryFullName
+      ? connection.repositoryFullName
+      : (development.repositoryFullName ?? connection?.repositoryFullName ?? null)
   const detected = development.branchDetectedAt !== null
   const branchGone = development.branchDeletedAt !== null
   const attention = developmentAttention(task, development, connection)

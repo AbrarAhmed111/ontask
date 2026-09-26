@@ -23,6 +23,7 @@ export const DEMO_REPOSITORY = 'acme/storefront'
 export const DEMO_CONNECTION: GithubConnection = {
   workspaceId: 'demo-workspace',
   accountLogin: 'acme',
+  repositoryId: 22,
   repositoryFullName: DEMO_REPOSITORY,
   repositoryUrl: `https://github.com/${DEMO_REPOSITORY}`,
   status: 'connected',
@@ -190,7 +191,9 @@ export function buildDemoItems(now = Date.now()): DemoItem[] {
         spec.workType,
       ),
       workType: spec.workType,
+      repositoryId: detected ? DEMO_CONNECTION.repositoryId : null,
       repositoryFullName: detected ? DEMO_REPOSITORY : null,
+      repositoryUrl: detected ? DEMO_CONNECTION.repositoryUrl : null,
       branchDetectedAt: detected ? createdAt : null,
       branchDeletedAt: null,
       branchReleasedAt: null,

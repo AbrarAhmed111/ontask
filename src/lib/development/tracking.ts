@@ -15,7 +15,9 @@ export type TaskDevelopmentRow = {
   branch_name: string
   // Absent until migration 20260926150000 is applied.
   work_type?: DevelopmentWorkType
+  repository_id?: number | string | null
   repository_full_name: string | null
+  repository_url?: string | null
   branch_detected_at: string | null
   // Absent until migration 20260926190000 is applied.
   branch_deleted_at?: string | null
@@ -38,7 +40,12 @@ export function rowToTaskDevelopment(row: TaskDevelopmentRow): TaskDevelopment {
     workspaceId: row.workspace_id,
     branchName: row.branch_name,
     workType: row.work_type ?? 'feature',
+    repositoryId:
+      row.repository_id === null || row.repository_id === undefined
+        ? null
+        : Number(row.repository_id),
     repositoryFullName: row.repository_full_name,
+    repositoryUrl: row.repository_url ?? null,
     branchDetectedAt: row.branch_detected_at,
     branchDeletedAt: row.branch_deleted_at ?? null,
     branchReleasedAt: row.branch_released_at ?? null,
@@ -57,6 +64,7 @@ export function rowToTaskDevelopment(row: TaskDevelopmentRow): TaskDevelopment {
 export type GithubConnectionRow = {
   workspace_id: string
   account_login: string | null
+  repository_id: number | string | null
   repository_full_name: string | null
   repository_url: string | null
   status: GithubConnectionStatus
@@ -69,6 +77,10 @@ export function rowToGithubConnection(
   return {
     workspaceId: row.workspace_id,
     accountLogin: row.account_login,
+    repositoryId:
+      row.repository_id === null || row.repository_id === undefined
+        ? null
+        : Number(row.repository_id),
     repositoryFullName: row.repository_full_name,
     repositoryUrl: row.repository_url,
     status: row.status,
@@ -144,9 +156,12 @@ export function developmentAttention(
   task: Pick<WorkspaceTask, 'status'>,
   development: Pick<
     TaskDevelopment,
-    'trackingStatus' | 'branchDeletedAt' | 'repositoryFullName'
+    'trackingStatus' | 'branchDeletedAt' | 'repositoryId' | 'repositoryFullName'
   >,
-  connection: Pick<GithubConnection, 'status' | 'repositoryFullName'> | null,
+  connection: Pick<
+    GithubConnection,
+    'status' | 'repositoryId' | 'repositoryFullName'
+  > | null,
 ): AttentionReason | null {
   if (task.status === 'completed' || task.status === 'skipped') return null
   if (development.trackingStatus === 'merged') return null
@@ -156,6 +171,15 @@ export function developmentAttention(
     }
     // Tracked in a repository the workspace no longer points at.
     if (
+      development.repositoryId !== null &&
+      connection.repositoryId !== null &&
+      development.repositoryId !== connection.repositoryId
+    ) {
+      return 'repository_inaccessible'
+    }
+    if (
+      development.repositoryId === null &&
+      connection.repositoryId === null &&
       development.repositoryFullName &&
       connection.repositoryFullName &&
       development.repositoryFullName.toLowerCase() !==
@@ -178,11 +202,11 @@ export function developmentStage(
   task: Pick<WorkspaceTask, 'status'>,
   development: Pick<
     TaskDevelopment,
-    'trackingStatus' | 'branchDeletedAt' | 'repositoryFullName'
+    'trackingStatus' | 'branchDeletedAt' | 'repositoryId' | 'repositoryFullName'
   >,
   connection: Pick<
     GithubConnection,
-    'status' | 'repositoryFullName'
+    'status' | 'repositoryId' | 'repositoryFullName'
   > | null = null,
 ): DevelopmentStage {
   if (task.status === 'completed' || task.status === 'skipped') {
