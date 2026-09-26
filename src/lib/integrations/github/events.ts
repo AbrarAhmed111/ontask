@@ -13,6 +13,8 @@ export type NormalizedPullRequest = {
   title: string
   state: 'open' | 'closed'
   merged: boolean
+  // The branch the PR merges into ("main"), for "PR merged into main".
+  base_branch: string | null
   created_at: string | null
   closed_at: string | null
   merged_at: string | null
@@ -89,6 +91,7 @@ export function normalizePullRequest(
     title: str(pr.title) ?? `#${number}`,
     state: pr.state === 'closed' ? 'closed' : 'open',
     merged: pr.merged === true || mergedAt !== null,
+    base_branch: isObject(pr.base) ? str(pr.base.ref) : null,
     created_at: str(pr.created_at),
     closed_at: str(pr.closed_at),
     merged_at: mergedAt,

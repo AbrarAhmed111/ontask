@@ -26,6 +26,7 @@ const pullRequest = (overrides: Record<string, unknown> = {}) => ({
   closed_at: null,
   updated_at: '2026-09-26T10:00:00Z',
   head: { ref: 'feature/google-oauth-abrar', repo: { id: REPO.id } },
+  base: { ref: 'main', repo: { id: REPO.id } },
   ...overrides,
 })
 
@@ -109,6 +110,7 @@ describe('normalizeGithubEvent', () => {
         url: 'https://github.com/acme/ontask/pull/142',
         state: 'open',
         merged: false,
+        base_branch: 'main',
       },
     })
   })
