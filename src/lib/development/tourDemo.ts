@@ -192,6 +192,8 @@ export function buildDemoItems(now = Date.now()): DemoItem[] {
       workType: spec.workType,
       repositoryFullName: detected ? DEMO_REPOSITORY : null,
       branchDetectedAt: detected ? createdAt : null,
+      branchDeletedAt: null,
+      branchReleasedAt: null,
       prNumber: spec.pr?.number ?? null,
       prUrl: null,
       prTitle: spec.pr?.title ?? null,

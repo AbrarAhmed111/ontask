@@ -240,44 +240,86 @@ export async function listUserInstallations(
 
 // ── reconciliation ─────────────────────────────────────────────────────────
 // What GitHub says about one Development Task right now, as the same events a
-// webhook would have delivered -- so a missed delivery is caught up the next
-// time someone opens the task, through the same database function.
+// webhook would have delivered -- so a missed delivery is caught up through
+// the same database function.
+//
+// Only GitHub's definite answers become events. A deleted branch is reported
+// only when GitHub answers 404 for the branch AND 200 for the repository; a
+// repository the installation can no longer see (404 for the repository
+// itself) is reported the way GitHub's own webhook would, as
+// 'repositories_removed'. Anything else -- a 5xx, a rate limit, a network
+// error, a token that can't be minted -- throws, so the caller changes nothing
+// and the next check tries again.
+
+const isNotFound = (error: unknown) =>
+  error instanceof GithubApiError && error.status === 404
+
+async function repositoryReachable(repo: string, token: string) {
+  try {
+    await request<unknown>(`/repos/${repo}`, token)
+    return true
+  } catch (error) {
+    if (isNotFound(error)) return false
+    throw error
+  }
+}
 
 export async function reconcileEvents(input: {
   installationId: number
   repositoryId: number
   repositoryFullName: string
   branchName: string
+  // Whether OnTask has seen the branch before: a branch that was never seen
+  // and isn't there is simply not created yet.
+  branchDetected: boolean
   // The PR already linked to the task, if any.
   prNumber: number | null
   prState: 'open' | 'closed' | 'merged' | null
 }): Promise<GithubDevelopmentEvent[]> {
+  // Merged is final: nothing GitHub says now (a deleted branch, least of all)
+  // changes a Completed task.
+  if (input.prState === 'merged') return []
+
   const token = await installationToken(input.installationId)
   const repo = input.repositoryFullName
   const base = {
     installation_id: input.installationId,
     repository_id: input.repositoryId,
   }
+  const repositoryGone: GithubDevelopmentEvent[] = [
+    {
+      kind: 'repositories_removed',
+      installation_id: input.installationId,
+      repository_ids: [input.repositoryId],
+    },
+  ]
   const events: GithubDevelopmentEvent[] = []
 
   // A linked PR that is still open is refreshed by number. Otherwise look for
   // PRs from the branch (a first PR, or a new one after a closed one).
   const candidates: unknown[] = []
-  if (input.prNumber !== null && input.prState === 'open') {
-    candidates.push(
-      await request<unknown>(`/repos/${repo}/pulls/${input.prNumber}`, token),
-    )
-  } else if (input.prState !== 'merged') {
-    const owner = repo.split('/')[0]
-    const list = await request<unknown[]>(
-      `/repos/${repo}/pulls?state=all&per_page=10&sort=created&direction=desc&head=${encodeURIComponent(`${owner}:${input.branchName}`)}`,
-      token,
-    )
-    // An open PR is the one in progress; else the newest.
-    const open = list.find(
-      pr => (pr as { state?: string } | null)?.state === 'open',
-    )
-    if (open ?? list[0]) candidates.push(open ?? list[0])
+  try {
+    if (input.prNumber !== null && input.prState === 'open') {
+      candidates.push(
+        await request<unknown>(`/repos/${repo}/pulls/${input.prNumber}`, token),
+      )
+    } else {
+      const owner = repo.split('/')[0]
+      const list = await request<unknown[]>(
+        `/repos/${repo}/pulls?state=all&per_page=10&sort=created&direction=desc&head=${encodeURIComponent(`${owner}:${input.branchName}`)}`,
+        token,
+      )
+      // An open PR is the one in progress; else the newest.
+      const open = list.find(
+        pr => (pr as { state?: string } | null)?.state === 'open',
+      )
+      if (open ?? list[0]) candidates.push(open ?? list[0])
+    }
+  } catch (error) {
+    if (isNotFound(error) && !(await repositoryReachable(repo, token))) {
+      return repositoryGone
+    }
+    throw error
   }
 
   for (const pr of candidates) {
@@ -293,6 +335,8 @@ export async function reconcileEvents(input: {
     }
   }
 
+  // A PR (open, or closed and already Needs Attention) decides the stage; the
+  // branch only matters without one.
   if (events.length === 0) {
     try {
       await request<unknown>(
@@ -301,9 +345,17 @@ export async function reconcileEvents(input: {
       )
       events.push({ kind: 'branch', ...base, branch: input.branchName })
     } catch (error) {
-      // 404: the branch doesn't exist yet -- "waiting", not an error.
-      if (!(error instanceof GithubApiError && error.status === 404))
-        throw error
+      if (!isNotFound(error)) throw error
+      // Not there. Never seen: not created yet ("waiting"), not an error.
+      // Seen before: deleted -- if the repository itself still answers.
+      if (input.branchDetected) {
+        if (!(await repositoryReachable(repo, token))) return repositoryGone
+        events.push({
+          kind: 'branch_deleted',
+          ...base,
+          branch: input.branchName,
+        })
+      }
     }
   }
 

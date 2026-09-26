@@ -5,6 +5,9 @@
 //
 // Deliberately NOT here: commits. A push only proves the branch exists; it
 // never changes a task's stage.
+//
+// A deleted branch ('branch_deleted') is reported as-is; whether it matters
+// (no PR carrying the work, nothing merged yet) is the database's decision.
 
 export type NormalizedPullRequest = {
   id: number
@@ -23,7 +26,7 @@ export type NormalizedPullRequest = {
 
 export type GithubDevelopmentEvent =
   | {
-      kind: 'branch'
+      kind: 'branch' | 'branch_deleted'
       installation_id: number
       repository_id: number
       branch: string
@@ -138,16 +141,27 @@ export function normalizeGithubEvent(
         : null
     }
 
+    // GitHub sends both a `delete` and a push with `deleted: true` for one
+    // deleted branch; the database treats the second as the no-op it is.
+    case 'delete': {
+      if (payload.ref_type !== 'branch' || repositoryId === null) return null
+      const branch = str(payload.ref)
+      return branch
+        ? {
+            kind: 'branch_deleted',
+            installation_id: installationId,
+            repository_id: repositoryId,
+            branch,
+          }
+        : null
+    }
+
     case 'push': {
       const ref = str(payload.ref)
-      if (
-        !ref?.startsWith(BRANCH_REF_PREFIX) ||
-        payload.deleted === true ||
-        repositoryId === null
-      )
+      if (!ref?.startsWith(BRANCH_REF_PREFIX) || repositoryId === null)
         return null
       return {
-        kind: 'branch',
+        kind: payload.deleted === true ? 'branch_deleted' : 'branch',
         installation_id: installationId,
         repository_id: repositoryId,
         branch: ref.slice(BRANCH_REF_PREFIX.length),

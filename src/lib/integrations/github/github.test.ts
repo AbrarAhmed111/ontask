@@ -82,7 +82,13 @@ describe('normalizeGithubEvent', () => {
     })
   })
 
-  it('ignores a branch deletion and a tag push', () => {
+  it('reports a deleted branch, from a delete event or a deleting push', () => {
+    const deleted = {
+      kind: 'branch_deleted',
+      installation_id: 11,
+      repository_id: 22,
+      branch: 'feature/x',
+    }
     expect(
       normalizeGithubEvent('push', {
         ref: 'refs/heads/feature/x',
@@ -90,7 +96,26 @@ describe('normalizeGithubEvent', () => {
         installation: INSTALLATION,
         repository: REPO,
       }),
+    ).toEqual(deleted)
+    expect(
+      normalizeGithubEvent('delete', {
+        ref_type: 'branch',
+        ref: 'feature/x',
+        installation: INSTALLATION,
+        repository: REPO,
+      }),
+    ).toEqual(deleted)
+    expect(
+      normalizeGithubEvent('delete', {
+        ref_type: 'tag',
+        ref: 'v1',
+        installation: INSTALLATION,
+        repository: REPO,
+      }),
     ).toBeNull()
+  })
+
+  it('ignores a tag push', () => {
     expect(
       normalizeGithubEvent('push', {
         ref: 'refs/tags/v1',

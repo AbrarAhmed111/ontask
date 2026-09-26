@@ -3,13 +3,20 @@ import {
   assigneeSlug,
   generateBranchName,
   isNumberedVariant,
+  branchCollision,
   isValidBranchName,
   numberedBranchName,
   taskSlug,
 } from '@/lib/development/branchName'
-import { WORK_TYPES, developmentStage } from '@/lib/development/tracking'
+import {
+  WORK_TYPES,
+  developmentAttention,
+  developmentStage,
+} from '@/lib/development/tracking'
 import type {
   DevelopmentTrackingStatus,
+  GithubConnection,
+  TaskDevelopment,
   WorkspaceTaskStatus,
 } from '@/types/workspace'
 
@@ -138,29 +145,153 @@ describe('isValidBranchName', () => {
 })
 
 describe('developmentStage', () => {
+  const tracked = (
+    trackingStatus: DevelopmentTrackingStatus,
+    overrides: Partial<TaskDevelopment> = {},
+  ) => ({
+    trackingStatus,
+    branchDeletedAt: null,
+    repositoryFullName: 'acme/ontask',
+    ...overrides,
+  })
   const stage = (
     status: WorkspaceTaskStatus,
     trackingStatus: DevelopmentTrackingStatus,
-  ) => developmentStage({ status }, { trackingStatus })
+    overrides: Partial<TaskDevelopment> = {},
+    connection: Pick<
+      GithubConnection,
+      'status' | 'repositoryFullName'
+    > | null = null,
+  ) =>
+    developmentStage({ status }, tracked(trackingStatus, overrides), connection)
+  const connected = {
+    status: 'connected' as const,
+    repositoryFullName: 'acme/ontask',
+  }
+  const deleted = { branchDeletedAt: '2026-09-26T10:00:00Z' }
 
   it('follows GitHub while the task is open', () => {
     expect(stage('queued', 'waiting')).toBe('queued')
-    expect(stage('queued', 'branch_detected')).toBe('in_development')
     expect(stage('working', 'in_review')).toBe('in_review')
   })
 
-  it('treats a PR closed without merging as back in development, not done', () => {
-    expect(stage('paused', 'pr_closed')).toBe('in_development')
+  // However the branch came to exist -- created, pushed from local Git,
+  // made in an IDE, renamed to the expected name -- the database records the
+  // same 'branch_detected'; the stage only reads that.
+  it('a matching branch moves a Queued task to In Development', () => {
+    expect(stage('queued', 'branch_detected', {}, connected)).toBe(
+      'in_development',
+    )
+  })
+
+  it('a branch deleted before any PR: Needs Attention, the task kept', () => {
+    expect(stage('working', 'branch_detected', deleted, connected)).toBe(
+      'needs_attention',
+    )
+    expect(
+      developmentAttention(
+        { status: 'working' },
+        tracked('branch_detected', deleted),
+        connected,
+      ),
+    ).toBe('branch_deleted')
+  })
+
+  it('a branch deleted while its PR is open stays In Review', () => {
+    expect(stage('working', 'in_review', deleted, connected)).toBe('in_review')
+  })
+
+  it('a branch deleted after the merge never un-completes the task', () => {
+    expect(stage('completed', 'merged', deleted, connected)).toBe('completed')
+    expect(
+      developmentAttention(
+        { status: 'completed' },
+        tracked('merged', deleted),
+        connected,
+      ),
+    ).toBeNull()
+  })
+
+  it('a PR closed without merging is Needs Attention, not done', () => {
+    expect(stage('paused', 'pr_closed', {}, connected)).toBe('needs_attention')
+    expect(
+      developmentAttention(
+        { status: 'paused' },
+        tracked('pr_closed'),
+        connected,
+      ),
+    ).toBe('pr_closed')
+  })
+
+  it('lost repository access is Needs Attention for unfinished tasks only', () => {
+    for (const status of [
+      'repository_access_lost',
+      'suspended',
+      'disconnected',
+    ] as const) {
+      const connection = { status, repositoryFullName: 'acme/ontask' }
+      expect(stage('working', 'in_review', {}, connection)).toBe(
+        'needs_attention',
+      )
+      expect(stage('completed', 'merged', {}, connection)).toBe('completed')
+    }
+    // Tracked in a repository the workspace no longer points at.
+    expect(
+      stage(
+        'working',
+        'branch_detected',
+        {},
+        {
+          status: 'connected',
+          repositoryFullName: 'acme/other',
+        },
+      ),
+    ).toBe('needs_attention')
+  })
+
+  it('no connection at all is "not tracked", not an alarm on every task', () => {
+    expect(stage('working', 'branch_detected', {}, null)).toBe('in_development')
   })
 
   it('does not call a still-open task completed just because its PR merged', () => {
-    expect(stage('blocked', 'merged')).toBe('in_development')
+    expect(stage('blocked', 'merged', deleted, connected)).toBe(
+      'in_development',
+    )
   })
 
   it('shows a finished task as completed whatever GitHub says', () => {
     expect(stage('completed', 'waiting')).toBe('completed')
     expect(stage('completed', 'merged')).toBe('completed')
     expect(stage('skipped', 'in_review')).toBe('completed')
+    expect(stage('completed', 'pr_closed', deleted, connected)).toBe(
+      'completed',
+    )
+  })
+})
+
+describe('branchCollision (mirrors claim_development_branch_name)', () => {
+  const name = 'feature/google-oauth-abrar'
+  const holder = (finished: boolean) => ({
+    branchName: name,
+    taskId: 't-old',
+    title: 'Implement Google OAuth',
+    finished,
+  })
+
+  it('is nothing while the name is free', () => {
+    expect(branchCollision(name, [])).toBeNull()
+  })
+
+  it('names the active task and numbers the new one -- never shared', () => {
+    expect(branchCollision(name, [holder(false)])).toEqual({
+      holder: holder(false),
+      numberedName: `${name}-02`,
+      canTakeOver: false,
+    })
+  })
+
+  it('lets a finished task hand its name over, on purpose', () => {
+    expect(branchCollision(name, [holder(true)])?.canTakeOver).toBe(true)
   })
 })
 

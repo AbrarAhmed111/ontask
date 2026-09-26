@@ -169,7 +169,7 @@ export type DevelopmentTrackingStatus =
   | 'waiting'
   | 'branch_detected'
   | 'in_review'
-  // The PR was closed WITHOUT merging -- the work is back in development.
+  // The PR was closed WITHOUT merging -- Needs Attention until a new PR.
   | 'pr_closed'
   | 'merged'
 
@@ -187,6 +187,14 @@ export type TaskDevelopment = {
   workType: DevelopmentWorkType
   repositoryFullName: string | null
   branchDetectedAt: string | null
+  // When GitHub last reported the branch deleted (cleared when it is pushed
+  // again). Only means Needs Attention without a PR -- see
+  // developmentAttention() in lib/development/tracking.ts.
+  branchDeletedAt: string | null
+  // When this (finished) task's branch name was handed to a newer task. The
+  // name and PR stay for history; GitHub events for the branch no longer
+  // reach this task. See migration 20260926200000.
+  branchReleasedAt: string | null
   prNumber: number | null
   prUrl: string | null
   prTitle: string | null
@@ -392,6 +400,9 @@ export type NotificationType =
   | 'development_branch_detected'
   | 'development_pr_opened'
   | 'development_pr_merged'
+  // Something about the assignee's code needs them: the branch was deleted
+  // before a PR, or the PR was closed without merging.
+  | 'development_needs_attention'
 
 export type NotificationEntityType =
   'task' | 'goal' | 'resource' | 'note' | 'workspace' | 'daily_update'

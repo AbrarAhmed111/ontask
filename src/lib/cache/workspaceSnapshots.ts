@@ -265,6 +265,8 @@ const isTaskDevelopment = isShape<TaskDevelopment>({
   ),
   repositoryFullName: field.nullableString,
   branchDetectedAt: field.nullableString,
+  branchDeletedAt: field.nullableString,
+  branchReleasedAt: field.nullableString,
   prNumber: field.nullableNumber,
   prUrl: field.nullableString,
   prTitle: field.nullableString,

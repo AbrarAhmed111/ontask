@@ -17,6 +17,10 @@ export type TaskDevelopmentRow = {
   work_type?: DevelopmentWorkType
   repository_full_name: string | null
   branch_detected_at: string | null
+  // Absent until migration 20260926190000 is applied.
+  branch_deleted_at?: string | null
+  // Absent until migration 20260926200000 is applied.
+  branch_released_at?: string | null
   pr_number: number | null
   pr_url: string | null
   pr_title: string | null
@@ -36,6 +40,8 @@ export function rowToTaskDevelopment(row: TaskDevelopmentRow): TaskDevelopment {
     workType: row.work_type ?? 'feature',
     repositoryFullName: row.repository_full_name,
     branchDetectedAt: row.branch_detected_at,
+    branchDeletedAt: row.branch_deleted_at ?? null,
+    branchReleasedAt: row.branch_released_at ?? null,
     prNumber: row.pr_number,
     prUrl: row.pr_url,
     prTitle: row.pr_title,
@@ -70,17 +76,25 @@ export function rowToGithubConnection(
   }
 }
 
-// The four stages a Development Task moves through, as people talk about them.
-// Read from the task's own status AND its GitHub tracking together:
-//   - the task being finished always wins (a merge, or finished by hand);
+// The four stages a Development Task moves through, as people talk about them,
+// plus one exception, Needs Attention. Read from the task's own status AND its
+// GitHub tracking together:
+//   - the task being finished always wins (a merge, or finished by hand) --
+//     nothing GitHub does afterwards (deleting the merged branch, say) undoes
+//     Completed;
+//   - then Needs Attention, when GitHub did something a person has to act on
+//     (developmentAttention below);
 //   - otherwise GitHub decides: an open PR is In Review; a branch that exists
-//     (including after a PR was closed without merging) is In Development.
+//     is In Development.
 // A merged PR on a task that is still open (it was blocked when the merge
 // arrived) stays In Development until the task itself is finished.
-export type DevelopmentStage =
+export type LifecycleStage =
   'queued' | 'in_development' | 'in_review' | 'completed'
+export type DevelopmentStage = LifecycleStage | 'needs_attention'
 
-export const DEVELOPMENT_STAGES: DevelopmentStage[] = [
+// The board's columns. Needs Attention is not one: it is shown above them,
+// only when something needs it.
+export const DEVELOPMENT_STAGES: LifecycleStage[] = [
   'queued',
   'in_development',
   'in_review',
@@ -92,20 +106,95 @@ export const STAGE_LABELS: Record<DevelopmentStage, string> = {
   in_development: 'In Development',
   in_review: 'In Review',
   completed: 'Completed',
+  needs_attention: 'Needs Attention',
+}
+
+export type AttentionReason =
+  'branch_deleted' | 'pr_closed' | 'repository_inaccessible'
+
+export const ATTENTION_MESSAGES: Record<AttentionReason, string> = {
+  branch_deleted: 'Tracked branch was deleted or is no longer accessible.',
+  pr_closed: 'Pull request was closed without being merged.',
+  repository_inaccessible:
+    'The repository is no longer accessible through the connected GitHub installation.',
+}
+
+// What the developer can do about it.
+export const ATTENTION_NEXT_STEPS: Record<AttentionReason, string> = {
+  branch_deleted:
+    'Push the branch again with the same name to keep going — the task picks up where it left off.',
+  pr_closed:
+    'Open a new Pull Request from the branch (or reopen this one) when the work is ready.',
+  repository_inaccessible:
+    'The workspace owner can grant the OnTask GitHub App access to the repository again, or connect another one in Settings.',
+}
+
+const INACCESSIBLE_CONNECTION: GithubConnectionStatus[] = [
+  'repository_access_lost',
+  'suspended',
+  'disconnected',
+]
+
+// Why a Development Task needs a person, or null. Never for a finished task
+// or a merged PR. The repository comes first: while OnTask can't see it,
+// nothing else can be fixed from GitHub's side. `connection` null means the
+// workspace isn't connected at all (the owner disconnected it) -- not
+// tracked, rather than a problem with this task.
+export function developmentAttention(
+  task: Pick<WorkspaceTask, 'status'>,
+  development: Pick<
+    TaskDevelopment,
+    'trackingStatus' | 'branchDeletedAt' | 'repositoryFullName'
+  >,
+  connection: Pick<GithubConnection, 'status' | 'repositoryFullName'> | null,
+): AttentionReason | null {
+  if (task.status === 'completed' || task.status === 'skipped') return null
+  if (development.trackingStatus === 'merged') return null
+  if (connection) {
+    if (INACCESSIBLE_CONNECTION.includes(connection.status)) {
+      return 'repository_inaccessible'
+    }
+    // Tracked in a repository the workspace no longer points at.
+    if (
+      development.repositoryFullName &&
+      connection.repositoryFullName &&
+      development.repositoryFullName.toLowerCase() !==
+        connection.repositoryFullName.toLowerCase()
+    ) {
+      return 'repository_inaccessible'
+    }
+  }
+  if (development.trackingStatus === 'pr_closed') return 'pr_closed'
+  if (
+    development.trackingStatus === 'branch_detected' &&
+    development.branchDeletedAt !== null
+  ) {
+    return 'branch_deleted'
+  }
+  return null
 }
 
 export function developmentStage(
   task: Pick<WorkspaceTask, 'status'>,
-  development: Pick<TaskDevelopment, 'trackingStatus'>,
+  development: Pick<
+    TaskDevelopment,
+    'trackingStatus' | 'branchDeletedAt' | 'repositoryFullName'
+  >,
+  connection: Pick<
+    GithubConnection,
+    'status' | 'repositoryFullName'
+  > | null = null,
 ): DevelopmentStage {
   if (task.status === 'completed' || task.status === 'skipped') {
     return 'completed'
+  }
+  if (developmentAttention(task, development, connection)) {
+    return 'needs_attention'
   }
   switch (development.trackingStatus) {
     case 'in_review':
       return 'in_review'
     case 'branch_detected':
-    case 'pr_closed':
     case 'merged':
       return 'in_development'
     default:
