@@ -5,6 +5,7 @@ import { TOUR_ANCHORS } from '@/lib/tourAnchors'
 const tours = Object.values(TOURS)
 const personal = TOURS['personal-workspace']
 const shared = TOURS['shared-workspace']
+const development = TOURS.development
 
 describe('tour definitions', () => {
   it('is keyed by the id each tour carries', () => {
@@ -131,6 +132,48 @@ describe('shared workspace tour', () => {
     const notes = shared.steps.find(step => step.target === 'task-notes')
     expect(notes?.description).toMatch(/shared notes/i)
     expect(notes?.hint).toMatch(/everyone who can see the task/i)
+  })
+})
+
+describe('development tour', () => {
+  it('walks the sample board top to bottom, one stage at a time', () => {
+    expect(development.steps.map(step => step.target)).toEqual([
+      'dev-overview',
+      'dev-new-task',
+      'dev-connection',
+      'dev-branch-name',
+      'dev-stage-queued',
+      'dev-stage-in-development',
+      'dev-stage-in-review',
+      'dev-stage-completed',
+      'dev-journey',
+    ])
+  })
+
+  it('says up front that the board is sample data', () => {
+    expect(development.steps[0].hint).toMatch(/sample data/i)
+  })
+
+  it('explains what moves a task between stages', () => {
+    const text = (target: string) => {
+      const step = development.steps.find(item => item.target === target)
+      return `${step?.description} ${step?.hint ?? ''}`
+    }
+    expect(text('dev-stage-in-development')).toMatch(/branch/i)
+    expect(text('dev-stage-in-review')).toMatch(/pull request/i)
+    expect(text('dev-stage-completed')).toMatch(/merg/i)
+  })
+
+  it('is named for its button', () => {
+    expect(development.label).toBe('Development tour')
+  })
+
+  it('stays out of the workspace tours', () => {
+    for (const tour of [personal, shared]) {
+      expect(tour.steps.some(step => step.target.startsWith('dev-'))).toBe(
+        false,
+      )
+    }
   })
 })
 

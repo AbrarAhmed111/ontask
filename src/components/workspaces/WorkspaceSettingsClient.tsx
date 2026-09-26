@@ -108,6 +108,14 @@ export function WorkspaceSettingsClient() {
     router.push(isPersonal ? PERSONAL_WORKSPACE_PATH : workspacePath(workspace))
   }
 
+  // The Development tour runs on the Overview's Development section, which
+  // shows sample data for it -- so it is offered even with the module off.
+  const handleDevelopmentTour = () => {
+    if (!workspace || isPersonal) return
+    requestReplay('development')
+    router.push(workspacePath(workspace))
+  }
+
   return (
     <>
       <WorkspaceSettingsSection
@@ -130,7 +138,11 @@ export function WorkspaceSettingsClient() {
           saving: modulesSaving,
           onDevelopmentChange: handleDevelopmentChange,
         }}
-        guidance={{ label: tour.label, onReplay: handleReplayTour }}
+        guidance={{
+          label: tour.label,
+          onReplay: handleReplayTour,
+          onDevelopmentTour: isPersonal ? undefined : handleDevelopmentTour,
+        }}
         activeTab={activeTab}
         onTabChange={handleTabChange}
         onEdit={() => {

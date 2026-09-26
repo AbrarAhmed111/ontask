@@ -156,6 +156,18 @@ describe('WorkspaceSettingsSection', () => {
       expect(html).toContain('Replay Shared Workspace tour')
     })
 
+    it('offers the Development tour when a workspace can have one', () => {
+      const withDevelopment = render({
+        guidance: { ...guidance, onDevelopmentTour: noop },
+        activeTab: 'guidance-settings',
+      })
+      expect(withDevelopment).toContain('Development Section guide')
+      expect(withDevelopment).toContain('Start Development tour')
+      expect(
+        render({ guidance, activeTab: 'guidance-settings' }),
+      ).not.toContain('Start Development tour')
+    })
+
     it('leaves the card out when there is no tour to replay', () => {
       expect(render({ activeTab: 'guidance-settings' })).not.toContain(
         'Help &amp; guidance',

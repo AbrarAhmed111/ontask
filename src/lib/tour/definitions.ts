@@ -136,9 +136,81 @@ const SHARED_WORKSPACE_TOUR: TourDefinition = {
   ],
 }
 
+// Started only from Settings > Guidance. While it runs, the Development
+// section swaps its board for sample data (components/development/
+// DevelopmentTourDemo), so it works the same on an empty workspace -- or one
+// with the module off -- and shows a task at every stage. Steps follow the
+// sample's layout top to bottom, which is also the order a task lives through.
+const DEVELOPMENT_TOUR: TourDefinition = {
+  id: 'development',
+  label: 'Development tour',
+  steps: [
+    {
+      target: 'dev-overview',
+      title: 'Development',
+      description:
+        'Track coding work next to the rest of your workspace. OnTask follows each task’s branch and Pull Request for you.',
+      hint: 'This is sample data. Your real tasks come back when the tour ends.',
+    },
+    {
+      target: 'dev-new-task',
+      title: 'New Development Task',
+      description:
+        'Pick the kind of work, an assignee, a priority and an optional Goal. OnTask names the branch for you.',
+      prefer: 'left',
+    },
+    {
+      target: 'dev-connection',
+      title: 'Connected repository',
+      description:
+        'The workspace owner connects one GitHub repository in Settings. Its branches and Pull Requests are what OnTask watches.',
+    },
+    {
+      target: 'dev-branch-name',
+      title: 'Your branch name',
+      description:
+        'Copy the name and create a branch with exactly that name. That is how OnTask knows which task the code belongs to.',
+      hint: 'The prefix comes from the kind of work: feature/, fix/, docs/, …',
+    },
+    {
+      target: 'dev-stage-queued',
+      title: 'Queued',
+      description:
+        'A new task waits here until its branch shows up in the repository.',
+    },
+    {
+      target: 'dev-stage-in-development',
+      title: 'In Development',
+      description:
+        'Once the branch is pushed, the task moves here by itself. No status to update by hand.',
+      hint: 'A Pull Request closed without merging also brings a task back here.',
+    },
+    {
+      target: 'dev-stage-in-review',
+      title: 'In Review',
+      description:
+        'Open a Pull Request from the branch and the task moves to review, with the PR number on its card.',
+    },
+    {
+      target: 'dev-stage-completed',
+      title: 'Completed',
+      description:
+        'Merging the Pull Request completes the task, and it counts toward its Goal if it has one.',
+    },
+    {
+      target: 'dev-journey',
+      title: 'One task, start to end',
+      description:
+        'One task’s whole journey: named, branch pushed, reviewed, merged. Nobody moved it by hand.',
+      hint: 'Open any Development Task to see its branch and Pull Request.',
+    },
+  ],
+}
+
 export const TOURS: Record<TourId, TourDefinition> = {
   'personal-workspace': PERSONAL_WORKSPACE_TOUR,
   'shared-workspace': SHARED_WORKSPACE_TOUR,
+  development: DEVELOPMENT_TOUR,
 }
 
 // Which tour a workspace gets: the same engine, a different definition.

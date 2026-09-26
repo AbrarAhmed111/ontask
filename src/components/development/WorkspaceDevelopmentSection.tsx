@@ -4,51 +4,53 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import {
-  CheckCircle2,
-  CirclePlus,
-  GitBranch,
-  GitPullRequest,
-  PlugZap,
-  Target,
-} from 'lucide-react'
+import { CheckCircle2, CirclePlus, GitBranch, PlugZap } from 'lucide-react'
 import githubIcon from '@/assets/img/github-icon.png'
-import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ErrorBanner } from '@/components/ui/ErrorBanner'
 import { Modal } from '@/components/ui/Modal'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { useWorkspaceDetail } from '@/components/workspaces/WorkspaceDetailContext'
-import {
-  PriorityBadge,
-  StageDot,
-  WorkTypeIcon,
-} from '@/components/development/DevelopmentBadges'
+import { useTour } from '@/components/tour/TourProvider'
+import { DevelopmentBoard } from '@/components/development/DevelopmentBoard'
+import { DevelopmentTourDemo } from '@/components/development/DevelopmentTourDemo'
 import { DevelopmentTaskForm } from '@/components/development/DevelopmentTaskForm'
 import { DevelopmentTaskCreated } from '@/components/development/DevelopmentTaskCreated'
 import { DevelopmentTaskDetail } from '@/components/development/DevelopmentTaskDetail'
-import { useDevelopmentTasks } from '@/hooks/useDevelopmentTasks'
-import { useWorkspaceGithub } from '@/hooks/useWorkspaceGithub'
+import { useDevelopmentData } from '@/components/development/DevelopmentDataContext'
 import {
   CONNECTION_STATUS_MESSAGES,
   DEVELOPMENT_STAGES,
-  DevelopmentStage,
-  STAGE_LABELS,
-  developmentStage,
   isTracking,
-  priorityRank,
-  workTypeInfo,
 } from '@/lib/development/tracking'
-import type {
-  Goal,
-  GithubConnection,
-  TaskDevelopment,
-  WorkspaceMember,
-  WorkspaceTask,
-} from '@/types/workspace'
+import { TOURS } from '@/lib/tour/definitions'
+import { tourAnchor } from '@/lib/tourAnchors'
+import type { Goal, GithubConnection } from '@/types/workspace'
 
-type Item = { task: WorkspaceTask; development: TaskDevelopment }
+// A beat between the sample board appearing and the tour opening over it, the
+// same pause the workspace tour takes (hooks/useWorkspaceTour).
+const TOUR_SETTLE_MS = 600
+
+// The Development tour is requested from Settings > Guidance. While it is
+// requested or running, the section shows sample data instead of the board
+// (whether or not the module is on), and it starts the tour once that sample
+// is on screen -- a step is only kept if its target is.
+function useDevelopmentTour(available: boolean) {
+  const { run, canStart, start, replayRequest, clearReplayRequest } = useTour()
+  const requested = replayRequest === 'development'
+
+  useEffect(() => {
+    if (!requested || !available || !canStart) return
+    const timer = window.setTimeout(() => {
+      clearReplayRequest()
+      start(TOURS.development)
+    }, TOUR_SETTLE_MS)
+    return () => window.clearTimeout(timer)
+  }, [requested, available, canStart, clearReplayRequest, start])
+
+  return available && (requested || run?.tourId === 'development')
+}
 
 function GithubLogo({ className = 'h-4 w-4' }: { className?: string }) {
   return (
@@ -127,69 +129,6 @@ function ConnectionNotice({
   )
 }
 
-function TaskRow({
-  item,
-  goal,
-  assignee,
-  onOpen,
-}: {
-  item: Item
-  goal: Goal | undefined
-  assignee: WorkspaceMember | undefined
-  onOpen: () => void
-}) {
-  const { task, development } = item
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="w-full rounded-xl border border-line bg-panel px-3 py-2.5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[var(--ws-accent,#375b4b)]"
-    >
-      <div className="flex items-start justify-between gap-2">
-        <p className="flex min-w-0 items-start gap-1.5 text-xs font-bold leading-5 text-ink">
-          <span
-            className="mt-[3px]"
-            title={workTypeInfo(development.workType).label}
-          >
-            <WorkTypeIcon type={development.workType} size={12} />
-          </span>
-          <span className="min-w-0">{task.name}</span>
-        </p>
-        {assignee && (
-          <Avatar
-            person={assignee}
-            title={assignee.fullName || assignee.email || 'Member'}
-            className="h-5 w-5 shrink-0 text-[8px]"
-          />
-        )}
-      </div>
-      {goal && (
-        <p className="mt-0.5 flex items-center gap-1 truncate text-[10px] text-muted">
-          <Target size={10} className="shrink-0" /> {goal.name}
-        </p>
-      )}
-      <div className="mt-1.5 flex items-center gap-2">
-        <span className="flex min-w-0 items-center gap-1 font-mono text-[10px] text-muted">
-          {development.prNumber !== null ? (
-            <>
-              <GitPullRequest size={10} className="shrink-0" />#
-              {development.prNumber}
-            </>
-          ) : (
-            <>
-              <GitBranch size={10} className="shrink-0" />
-              <span className="truncate">{development.branchName}</span>
-            </>
-          )}
-        </span>
-        <span className="ml-auto">
-          <PriorityBadge priority={task.priority} />
-        </span>
-      </div>
-    </button>
-  )
-}
-
 // The Overview's Development section, right after Goals: every Development
 // Task by stage (Queued -> In Development -> In Review -> Completed), one
 // compact row each; who, which Goal, the branch and the PR are one click away.
@@ -205,9 +144,10 @@ export function WorkspaceDevelopmentSection({ goals }: { goals: Goal[] }) {
     isPersonal,
     ready: workspaceReady,
   } = useWorkspaceDetail()
-  const enabled = Boolean(workspace?.developmentEnabled) && !isPersonal
-  const development = useDevelopmentTasks(workspaceId, user, members, enabled)
-  const github = useWorkspaceGithub(workspaceId, user?.id, enabled)
+  const { enabled, development, github } = useDevelopmentData()
+  const demo = useDevelopmentTour(
+    Boolean(workspace) && !isPersonal && workspaceReady,
+  )
   const [creating, setCreating] = useState(false)
   // Set once the task exists: the dialog then shows its branch to copy.
   const [created, setCreated] = useState<{
@@ -229,24 +169,6 @@ export function WorkspaceDevelopmentSection({ goals }: { goals: Goal[] }) {
     setOpenTaskId(taskId)
   }, [])
 
-  const columns = useMemo(() => {
-    const byStage = new Map<DevelopmentStage, Item[]>(
-      DEVELOPMENT_STAGES.map(stage => [stage, []]),
-    )
-    for (const item of development.items) {
-      byStage.get(developmentStage(item.task, item.development))!.push(item)
-    }
-    for (const [stage, list] of byStage) {
-      list.sort((a, b) =>
-        stage === 'completed'
-          ? (b.task.completedAt ?? 0) - (a.task.completedAt ?? 0)
-          : priorityRank(b.task.priority) - priorityRank(a.task.priority) ||
-            b.development.createdAt.localeCompare(a.development.createdAt),
-      )
-    }
-    return byStage
-  }, [development.items])
-
   const goalsById = useMemo(
     () => new Map(goals.map(goal => [goal.id, goal])),
     [goals],
@@ -260,7 +182,7 @@ export function WorkspaceDevelopmentSection({ goals }: { goals: Goal[] }) {
     }
   }, [openTaskId, openedFromLink, development.ready, openItem])
 
-  if (!enabled || !workspace) return null
+  if (!workspace || (!enabled && !demo)) return null
 
   const settingsHref = `/workspaces/${workspace.slug}/settings`
   const total = development.items.length
@@ -272,7 +194,7 @@ export function WorkspaceDevelopmentSection({ goals }: { goals: Goal[] }) {
       </Suspense>
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div>
+        <div {...tourAnchor('dev-overview')}>
           <h2 className="flex items-center gap-2 text-sm font-bold tracking-tight text-ink">
             <GitBranch size={15} className="text-[var(--ws-accent,#375b4b)]" />
             Development
@@ -282,88 +204,57 @@ export function WorkspaceDevelopmentSection({ goals }: { goals: Goal[] }) {
             Pull Request.
           </p>
         </div>
-        <Button onClick={() => setCreating(true)}>
-          <CirclePlus size={15} /> New Development Task
-        </Button>
+        <span className="inline-flex" {...tourAnchor('dev-new-task')}>
+          <Button onClick={() => setCreating(true)} disabled={demo}>
+            <CirclePlus size={15} /> New Development Task
+          </Button>
+        </span>
       </div>
 
-      <div className="space-y-4">
-        {github.ready && (
-          <ConnectionNotice
-            connection={github.connection}
-            isOwner={isOwner}
-            settingsHref={settingsHref}
-          />
-        )}
+      {demo ? (
+        <DevelopmentTourDemo />
+      ) : (
+        <div className="space-y-4">
+          {github.ready && (
+            <ConnectionNotice
+              connection={github.connection}
+              isOwner={isOwner}
+              settingsHref={settingsHref}
+            />
+          )}
 
-        {development.error && <ErrorBanner>{development.error}</ErrorBanner>}
+          {development.error && <ErrorBanner>{development.error}</ErrorBanner>}
 
-        {!workspaceReady || !development.ready ? (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {DEVELOPMENT_STAGES.map(stage => (
-              <Skeleton key={stage} className="h-28 rounded-2xl" />
-            ))}
-          </div>
-        ) : total === 0 ? (
-          <EmptyState
-            icon={GitBranch}
-            title="No Development Tasks yet"
-            action={
-              <Button variant="secondary" onClick={() => setCreating(true)}>
-                <CirclePlus size={14} /> Create the first one
-              </Button>
-            }
-          >
-            Create a task and OnTask gives you the exact branch name to use.
-            Once you create that branch, the task moves by itself — In
-            Development, In Review, Completed.
-          </EmptyState>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {DEVELOPMENT_STAGES.map(stage => {
-              const list = columns.get(stage) ?? []
-              return (
-                <section
-                  key={stage}
-                  aria-label={STAGE_LABELS[stage]}
-                  className="rounded-2xl border border-line/70 bg-white/40 p-3"
-                >
-                  <h3 className="mb-2.5 flex items-center gap-2 px-1 text-[11px] font-bold text-ink">
-                    <StageDot stage={stage} />
-                    {STAGE_LABELS[stage]}
-                    <span className="ml-auto font-mono text-[10px] text-muted">
-                      {list.length}
-                    </span>
-                  </h3>
-                  {list.length === 0 ? (
-                    <p className="px-1 py-3 text-center text-[10px] text-muted">
-                      Nothing here
-                    </p>
-                  ) : (
-                    <div className="space-y-2">
-                      {list.map(item => (
-                        <TaskRow
-                          key={item.task.id}
-                          item={item}
-                          goal={
-                            item.task.goalId
-                              ? goalsById.get(item.task.goalId)
-                              : undefined
-                          }
-                          assignee={members.find(
-                            member => member.userId === item.task.assignedTo,
-                          )}
-                          onOpen={() => setOpenTaskId(item.task.id)}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </section>
-              )
-            })}
-          </div>
-        )}
-      </div>
+          {!workspaceReady || !development.ready ? (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {DEVELOPMENT_STAGES.map(stage => (
+                <Skeleton key={stage} className="h-28 rounded-2xl" />
+              ))}
+            </div>
+          ) : total === 0 ? (
+            <EmptyState
+              icon={GitBranch}
+              title="No Development Tasks yet"
+              action={
+                <Button variant="secondary" onClick={() => setCreating(true)}>
+                  <CirclePlus size={14} /> Create the first one
+                </Button>
+              }
+            >
+              Create a task and OnTask gives you the exact branch name to use.
+              Once you create that branch, the task moves by itself — In
+              Development, In Review, Completed.
+            </EmptyState>
+          ) : (
+            <DevelopmentBoard
+              items={development.items}
+              goals={goals}
+              members={members}
+              onOpen={setOpenTaskId}
+            />
+          )}
+        </div>
+      )}
 
       {creating && user && (
         <Modal

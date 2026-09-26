@@ -98,8 +98,13 @@ export function WorkspaceSettingsSection({
     onSoundEnabledChange: (enabled: boolean) => void
   }
   // Replaying this workspace's onboarding tour. `label` names it ("Personal
-  // Workspace tour"); omit `guidance` to leave the card out.
-  guidance?: { label: string; onReplay: () => void }
+  // Workspace tour"); omit `guidance` to leave the card out. `onDevelopmentTour`
+  // adds the Development tour (shared workspaces only).
+  guidance?: {
+    label: string
+    onReplay: () => void
+    onDevelopmentTour?: () => void
+  }
   // Turning the Daily Report on or off; omit to leave the card out.
   dailyReports?: { saving: boolean; onChange: (enabled: boolean) => void }
   // Switching optional modules (Development) on or off; shared workspaces
@@ -350,6 +355,33 @@ export function WorkspaceSettingsSection({
               Replay {guidance.label}
             </Button>
           </div>
+          {guidance.onDevelopmentTour && (
+            <div className="flex flex-col gap-4 border-t border-line px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-2.5">
+                <GitBranch
+                  size={15}
+                  className="mt-0.5 shrink-0 text-[var(--ws-accent,#375b4b)]"
+                />
+                <div>
+                  <p className="text-xs font-bold text-ink">
+                    Development Section guide
+                  </p>
+                  <p className="mt-0.5 text-xs leading-5 text-muted">
+                    See how a task follows its branch and Pull Request from
+                    Queued to Completed, with sample data.
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="secondary"
+                onClick={guidance.onDevelopmentTour}
+                disabled={!ready}
+                className="shrink-0"
+              >
+                Start Development tour
+              </Button>
+            </div>
+          )}
         </SettingsCard>
       )}
     </div>

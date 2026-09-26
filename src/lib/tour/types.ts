@@ -2,7 +2,7 @@ import type { TourAnchor } from '@/lib/tourAnchors'
 
 // One id per tour. Persisted next to the user and workspace it was shown in
 // (see progress.ts), so an id is never renamed once it has shipped.
-export type TourId = 'personal-workspace' | 'shared-workspace'
+export type TourId = 'personal-workspace' | 'shared-workspace' | 'development'
 
 // How a tour ended. A tour that is interrupted (the user navigates away, a
 // target disappears) has no outcome and is offered again next time.
