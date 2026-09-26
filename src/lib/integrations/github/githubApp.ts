@@ -56,6 +56,27 @@ export function webhookSecret() {
   return env('GITHUB_WEBHOOK_SECRET')
 }
 
+// GitHub's OAuth web flow for the app: GitHub asks the user to authorize the
+// OnTask app (once -- afterwards it redirects straight back) and returns to
+// the callback with a one-time `code` and this `state`. This is the start of
+// every connection, because it works whether or not the app is installed
+// already: installing is only needed when the user can't access an
+// installation yet.
+export function authorizeUrl(state: string, redirectUri: string) {
+  const { clientId } = githubAppConfig()
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    state,
+  })
+  return `https://github.com/login/oauth/authorize?${params}`
+}
+
+// Installing the app on an account ("Request user authorization (OAuth) during
+// installation" is on, so GitHub returns to the callback with `code`,
+// `installation_id` and `setup_action`). Only for an account that doesn't
+// have the app yet: for one that does, GitHub opens the installation's
+// settings page, which does not come back to OnTask.
 export function installUrl(state: string) {
   return `https://github.com/apps/${encodeURIComponent(githubAppConfig().slug)}/installations/new?state=${encodeURIComponent(state)}`
 }
@@ -132,12 +153,17 @@ export type GithubRepository = {
   private: boolean
 }
 
-export async function getInstallationAccount(installationId: number) {
-  const installation = await request<{ account: { login?: string } | null }>(
-    `/app/installations/${installationId}`,
-    appJwt(),
-  )
-  return installation.account?.login ?? null
+// The installation's account, and its page on GitHub -- where the owner
+// changes which repositories the app may see.
+export async function getInstallation(installationId: number) {
+  const installation = await request<{
+    account: { login?: string } | null
+    html_url?: string
+  }>(`/app/installations/${installationId}`, appJwt())
+  return {
+    account: installation.account?.login ?? null,
+    manageUrl: installation.html_url ?? null,
+  }
 }
 
 // The repositories the owner granted the app (first 100 -- ample for choosing
@@ -164,13 +190,25 @@ export async function listInstallationRepositories(installationId: number) {
   }
 }
 
-// Proves the person finishing the install can actually see that installation
-// on GitHub -- otherwise anyone could paste another account's installation id
-// into the callback URL. Uses their one-off user token and then drops it.
-export async function userCanAccessInstallation(
+export type UserInstallation = {
+  id: number
+  account: string | null
+}
+
+// Which installations of THIS app the GitHub user who just authorized can
+// access -- GitHub's own answer (GET /user/installations, "installations of
+// your GitHub App that the authenticated user has explicit permission to
+// access"). This is what proves an installation belongs to the person
+// connecting it: anyone could paste another account's installation id into
+// the callback URL, but only its own users see it here.
+//
+// `code` is the one-time OAuth code GitHub sent to the callback. Its user
+// token is used for this one request and then dropped -- never stored,
+// never refreshed. null when GitHub would not exchange the code (expired,
+// already used, or the app's client id/secret are wrong).
+export async function listUserInstallations(
   code: string,
-  installationId: number,
-) {
+): Promise<UserInstallation[] | null> {
   const { clientId, clientSecret } = githubAppConfig()
   const exchange = await fetch('https://github.com/login/oauth/access_token', {
     method: 'POST',
@@ -185,17 +223,19 @@ export async function userCanAccessInstallation(
   const body = (await exchange.json().catch(() => null)) as {
     access_token?: string
   } | null
-  if (!exchange.ok || !body?.access_token) return false
+  if (!exchange.ok || !body?.access_token) return null
 
+  const found: UserInstallation[] = []
   for (let page = 1; page <= 5; page++) {
     const result = await request<{
-      installations: { id: number }[]
+      installations: { id: number; account: { login?: string } | null }[]
     }>(`/user/installations?per_page=100&page=${page}`, body.access_token)
-    if (result.installations.some(item => item.id === installationId))
-      return true
+    for (const item of result.installations) {
+      found.push({ id: item.id, account: item.account?.login ?? null })
+    }
     if (result.installations.length < 100) break
   }
-  return false
+  return found
 }
 
 // ── reconciliation ─────────────────────────────────────────────────────────

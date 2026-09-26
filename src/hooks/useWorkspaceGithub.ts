@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
   GithubConnectionRow,
@@ -38,9 +38,21 @@ async function postJson(url: string, body: unknown): Promise<Result> {
 // credential) and, for the owner, the actions that configure it. Connecting is
 // a full-page redirect to GitHub (connectUrl); everything after that goes
 // through the server routes, which re-check that the caller is the owner.
+//
+// Strictly per workspace: what was loaded is kept together with the workspace
+// it belongs to and only shown while that is still the workspace on screen, and
+// an answer that arrives after switching workspaces is dropped. So workspace B
+// never shows workspace A's connection, not even for a moment.
 export function useWorkspaceGithub(workspaceId: string, enabled: boolean) {
-  const [connection, setConnection] = useState<GithubConnection | null>(null)
-  const [ready, setReady] = useState(false)
+  const [loaded, setLoaded] = useState<{
+    workspaceId: string
+    connection: GithubConnection | null
+  } | null>(null)
+  const currentRef = useRef(workspaceId)
+  currentRef.current = workspaceId
+  const isCurrent = loaded !== null && loaded.workspaceId === workspaceId
+  const connection = isCurrent ? loaded.connection : null
+  const ready = isCurrent
 
   const load = useCallback(async () => {
     if (!workspaceId) return
@@ -51,12 +63,20 @@ export function useWorkspaceGithub(workspaceId: string, enabled: boolean) {
       )
       .eq('workspace_id', workspaceId)
       .maybeSingle()
-    if (!error) {
-      setConnection(
-        data ? rowToGithubConnection(data as GithubConnectionRow) : null,
-      )
-    }
-    setReady(true)
+    if (currentRef.current !== workspaceId) return
+    setLoaded(current =>
+      error
+        ? // A failed read keeps this workspace's last answer, never another's.
+          current?.workspaceId === workspaceId
+          ? current
+          : { workspaceId, connection: null }
+        : {
+            workspaceId,
+            connection: data
+              ? rowToGithubConnection(data as GithubConnectionRow)
+              : null,
+          },
+    )
   }, [workspaceId])
 
   useEffect(() => {
@@ -82,7 +102,12 @@ export function useWorkspaceGithub(workspaceId: string, enabled: boolean) {
   }, [workspaceId, enabled, load])
 
   const listRepositories = async (): Promise<
-    | { success: true; repositories: GithubRepositoryOption[]; total: number }
+    | {
+        success: true
+        repositories: GithubRepositoryOption[]
+        total: number
+        manageUrl: string | null
+      }
     | { success: false; error: string }
   > => {
     try {
@@ -100,6 +125,7 @@ export function useWorkspaceGithub(workspaceId: string, enabled: boolean) {
         success: true,
         repositories: data.repositories ?? [],
         total: data.total ?? 0,
+        manageUrl: data.manageUrl ?? null,
       }
     } catch {
       return { success: false, error: "Couldn't reach the server." }
@@ -115,11 +141,23 @@ export function useWorkspaceGithub(workspaceId: string, enabled: boolean) {
     return result
   }
 
+  // Use one of the GitHub accounts offered after authorizing (the signed list
+  // from the callback is checked again by the server).
+  const chooseInstallation = async (token: string, installationId: number) => {
+    const result = await postJson('/api/integrations/github/installation', {
+      workspaceId,
+      token,
+      installationId,
+    })
+    if (result.success) await load()
+    return result
+  }
+
   const disconnect = async () => {
     const result = await postJson('/api/integrations/github/disconnect', {
       workspaceId,
     })
-    if (result.success) setConnection(null)
+    if (result.success) setLoaded({ workspaceId, connection: null })
     return result
   }
 
@@ -127,8 +165,11 @@ export function useWorkspaceGithub(workspaceId: string, enabled: boolean) {
     connection,
     ready: ready || !enabled,
     connectUrl: `/api/integrations/github/install?workspace_id=${encodeURIComponent(workspaceId)}`,
+    // Install the app on another GitHub account or organisation.
+    installUrl: `/api/integrations/github/install?workspace_id=${encodeURIComponent(workspaceId)}&mode=install`,
     listRepositories,
     chooseRepository,
+    chooseInstallation,
     disconnect,
   }
 }

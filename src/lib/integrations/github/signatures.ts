@@ -20,13 +20,24 @@ export function verifyWebhookSignature(
   )
 }
 
-// The `state` round-tripped through GitHub's install/authorize screens: who
+// The `state` round-tripped through GitHub's authorize/install screens: who
 // started the connection, for which workspace, and when -- signed, so it can't
-// be forged or pointed at another workspace, and short-lived.
+// be forged or pointed at another workspace, and short-lived. The workspace in
+// it is the ONLY source of which workspace gets connected.
 export type ConnectState = {
   userId: string
   workspaceId: string
   issuedAt: number
+}
+
+// After authorizing, a GitHub user who can see several installations of the
+// app (their own account, an organisation...) picks one. The list comes from
+// GitHub (GET /user/installations with their one-off token, then discarded),
+// is signed here, and is the only set of installation ids the pick may use --
+// an id the browser sends is never trusted on its own.
+export type InstallationChoice = ConnectState & {
+  kind: 'installation_choice'
+  installations: { id: number; account: string | null }[]
 }
 
 export const CONNECT_STATE_TTL_MS = 15 * 60 * 1000
@@ -35,16 +46,18 @@ function sign(secret: string, body: string) {
   return createHmac('sha256', secret).update(body).digest('base64url')
 }
 
-export function encodeConnectState(secret: string, state: ConnectState) {
-  const body = Buffer.from(JSON.stringify(state)).toString('base64url')
+function encodeSigned(secret: string, payload: object) {
+  const body = Buffer.from(JSON.stringify(payload)).toString('base64url')
   return `${body}.${sign(secret, body)}`
 }
 
-export function decodeConnectState(
+// The payload if the signature is ours, the shape is a connection token and it
+// is still fresh; else null.
+function decodeSigned(
   secret: string,
   value: string | null,
-  now = Date.now(),
-): ConnectState | null {
+  now: number,
+): Record<string, unknown> | null {
   if (!secret || !value) return null
   const [body, signature, extra] = value.split('.')
   if (!body || !signature || extra !== undefined) return null
@@ -56,17 +69,68 @@ export function decodeConnectState(
   )
     return null
   try {
-    const state = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'))
+    const payload = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'))
     if (
-      typeof state?.userId !== 'string' ||
-      typeof state?.workspaceId !== 'string' ||
-      typeof state?.issuedAt !== 'number' ||
-      now - state.issuedAt > CONNECT_STATE_TTL_MS ||
-      state.issuedAt > now + 60_000
+      typeof payload?.userId !== 'string' ||
+      typeof payload?.workspaceId !== 'string' ||
+      typeof payload?.issuedAt !== 'number' ||
+      now - payload.issuedAt > CONNECT_STATE_TTL_MS ||
+      payload.issuedAt > now + 60_000
     )
       return null
-    return state as ConnectState
+    return payload
   } catch {
     return null
   }
+}
+
+export function encodeConnectState(secret: string, state: ConnectState) {
+  return encodeSigned(secret, {
+    userId: state.userId,
+    workspaceId: state.workspaceId,
+    issuedAt: state.issuedAt,
+  })
+}
+
+export function decodeConnectState(
+  secret: string,
+  value: string | null,
+  now = Date.now(),
+): ConnectState | null {
+  const payload = decodeSigned(secret, value, now)
+  // A choice token is not a state, even though it is signed the same way.
+  if (!payload || 'kind' in payload) return null
+  return {
+    userId: payload.userId as string,
+    workspaceId: payload.workspaceId as string,
+    issuedAt: payload.issuedAt as number,
+  }
+}
+
+export function encodeInstallationChoice(
+  secret: string,
+  choice: Omit<InstallationChoice, 'kind'>,
+) {
+  return encodeSigned(secret, { ...choice, kind: 'installation_choice' })
+}
+
+export function decodeInstallationChoice(
+  secret: string,
+  value: string | null,
+  now = Date.now(),
+): InstallationChoice | null {
+  const payload = decodeSigned(secret, value, now)
+  if (
+    !payload ||
+    payload.kind !== 'installation_choice' ||
+    !Array.isArray(payload.installations)
+  )
+    return null
+  const installations = (payload.installations as unknown[]).filter(
+    (item): item is { id: number; account: string | null } =>
+      typeof item === 'object' &&
+      item !== null &&
+      Number.isSafeInteger((item as { id?: unknown }).id),
+  )
+  return { ...(payload as InstallationChoice), installations }
 }

@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase/service'
-import { listInstallationRepositories } from '@/lib/integrations/github/githubApp'
+import {
+  getInstallation,
+  listInstallationRepositories,
+} from '@/lib/integrations/github/githubApp'
 import { requireWorkspaceOwner } from '@/lib/integrations/github/routeAuth'
 
 async function installationFor(workspaceId: string) {
@@ -13,7 +16,10 @@ async function installationFor(workspaceId: string) {
 }
 
 // The repositories the owner granted the OnTask app, to pick the one this
-// workspace tracks.
+// workspace tracks -- plus the installation's page on GitHub (`manageUrl`),
+// where they grant or remove repositories. GitHub doesn't send people back
+// from that page, so the card links to it in a new tab and re-reads this list
+// afterwards.
 export async function GET(request: Request) {
   const workspaceId = new URL(request.url).searchParams.get('workspace_id')
   const owner = await requireWorkspaceOwner(workspaceId)
@@ -27,7 +33,11 @@ export async function GET(request: Request) {
     )
   }
   try {
-    return NextResponse.json(await listInstallationRepositories(installationId))
+    const [list, installation] = await Promise.all([
+      listInstallationRepositories(installationId),
+      getInstallation(installationId),
+    ])
+    return NextResponse.json({ ...list, manageUrl: installation.manageUrl })
   } catch (error) {
     console.error('[GitHub] Listing repositories failed:', error)
     return NextResponse.json(

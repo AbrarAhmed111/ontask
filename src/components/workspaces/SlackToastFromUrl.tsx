@@ -14,6 +14,9 @@ const GITHUB_ERRORS: Record<string, string> = {
   missing_installation: 'GitHub did not say which installation to use.',
   authorization_required:
     'GitHub did not confirm your account. Please try connecting again.',
+  authorization_cancelled: 'GitHub connection cancelled.',
+  authorization_failed:
+    'GitHub could not confirm your account. Please try connecting again.',
   installation_not_yours:
     'That GitHub installation is not available to your GitHub account.',
   save_failed: "Couldn't save the GitHub connection.",

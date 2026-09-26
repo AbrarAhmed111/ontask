@@ -4,9 +4,12 @@ import { normalizeGithubEvent } from '@/lib/integrations/github/events'
 import {
   CONNECT_STATE_TTL_MS,
   decodeConnectState,
+  decodeInstallationChoice,
   encodeConnectState,
+  encodeInstallationChoice,
   verifyWebhookSignature,
 } from '@/lib/integrations/github/signatures'
+import { readInstallationChoice } from '@/lib/integrations/github/installationChoice'
 
 const REPO = { id: 22, full_name: 'acme/ontask' }
 const INSTALLATION = { id: 11 }
@@ -227,5 +230,37 @@ describe('connect state', () => {
         state.issuedAt + CONNECT_STATE_TTL_MS + 1,
       ),
     ).toBeNull()
+  })
+})
+
+describe('connect state vs installation choice', () => {
+  const secret = 'state-secret'
+  const base = { userId: 'u1', workspaceId: 'w1', issuedAt: Date.now() }
+
+  it('a choice token is never accepted as a connect state', () => {
+    const choice = encodeInstallationChoice(secret, {
+      ...base,
+      installations: [{ id: 5, account: 'abrar' }],
+    })
+    expect(decodeConnectState(secret, choice)).toBeNull()
+    expect(decodeInstallationChoice(secret, choice)?.installations).toEqual([
+      { id: 5, account: 'abrar' },
+    ])
+  })
+
+  it('a connect state is never accepted as a choice token', () => {
+    const state = encodeConnectState(secret, base)
+    expect(decodeInstallationChoice(secret, state)).toBeNull()
+  })
+
+  it('the browser can read the choice for display only', () => {
+    const choice = encodeInstallationChoice(secret, {
+      ...base,
+      installations: [{ id: 5, account: 'abrar' }],
+    })
+    expect(readInstallationChoice(choice)).toEqual([
+      { id: 5, account: 'abrar' },
+    ])
+    expect(readInstallationChoice(encodeConnectState(secret, base))).toBeNull()
   })
 })
