@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
 import { ErrorBanner } from '@/components/ui/ErrorBanner'
 import { Skeleton } from '@/components/ui/Skeleton'
+import { useOptionalWorkspaceDetail } from '@/components/workspaces/WorkspaceDetailContext'
 import { SettingsCard } from '@/components/settings/SettingsCard'
 import { SelectMenu } from '@/components/ui/SelectMenu'
 import {
@@ -98,7 +99,8 @@ export function GithubIntegrationCard({
   canManage: boolean
   className?: string
 }) {
-  const github = useWorkspaceGithub(workspaceId, true)
+  const userId = useOptionalWorkspaceDetail()?.user?.id
+  const github = useWorkspaceGithub(workspaceId, userId, true)
   const { connection } = github
   const [repositories, setRepositories] = useState<
     GithubRepositoryOption[] | null

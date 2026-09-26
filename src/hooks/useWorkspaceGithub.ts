@@ -1,12 +1,17 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useWorkspaceSnapshot } from '@/hooks/useWorkspaceSnapshot'
+import { useFetchStatus } from '@/hooks/useFetchStatus'
+import {
+  SNAPSHOTS,
+  type GithubConnectionSnapshot,
+} from '@/lib/cache/workspaceSnapshots'
 import {
   GithubConnectionRow,
   rowToGithubConnection,
 } from '@/lib/development/tracking'
-import type { GithubConnection } from '@/types/workspace'
 
 export type GithubRepositoryOption = {
   id: number
@@ -39,20 +44,37 @@ async function postJson(url: string, body: unknown): Promise<Result> {
 // a full-page redirect to GitHub (connectUrl); everything after that goes
 // through the server routes, which re-check that the caller is the owner.
 //
-// Strictly per workspace: what was loaded is kept together with the workspace
-// it belongs to and only shown while that is still the workspace on screen, and
-// an answer that arrives after switching workspaces is dropped. So workspace B
-// never shows workspace A's connection, not even for a moment.
-export function useWorkspaceGithub(workspaceId: string, enabled: boolean) {
-  const [loaded, setLoaded] = useState<{
-    workspaceId: string
-    connection: GithubConnection | null
-  } | null>(null)
+// Cached like the Slack status (hooks/useWorkspaceSnapshot.ts): the last answer
+// for this user + workspace is shown straight away -- "not connected" included
+// -- and the read from Supabase then confirms or replaces it, so opening the
+// settings page or the Development section doesn't sit on a loader.
+//
+// Strictly per workspace: the snapshot is keyed by user and workspace and only
+// shown while that is still the workspace on screen, and an answer that arrives
+// after switching workspaces is dropped. So workspace B never shows workspace
+// A's connection, not even for a moment.
+export function useWorkspaceGithub(
+  workspaceId: string,
+  userId: string | null | undefined,
+  enabled: boolean,
+) {
+  const active = Boolean(enabled && workspaceId && userId)
+  const snapshot = useWorkspaceSnapshot<GithubConnectionSnapshot | null>({
+    userId: active ? userId : null,
+    workspaceId,
+    descriptor: SNAPSHOTS.githubConnection,
+    initial: null,
+  })
+  const { confirm } = snapshot
+  const connection = active ? (snapshot.data?.connection ?? null) : null
+  const fetchStatus = useFetchStatus(
+    snapshot,
+    active ? `${userId}|${workspaceId}` : null,
+    { load: '', refresh: '' },
+  )
+  const { succeeded, failed } = fetchStatus
   const currentRef = useRef(workspaceId)
   currentRef.current = workspaceId
-  const isCurrent = loaded !== null && loaded.workspaceId === workspaceId
-  const connection = isCurrent ? loaded.connection : null
-  const ready = isCurrent
 
   const load = useCallback(async () => {
     if (!workspaceId) return
@@ -64,23 +86,22 @@ export function useWorkspaceGithub(workspaceId: string, enabled: boolean) {
       .eq('workspace_id', workspaceId)
       .maybeSingle()
     if (currentRef.current !== workspaceId) return
-    setLoaded(current =>
-      error
-        ? // A failed read keeps this workspace's last answer, never another's.
-          current?.workspaceId === workspaceId
-          ? current
-          : { workspaceId, connection: null }
-        : {
-            workspaceId,
-            connection: data
-              ? rowToGithubConnection(data as GithubConnectionRow)
-              : null,
-          },
-    )
-  }, [workspaceId])
+    // A failed read keeps what is shown (cached or not), never another
+    // workspace's.
+    if (error) {
+      failed()
+      return
+    }
+    confirm({
+      connection: data
+        ? rowToGithubConnection(data as GithubConnectionRow)
+        : null,
+    })
+    succeeded()
+  }, [workspaceId, confirm, succeeded, failed])
 
   useEffect(() => {
-    if (!workspaceId || !enabled) return
+    if (!active) return
     const supabase = createClient()
     void load()
     const channel = supabase
@@ -99,7 +120,7 @@ export function useWorkspaceGithub(workspaceId: string, enabled: boolean) {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [workspaceId, enabled, load])
+  }, [workspaceId, active, load])
 
   const listRepositories = async (): Promise<
     | {
@@ -157,13 +178,13 @@ export function useWorkspaceGithub(workspaceId: string, enabled: boolean) {
     const result = await postJson('/api/integrations/github/disconnect', {
       workspaceId,
     })
-    if (result.success) setLoaded({ workspaceId, connection: null })
+    if (result.success) confirm({ connection: null })
     return result
   }
 
   return {
     connection,
-    ready: ready || !enabled,
+    ready: fetchStatus.ready || !active,
     connectUrl: `/api/integrations/github/install?workspace_id=${encodeURIComponent(workspaceId)}`,
     // Install the app on another GitHub account or organisation.
     installUrl: `/api/integrations/github/install?workspace_id=${encodeURIComponent(workspaceId)}&mode=install`,

@@ -2,7 +2,9 @@ import { field, isArrayOf, isShape } from '@/lib/cache/validate'
 import { isWorkspace } from '@/lib/cache/workspaceListCache'
 import type { ActivityEvent } from '@/hooks/useWorkspaceActivity'
 import type {
+  GithubConnection,
   Goal,
+  TaskDevelopment,
   NotificationWithWorkspace,
   SlackStatusData,
   TaskNote,
@@ -213,6 +215,81 @@ const isSlackStatus = isShape<SlackStatusData>({
   can_manage: { kind: 'boolean', optional: true },
 })
 
+// The workspace's GitHub connection, wrapped so that "not connected" (null) is
+// a cacheable answer too -- that is the common state, and it should show
+// without a loader as much as a connected one.
+export type GithubConnectionSnapshot = { connection: GithubConnection | null }
+
+const isGithubConnection = isShape<GithubConnection>({
+  workspaceId: field.string,
+  accountLogin: field.nullableString,
+  repositoryFullName: field.nullableString,
+  repositoryUrl: field.nullableString,
+  status: field.oneOf(
+    'connected',
+    'repository_required',
+    'repository_access_lost',
+    'suspended',
+    'disconnected',
+  ),
+  updatedAt: field.string,
+})
+
+const isGithubConnectionSnapshot = (
+  value: unknown,
+): value is GithubConnectionSnapshot =>
+  isShape<{ connection: unknown }>({
+    connection: { kind: 'object', nullable: true },
+  })(value) &&
+  (value.connection === null || isGithubConnection(value.connection))
+
+// The Development section: its tasks and each one's development record (branch,
+// pull request), as fetched together by hooks/useDevelopmentTasks.ts.
+export type DevelopmentSnapshot = {
+  tasks: WorkspaceTask[]
+  developments: TaskDevelopment[]
+}
+
+const isTaskDevelopment = isShape<TaskDevelopment>({
+  taskId: field.string,
+  workspaceId: field.string,
+  branchName: field.string,
+  workType: field.oneOf(
+    'feature',
+    'bug',
+    'hotfix',
+    'improvement',
+    'refactor',
+    'chore',
+    'docs',
+  ),
+  repositoryFullName: field.nullableString,
+  branchDetectedAt: field.nullableString,
+  prNumber: field.nullableNumber,
+  prUrl: field.nullableString,
+  prTitle: field.nullableString,
+  prState: { kind: ['open', 'closed', 'merged'], nullable: true },
+  prOpenedAt: field.nullableString,
+  prClosedAt: field.nullableString,
+  prMergedAt: field.nullableString,
+  trackingStatus: field.oneOf(
+    'waiting',
+    'branch_detected',
+    'in_review',
+    'pr_closed',
+    'merged',
+  ),
+  createdAt: field.string,
+})
+
+const isDevelopmentSnapshot = (value: unknown): value is DevelopmentSnapshot =>
+  isShape<{ tasks: unknown; developments: unknown }>({
+    tasks: field.array,
+    developments: field.array,
+  })(value) &&
+  isArrayOf(isTask)(value.tasks) &&
+  isArrayOf(isTaskDevelopment)(value.developments)
+
 function descriptor<T>(
   entity: string,
   validate: (value: unknown) => value is T,
@@ -239,4 +316,6 @@ export const SNAPSHOTS = {
   resources: descriptor('resources', isArrayOf(isResource)),
   notes: descriptor('task-notes', isArrayOf(isNote)),
   slackStatus: descriptor('slack-status', isSlackStatus),
+  githubConnection: descriptor('github-connection', isGithubConnectionSnapshot),
+  development: descriptor('development-tasks', isDevelopmentSnapshot),
 }

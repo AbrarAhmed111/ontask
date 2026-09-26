@@ -2,6 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useWorkspaceSnapshot } from '@/hooks/useWorkspaceSnapshot'
+import { useFetchStatus } from '@/hooks/useFetchStatus'
+import {
+  SNAPSHOTS,
+  type DevelopmentSnapshot,
+} from '@/lib/cache/workspaceSnapshots'
 import { useTimer } from '@/hooks/useTimer'
 import { useWorkspaceTaskActions } from '@/hooks/useWorkspaceTaskActions'
 import type { AuthUser } from '@/hooks/useAuth'
@@ -48,6 +54,14 @@ function failure(error: { message?: string } | null, fallback: string): Result {
   }
 }
 
+const EMPTY: DevelopmentSnapshot = { tasks: [], developments: [] }
+
+// How long a task's GitHub check counts as fresh on this device. The server
+// throttles to once a minute per task anyway; skipping the request here means
+// reopening a task doesn't even ask.
+export const RECONCILE_FRESH_MS = 60_000
+const reconciledAt = new Map<string, number>()
+
 // The workspace's Development Tasks: each ordinary task with its development
 // record. The tasks themselves are changed through the same actions every task
 // list uses (useWorkspaceTaskActions), so reassigning or editing one here is
@@ -65,26 +79,42 @@ export function useDevelopmentTasks(
   enabled: boolean,
 ) {
   const userId = user?.id
-  const [tasks, setTasks] = useState<WorkspaceTask[]>([])
-  const [developments, setDevelopments] = useState<
-    Map<string, TaskDevelopment>
-  >(new Map())
-  const [ready, setReady] = useState(false)
+  const active = Boolean(userId && workspaceId && enabled)
+  // Cached per user + workspace (hooks/useWorkspaceSnapshot.ts): the last list
+  // shows straight away -- with each task's branch and pull request -- and the
+  // read below confirms or replaces it.
+  const snapshot = useWorkspaceSnapshot<DevelopmentSnapshot>({
+    userId: active ? userId : null,
+    workspaceId,
+    descriptor: SNAPSHOTS.development,
+    initial: EMPTY,
+  })
+  const { confirm, setData } = snapshot
+  const { tasks, developments: developmentList } = snapshot.data
+  const developments = useMemo(
+    () => new Map(developmentList.map(item => [item.taskId, item])),
+    [developmentList],
+  )
+  const fetchStatus = useFetchStatus(
+    snapshot,
+    active ? `${userId}|${workspaceId}` : null,
+    { load: "Couldn't load development tasks.", refresh: '' },
+  )
+  const { succeeded, failed } = fetchStatus
   const [error, setError] = useState<string | null>(null)
   const now = useTimer()
   const taskIdsRef = useRef<Set<string>>(new Set())
+  taskIdsRef.current = new Set(developmentList.map(item => item.taskId))
   const refetchRef = useRef<() => void>(() => {})
 
   useEffect(() => {
-    if (!userId || !workspaceId || !enabled) return
+    if (!active) return
     let cancelled = false
     let timer: ReturnType<typeof setTimeout> | null = null
     const supabase = createClient()
-    // A different workspace starts empty: nothing from the last one shows.
-    setTasks([])
-    setDevelopments(new Map())
-    setReady(false)
-    taskIdsRef.current = new Set()
+    // Another workspace's list is never shown here: the snapshot is keyed by
+    // user and workspace.
+    setError(null)
 
     const fetchAll = async () => {
       const { data: devRows, error: devError } = await supabase
@@ -94,8 +124,7 @@ export function useDevelopmentTasks(
         .order('created_at', { ascending: false })
       if (cancelled) return
       if (devError) {
-        setError("Couldn't load development tasks.")
-        setReady(true)
+        failed()
         return
       }
       const rows = (devRows ?? []) as TaskDevelopmentRow[]
@@ -112,8 +141,7 @@ export function useDevelopmentTasks(
         ])
         if (cancelled) return
         if (tasksResult.error || collaboratorsResult.error) {
-          setError("Couldn't load development tasks.")
-          setReady(true)
+          failed()
           return
         }
         taskList = attachTaskCollaborators(
@@ -124,12 +152,9 @@ export function useDevelopmentTasks(
         )
       }
       taskIdsRef.current = new Set(ids)
-      setDevelopments(
-        new Map(rows.map(row => [row.task_id, rowToTaskDevelopment(row)])),
-      )
-      setTasks(taskList)
+      confirm({ tasks: taskList, developments: rows.map(rowToTaskDevelopment) })
+      succeeded()
       setError(null)
-      setReady(true)
     }
 
     // Several changes usually arrive together (a merge touches the task, its
@@ -181,12 +206,12 @@ export function useDevelopmentTasks(
       stopResync()
       supabase.removeChannel(channel)
     }
-  }, [userId, workspaceId, enabled])
+  }, [active, workspaceId, confirm, succeeded, failed])
 
   const setTasksUpdater = useCallback(
     (updater: (current: WorkspaceTask[]) => WorkspaceTask[]) =>
-      setTasks(updater),
-    [],
+      setData(current => ({ ...current, tasks: updater(current.tasks) })),
+    [setData],
   )
 
   const actions = useWorkspaceTaskActions({
@@ -238,9 +263,13 @@ export function useDevelopmentTasks(
     if (rpcError) return failure(rpcError, "Couldn't change the branch name.")
     const row = data as TaskDevelopmentRow | null
     if (row) {
-      setDevelopments(current =>
-        new Map(current).set(taskId, rowToTaskDevelopment(row)),
-      )
+      const updated = rowToTaskDevelopment(row)
+      setData(current => ({
+        ...current,
+        developments: current.developments.map(item =>
+          item.taskId === taskId ? updated : item,
+        ),
+      }))
     }
     return { success: true }
   }
@@ -248,6 +277,11 @@ export function useDevelopmentTasks(
   // Ask the server to check GitHub for this task (throttled there). Failure is
   // quiet: webhooks remain the primary path, this is only the safety net.
   const reconcile = useCallback(async (taskId: string) => {
+    const last = reconciledAt.get(taskId)
+    if (last !== undefined && Date.now() - last < RECONCILE_FRESH_MS) {
+      return 'fresh'
+    }
+    reconciledAt.set(taskId, Date.now())
     try {
       const response = await fetch('/api/integrations/github/reconcile', {
         method: 'POST',
@@ -282,8 +316,8 @@ export function useDevelopmentTasks(
 
   return {
     items,
-    ready: ready || !enabled,
-    error,
+    ready: fetchStatus.ready || !active,
+    error: active ? error || fetchStatus.error || null : null,
     clearError: () => setError(null),
     createDevelopmentTask,
     updateBranchName,

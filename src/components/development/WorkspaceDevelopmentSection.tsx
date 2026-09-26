@@ -207,7 +207,7 @@ export function WorkspaceDevelopmentSection({ goals }: { goals: Goal[] }) {
   } = useWorkspaceDetail()
   const enabled = Boolean(workspace?.developmentEnabled) && !isPersonal
   const development = useDevelopmentTasks(workspaceId, user, members, enabled)
-  const github = useWorkspaceGithub(workspaceId, enabled)
+  const github = useWorkspaceGithub(workspaceId, user?.id, enabled)
   const [creating, setCreating] = useState(false)
   // Set once the task exists: the dialog then shows its branch to copy.
   const [created, setCreated] = useState<{

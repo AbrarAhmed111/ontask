@@ -65,23 +65,16 @@ export function DevelopmentTaskDetail({
   onDelete: () => void
   onClose: () => void
 }) {
-  const [checking, setChecking] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const assignee = members.find(member => member.userId === task.assignedTo)
   const stage = developmentStage(task, development)
 
   // Opening the task is when a missed GitHub update is worth catching up on
-  // (the server does it at most once a minute per task).
+  // (at most once a minute per task). Quietly: what is shown is the cached
+  // branch and pull request, and anything new arrives as a normal update.
   const taskId = task.id
   useEffect(() => {
-    let cancelled = false
-    setChecking(true)
-    void onReconcile(taskId).finally(() => {
-      if (!cancelled) setChecking(false)
-    })
-    return () => {
-      cancelled = true
-    }
+    void onReconcile(taskId)
   }, [taskId, onReconcile])
 
   const applyBranchName = async (name: string) => {
@@ -94,77 +87,74 @@ export function DevelopmentTaskDetail({
     <>
       <Modal eyebrow="Development Task" title={task.name} onClose={onClose}>
         <div className="space-y-5">
-        {task.description && (
-          <p className="whitespace-pre-line text-xs leading-5 text-muted">
-            {task.description}
-          </p>
-        )}
-
-        <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-          <Field label="Type">
-            <WorkTypeBadge type={development.workType} />
-          </Field>
-          <Field label="Goal">
-            {goal ? (
-              <span className="inline-flex max-w-full items-center gap-1.5">
-                <Target
-                  size={12}
-                  className="shrink-0 text-[var(--ws-accent,#375b4b)]"
-                />
-                <span className="truncate">{goal.name}</span>
-              </span>
-            ) : (
-              <span className="font-normal text-muted">No goal</span>
-            )}
-          </Field>
-          <Field label="Status">
-            <StageBadge stage={stage} />
-          </Field>
-          <Field label="Assignee">
-            <AssigneePicker
-              assignee={assignee}
-              members={members}
-              onReassign={onReassign}
-            />
-          </Field>
-          <Field label="Priority">
-            <SelectMenu
-              label="Priority"
-              size="sm"
-              value={task.priority ?? ''}
-              options={PRIORITY_OPTIONS}
-              onChange={value => onPriorityChange(value || null)}
-              className="max-w-[180px]"
-            />
-          </Field>
-        </div>
-
-        <div className="border-t border-line pt-4">
-          <CodeTrackingPanel
-            task={task}
-            development={development}
-            connection={connection}
-            suggestedBranchName={generateBranchName(
-              task.name,
-              assignee ?? null,
-              development.workType,
-            )}
-            onUseBranchName={name => void applyBranchName(name)}
-          />
-          {checking && (
-            <p className="mt-3 text-[10px] text-muted">Checking GitHub…</p>
+          {task.description && (
+            <p className="whitespace-pre-line text-xs leading-5 text-muted">
+              {task.description}
+            </p>
           )}
-        </div>
 
-        <div className="flex justify-end border-t border-line pt-4">
-          <Button
-            type="button"
-            variant="danger"
-            onClick={() => setConfirmDelete(true)}
-          >
-            <Trash2 size={14} /> Delete Code Task
-          </Button>
-        </div>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+            <Field label="Type">
+              <WorkTypeBadge type={development.workType} />
+            </Field>
+            <Field label="Goal">
+              {goal ? (
+                <span className="inline-flex max-w-full items-center gap-1.5">
+                  <Target
+                    size={12}
+                    className="shrink-0 text-[var(--ws-accent,#375b4b)]"
+                  />
+                  <span className="truncate">{goal.name}</span>
+                </span>
+              ) : (
+                <span className="font-normal text-muted">No goal</span>
+              )}
+            </Field>
+            <Field label="Status">
+              <StageBadge stage={stage} />
+            </Field>
+            <Field label="Assignee">
+              <AssigneePicker
+                assignee={assignee}
+                members={members}
+                onReassign={onReassign}
+              />
+            </Field>
+            <Field label="Priority">
+              <SelectMenu
+                label="Priority"
+                size="sm"
+                value={task.priority ?? ''}
+                options={PRIORITY_OPTIONS}
+                onChange={value => onPriorityChange(value || null)}
+                className="max-w-[180px]"
+              />
+            </Field>
+          </div>
+
+          <div className="border-t border-line pt-4">
+            <CodeTrackingPanel
+              task={task}
+              development={development}
+              connection={connection}
+              suggestedBranchName={generateBranchName(
+                task.name,
+                assignee ?? null,
+                development.workType,
+              )}
+              onUseBranchName={name => void applyBranchName(name)}
+            />
+          </div>
+
+          <div className="flex justify-end border-t border-line pt-4">
+            <Button
+              type="button"
+              variant="danger"
+              onClick={() => setConfirmDelete(true)}
+            >
+              <Trash2 size={14} /> Delete Code Task
+            </Button>
+          </div>
         </div>
       </Modal>
 

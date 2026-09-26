@@ -1,6 +1,9 @@
+import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderHook, settle } from '@/test/renderHook'
 import { useWorkspaceGithub } from '@/hooks/useWorkspaceGithub'
+import { SNAPSHOT_WRITE_DELAY_MS } from '@/hooks/useWorkspaceSnapshot'
+import { clearAllCache, writeCache } from '@/lib/cache/cacheStore'
 
 // The GitHub connection is per workspace. Switching from a connected workspace
 // A to workspace B must show B's own state (here: not connected) -- never A's,
@@ -37,7 +40,10 @@ const rowFor = (workspaceId: string, repo: string) => ({
   updated_at: '2026-09-26T00:00:00Z',
 })
 
-beforeEach(() => answers.clear())
+beforeEach(async () => {
+  answers.clear()
+  await clearAllCache()
+})
 
 describe('useWorkspaceGithub — per workspace', () => {
   it('shows B as not connected after A, and never shows A’s repository for B', async () => {
@@ -48,7 +54,7 @@ describe('useWorkspaceGithub — per workspace', () => {
     answers.set('ws-b', { row: null, delay: Promise.resolve() })
 
     const hook = renderHook(
-      ({ id }: { id: string }) => useWorkspaceGithub(id, true),
+      ({ id }: { id: string }) => useWorkspaceGithub(id, 'user-me', true),
       { id: 'ws-a' },
     )
     await settle()
@@ -80,7 +86,7 @@ describe('useWorkspaceGithub — per workspace', () => {
     })
 
     const hook = renderHook(
-      ({ id }: { id: string }) => useWorkspaceGithub(id, true),
+      ({ id }: { id: string }) => useWorkspaceGithub(id, 'user-me', true),
       { id: 'ws-a' },
     )
     hook.rerender({ id: 'ws-b' })
@@ -95,5 +101,70 @@ describe('useWorkspaceGithub — per workspace', () => {
         render => render.connection?.repositoryFullName === 'acme/repo-a',
       ),
     ).toBe(false)
+  })
+})
+
+describe('useWorkspaceGithub — cached', () => {
+  it('shows the cached connection before Supabase answers, then the answer', async () => {
+    await writeCache(
+      'user-me',
+      'github-connection',
+      'ws-a',
+      {
+        connection: {
+          workspaceId: 'ws-a',
+          accountLogin: 'abrar',
+          repositoryFullName: 'acme/cached',
+          repositoryUrl: 'https://github.com/acme/cached',
+          status: 'connected',
+          updatedAt: '2026-09-25T00:00:00Z',
+        },
+      },
+      'ws-a',
+    )
+    let release!: () => void
+    answers.set('ws-a', {
+      row: rowFor('ws-a', 'acme/fresh'),
+      delay: new Promise<void>(resolve => (release = resolve)),
+    })
+
+    const hook = renderHook(
+      ({ id }: { id: string }) => useWorkspaceGithub(id, 'user-me', true),
+      { id: 'ws-a' },
+    )
+    await settle()
+    expect(hook.result.current.ready).toBe(true)
+    expect(hook.result.current.connection?.repositoryFullName).toBe(
+      'acme/cached',
+    )
+
+    release()
+    await settle()
+    expect(hook.result.current.connection?.repositoryFullName).toBe(
+      'acme/fresh',
+    )
+  })
+
+  it('caches "not connected" too, so a reopen needs no loader', async () => {
+    answers.set('ws-a', { row: null, delay: Promise.resolve() })
+    const first = renderHook(
+      ({ id }: { id: string }) => useWorkspaceGithub(id, 'user-me', true),
+      { id: 'ws-a' },
+    )
+    await settle()
+    expect(first.result.current.connection).toBeNull()
+    await new Promise(resolve =>
+      setTimeout(resolve, SNAPSHOT_WRITE_DELAY_MS + 50),
+    )
+    first.unmount()
+
+    answers.set('ws-a', { row: null, delay: new Promise<void>(() => {}) })
+    const second = renderHook(
+      ({ id }: { id: string }) => useWorkspaceGithub(id, 'user-me', true),
+      { id: 'ws-a' },
+    )
+    await settle()
+    expect(second.result.current.ready).toBe(true)
+    expect(second.result.current.connection).toBeNull()
   })
 })
