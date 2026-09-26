@@ -10,6 +10,7 @@ import type {
   TaskNote,
   Workspace,
   WorkspaceDailySummary,
+  WorkspaceEvent,
   WorkspaceMember,
   WorkspaceResource,
   WorkspaceTask,
@@ -158,6 +159,34 @@ const isNotification = isShape<NotificationWithWorkspace>({
   workspaceAccent: field.string,
 })
 
+// An event as listed by list_workspace_events (lib/events.ts rowToEvent).
+const isWorkspaceEvent = isShape<WorkspaceEvent>({
+  id: field.string,
+  workspaceId: field.string,
+  workspaceName: field.string,
+  workspaceSlug: field.string,
+  workspaceType: field.oneOf('personal', 'shared'),
+  scope: field.oneOf('personal', 'workspace'),
+  createdBy: field.nullableString,
+  title: field.string,
+  description: field.nullableString,
+  startsOn: field.string,
+  startTime: field.string,
+  timezone: field.string,
+  durationMinutes: field.nullableNumber,
+  recurrence: field.oneOf('none', 'daily', 'weekdays', 'weekly', 'monthly'),
+  reminderOffsets: field.array,
+  audience: field.oneOf('self', 'everyone', 'selected'),
+  audienceUserIds: field.array,
+  dailyUpdatePrompt: field.boolean,
+  status: field.oneOf('scheduled', 'cancelled'),
+  cancelledAt: field.nullableString,
+  upcomingOccurrences: field.array,
+  lastOccurrenceAt: field.nullableString,
+  createdAt: field.string,
+  updatedAt: field.string,
+})
+
 // The report's nested JSON (snapshot, narrative, meta) is stored exactly as the
 // server returned it and is read defensively by the components, so it is only
 // checked to be objects here; the columns around it are checked fully.
@@ -223,6 +252,7 @@ export type GithubConnectionSnapshot = { connection: GithubConnection | null }
 const isGithubConnection = isShape<GithubConnection>({
   workspaceId: field.string,
   accountLogin: field.nullableString,
+  repositoryId: field.nullableNumber,
   repositoryFullName: field.nullableString,
   repositoryUrl: field.nullableString,
   status: field.oneOf(
@@ -254,6 +284,7 @@ const isTaskDevelopment = isShape<TaskDevelopment>({
   taskId: field.string,
   workspaceId: field.string,
   branchName: field.string,
+  repositoryId: field.nullableNumber,
   workType: field.oneOf(
     'feature',
     'bug',
@@ -264,6 +295,7 @@ const isTaskDevelopment = isShape<TaskDevelopment>({
     'docs',
   ),
   repositoryFullName: field.nullableString,
+  repositoryUrl: field.nullableString,
   branchDetectedAt: field.nullableString,
   branchDeletedAt: field.nullableString,
   branchReleasedAt: field.nullableString,
@@ -320,4 +352,5 @@ export const SNAPSHOTS = {
   slackStatus: descriptor('slack-status', isSlackStatus),
   githubConnection: descriptor('github-connection', isGithubConnectionSnapshot),
   development: descriptor('development-tasks', isDevelopmentSnapshot),
+  events: descriptor('events', isArrayOf(isWorkspaceEvent)),
 }

@@ -32,6 +32,13 @@ export function isWorkspace(value: unknown): value is Workspace {
     typeof value.timezone === 'string' &&
     typeof value.reportTime === 'string' &&
     typeof value.dailyReportsEnabled === 'boolean' &&
+    // Required so a workspace cached before Events existed is refetched
+    // rather than shown with its Events settings missing.
+    typeof value.eventsEnabled === 'boolean' &&
+    typeof value.eventsOverviewEnabled === 'boolean' &&
+    typeof value.eventsCountdownEnabled === 'boolean' &&
+    typeof value.eventsNotificationsEnabled === 'boolean' &&
+    typeof value.eventsMembersCanCreate === 'boolean' &&
     typeof value.accent === 'string' &&
     typeof value.createdAt === 'string' &&
     typeof value.updatedAt === 'string'
