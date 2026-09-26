@@ -40,6 +40,7 @@ const NOTIFICATION_TYPES: { key: SlackPreferenceKey; label: string }[] = [
   { key: 'resources', label: 'Resources added, updated & removed' },
   { key: 'members', label: 'Invitations & membership changes' },
   { key: 'work_sessions', label: 'Work sessions started & ended' },
+  { key: 'development', label: 'Development Task status changes' },
   { key: 'daily_reports', label: 'Daily Reports' },
 ]
 

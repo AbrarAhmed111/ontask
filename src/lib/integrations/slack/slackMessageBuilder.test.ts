@@ -684,3 +684,162 @@ describe('buildSlackEventMessage — escaping', () => {
     expect(rendered).not.toContain('<script>')
   })
 })
+
+// Development Task status changes (migration 20260926180000): one distinct
+// message per stage OnTask moved the task to, carrying the branch and PR.
+describe('buildSlackEventMessage — Development Tasks', () => {
+  const base = {
+    workspaceName: 'DevAbby',
+    workspaceSlug: 'devabby',
+    eventType: 'development_status_changed',
+    entityType: 'development_task' as const,
+    entityId: 'task-9',
+    taskId: 'task-9',
+    taskTitle: 'Implement Google OAuth',
+    actorName: 'Abrar',
+    recipientNames: ['Abrar'],
+    goalName: 'Auth v2',
+  }
+  const development = {
+    branch: 'feature/google-oauth-abrar',
+    repository: 'acme/ontask',
+    workType: 'feature',
+  }
+  const buttons = (message: { blocks: unknown[] }) =>
+    (
+      message.blocks.find(
+        block => (block as { type: string }).type === 'actions',
+      ) as { elements: { text: { text: string }; url: string }[] }
+    ).elements.map(button => [button.text.text, button.url])
+
+  it('In Development: the branch, linked, and a View Branch button', () => {
+    const message = buildSlackEventMessage({
+      ...base,
+      development: { ...development, status: 'in_development' },
+    })
+    const rendered = JSON.stringify(message.blocks)
+
+    expect(rendered).toContain('Development Task — In Development')
+    expect(rendered).toContain('Implement Google OAuth')
+    expect(rendered).toContain(
+      '*Branch:* <https://github.com/acme/ontask/tree/feature/google-oauth-abrar|feature/google-oauth-abrar>',
+    )
+    expect(rendered).toContain('*Assignee:* Abrar')
+    expect(rendered).toContain('*Goal:* Auth v2')
+    expect(rendered).toContain('*Workspace:* DevAbby')
+    expect(buttons(message)).toEqual([
+      [
+        'View Branch',
+        'https://github.com/acme/ontask/tree/feature/google-oauth-abrar',
+      ],
+      [
+        'Open in OnTask',
+        'http://localhost:3000/workspaces/devabby?devtask=task-9',
+      ],
+    ])
+    expect(message.fallbackText).toBe(
+      '[DevAbby] Development Task — In Development: "Implement Google OAuth" (feature/google-oauth-abrar)',
+    )
+  })
+
+  it('In Review: the Pull Request, and a View Pull Request button', () => {
+    const message = buildSlackEventMessage({
+      ...base,
+      development: {
+        ...development,
+        status: 'in_review',
+        prNumber: 142,
+        prUrl: 'https://github.com/acme/ontask/pull/142',
+        prTitle: 'Add Google sign-in',
+      },
+    })
+    const rendered = JSON.stringify(message.blocks)
+
+    expect(rendered).toContain('Development Task — In Review')
+    expect(rendered).toContain(
+      '*Pull Request:* <https://github.com/acme/ontask/pull/142|#142 Add Google sign-in>',
+    )
+    expect(buttons(message)[0]).toEqual([
+      'View Pull Request',
+      'https://github.com/acme/ontask/pull/142',
+    ])
+  })
+
+  it('Completed: says which branch the PR was merged into', () => {
+    const message = buildSlackEventMessage({
+      ...base,
+      development: {
+        ...development,
+        status: 'completed',
+        prNumber: 142,
+        prUrl: 'https://github.com/acme/ontask/pull/142',
+        baseBranch: 'main',
+      },
+    })
+    const rendered = JSON.stringify(message.blocks)
+
+    expect(rendered).toContain('Development Task — Completed')
+    expect(rendered).toContain('PR #142 merged into `main`')
+    expect(buttons(message)[0][0]).toBe('View Pull Request')
+    expect(message.fallbackText).toContain(', merged into main')
+  })
+
+  it('never offers a Pull Request while the task is only In Development', () => {
+    const message = buildSlackEventMessage({
+      ...base,
+      development: {
+        ...development,
+        status: 'in_development',
+        prUrl: 'https://github.com/acme/ontask/pull/142',
+      },
+    })
+    expect(JSON.stringify(message.blocks)).not.toContain('/pull/142')
+  })
+
+  it('shows the branch unlinked, and no GitHub button, before the repository is known', () => {
+    const message = buildSlackEventMessage({
+      ...base,
+      recipientNames: [],
+      goalName: null,
+      development: {
+        status: 'in_development',
+        branch: 'feature/google-oauth-abrar',
+        repository: null,
+      },
+    })
+    const rendered = JSON.stringify(message.blocks)
+
+    expect(rendered).toContain('*Branch:* `feature/google-oauth-abrar`')
+    expect(rendered).toContain('*Assignee:* Unassigned')
+    expect(rendered).not.toContain('*Goal:*')
+    expect(buttons(message).map(([text]) => text)).toEqual(['Open in OnTask'])
+  })
+
+  it('escapes what GitHub and people wrote', () => {
+    const message = buildSlackEventMessage({
+      ...base,
+      taskTitle: 'Fix <b> & <i>',
+      development: {
+        ...development,
+        status: 'in_review',
+        prUrl: 'https://github.com/acme/ontask/pull/1',
+        prNumber: 1,
+        prTitle: '<script>',
+      },
+    })
+    const rendered = JSON.stringify(message.blocks)
+    expect(rendered).toContain('Fix &lt;b&gt; &amp; &lt;i&gt;')
+    expect(rendered).toContain('#1 &lt;script&gt;')
+    expect(rendered).not.toContain('<script>')
+  })
+
+  it('leaves ordinary task messages as they were', () => {
+    const message = buildSlackEventMessage({
+      ...base,
+      eventType: 'completed',
+      entityType: 'task',
+    })
+    expect(JSON.stringify(message.blocks)).toContain('Task Completed')
+    expect(JSON.stringify(message.blocks)).not.toContain('Development Task')
+  })
+})

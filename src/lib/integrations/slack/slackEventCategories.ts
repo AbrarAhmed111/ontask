@@ -31,6 +31,7 @@ export const SLACK_PREFERENCE_KEYS = [
   'resources',
   'members',
   'work_sessions',
+  'development',
   'daily_reports',
 ] as const
 
@@ -88,6 +89,11 @@ const CATEGORY_BY_EVENT: Record<string, SlackPreferenceKey> = {
 
   work_session_started: 'work_sessions',
   work_session_ended: 'work_sessions',
+
+  // Development Tasks moving In Development -> In Review -> Completed. Their
+  // own switch: a channel that follows code may not want every task update,
+  // and one that follows tasks may not want the code.
+  development_status_changed: 'development',
 
   daily_report_ready: 'daily_reports',
 }

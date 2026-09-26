@@ -4,6 +4,8 @@
  */
 
 import {
+  getDevelopmentTaskUrl,
+  getGithubBranchUrl,
   getTaskUrl,
   getReportUrl,
   getWorkspaceUrl,
@@ -29,6 +31,34 @@ export type SlackEntityType =
   | 'invitation'
   | 'work_session'
   | 'daily_report'
+  | 'development_task'
+
+/**
+ * A Development Task's stage change, as the database describes it
+ * (slack_payload_for_task_event, migration 20260926180000). The stage is
+ * OnTask's own; GitHub only supplied what moved it there.
+ */
+export type SlackDevelopmentStatus =
+  'in_development' | 'in_review' | 'completed'
+
+export interface SlackDevelopmentDetails {
+  status: SlackDevelopmentStatus
+  workType?: string | null
+  branch?: string | null
+  /** owner/name of the connected repository, once the branch has been seen. */
+  repository?: string | null
+  prNumber?: number | null
+  prUrl?: string | null
+  prTitle?: string | null
+  /** The branch the Pull Request was merged into (Completed only). */
+  baseBranch?: string | null
+}
+
+const DEVELOPMENT_STATUS_LABELS: Record<SlackDevelopmentStatus, string> = {
+  in_development: 'In Development',
+  in_review: 'In Review',
+  completed: 'Completed',
+}
 
 export interface EventSlackPayload {
   workspaceName: string
@@ -63,6 +93,8 @@ export interface EventSlackPayload {
    *  stored report by the dispatcher. Absent means there was no report to read
    *  — never "summarise it here instead". */
   report?: DailyReportDigest | null
+  /** Present for 'development_status_changed' only. */
+  development?: SlackDevelopmentDetails | null
 }
 
 export interface SlackMessagePayload {
@@ -364,6 +396,130 @@ export function buildSlackEventMessage(
         buttonText: goalId ? 'Open Goal' : 'Open Workspace',
         goal: goalName,
       })
+    }
+
+    // ── Development Tasks ────────────────────────────────────────────────
+    // One message per stage OnTask moved the task to. It is about the code as
+    // much as the task, so it carries the branch and, once there is one, the
+    // Pull Request -- with a button straight to it on GitHub, and one back to
+    // the task in OnTask.
+    case 'development_status_changed': {
+      const development = payload.development
+      const status = development?.status
+      // Only from a payload that lost its details: say what little is known
+      // rather than guess a stage.
+      if (!status || !(status in DEVELOPMENT_STATUS_LABELS)) {
+        return message({
+          heading: '💻 Development Task Updated',
+          body: `${taskLink} was updated.`,
+          fallback: `Development Task updated: "${taskTitle}"`,
+          url: taskId
+            ? getDevelopmentTaskUrl(workspaceSlug, taskId)
+            : workspaceUrl,
+          goal: goalName,
+        })
+      }
+      const label = DEVELOPMENT_STATUS_LABELS[status]
+      const branch = str(development.branch)
+      const repository = str(development.repository)
+      const prUrl =
+        status === 'in_development' ? undefined : str(development.prUrl)
+      const prNumber = development.prNumber ?? null
+      const prTitle = str(development.prTitle)
+      const baseBranch = str(development.baseBranch)
+      const devTaskUrl = taskId
+        ? getDevelopmentTaskUrl(workspaceSlug, taskId)
+        : workspaceUrl
+      const branchUrl =
+        branch && repository
+          ? getGithubBranchUrl(repository, branch)
+          : undefined
+
+      const lines = [`*<${devTaskUrl}|${escapeSlackText(taskTitle)}>*`]
+      if (branch) {
+        lines.push(
+          `*Branch:* ${branchUrl ? `<${branchUrl}|${escapeSlackText(branch)}>` : `\`${escapeSlackText(branch)}\``}`,
+        )
+      }
+      if (status === 'in_review' && prUrl) {
+        const name = [prNumber !== null ? `#${prNumber}` : null, prTitle]
+          .filter(Boolean)
+          .join(' ')
+        lines.push(
+          `*Pull Request:* <${prUrl}|${escapeSlackText(name || 'View on GitHub')}>`,
+        )
+      }
+      if (status === 'completed') {
+        const pr = prNumber !== null ? `PR #${prNumber}` : 'PR'
+        lines.push(
+          baseBranch
+            ? `${pr} merged into \`${escapeSlackText(baseBranch)}\``
+            : `${pr} merged`,
+        )
+      }
+
+      const context: unknown[] = [
+        {
+          type: 'mrkdwn',
+          text: `*Assignee:* ${assigneeText || 'Unassigned'}`,
+        },
+      ]
+      if (goalName) {
+        context.push({
+          type: 'mrkdwn',
+          text: `*Goal:* ${escapeSlackText(goalName)}`,
+        })
+      }
+      context.push({
+        type: 'mrkdwn',
+        text: `*Workspace:* ${escapeSlackText(workspaceName)}`,
+      })
+
+      // The GitHub button is what the stage is about: the branch while it is
+      // being built, the Pull Request once there is one.
+      const githubButton =
+        status === 'in_development'
+          ? branchUrl && { text: 'View Branch', url: branchUrl }
+          : prUrl && { text: 'View Pull Request', url: prUrl }
+      const buttons = [
+        ...(githubButton
+          ? [
+              {
+                type: 'button',
+                text: {
+                  type: 'plain_text',
+                  text: githubButton.text,
+                  emoji: true,
+                },
+                url: githubButton.url,
+                style: 'primary',
+              },
+            ]
+          : []),
+        {
+          type: 'button',
+          text: { type: 'plain_text', text: 'Open in OnTask', emoji: true },
+          url: devTaskUrl,
+        },
+      ]
+
+      const heading = `💻 Development Task — ${label}`
+      return {
+        fallbackText: `[${workspaceName}] Development Task — ${label}: "${taskTitle}"${branch ? ` (${branch})` : ''}${status === 'completed' && baseBranch ? `, merged into ${baseBranch}` : ''}`,
+        blocks: [
+          {
+            type: 'header',
+            text: {
+              type: 'plain_text',
+              text: clampHeader(heading),
+              emoji: true,
+            },
+          },
+          { type: 'section', text: { type: 'mrkdwn', text: lines.join('\n') } },
+          { type: 'context', elements: context },
+          { type: 'actions', elements: buttons },
+        ],
+      }
     }
 
     // ── notes ────────────────────────────────────────────────────────────

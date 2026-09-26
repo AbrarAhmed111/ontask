@@ -21,6 +21,27 @@ export function getTaskUrl(workspaceSlug: string, taskId: string): string {
   return `${getWorkspaceUrl(workspaceSlug)}?task=${encodeURIComponent(taskId)}`
 }
 
+// A Development Task opens in the Overview's Development section, the same
+// `?devtask=` link its in-app notifications use.
+export function getDevelopmentTaskUrl(
+  workspaceSlug: string,
+  taskId: string,
+): string {
+  return `${getWorkspaceUrl(workspaceSlug)}?devtask=${encodeURIComponent(taskId)}`
+}
+
+// A branch on GitHub. The name's own slashes stay path separators
+// (feature/google-oauth -> /tree/feature/google-oauth); anything else in it is
+// encoded.
+export function getGithubBranchUrl(
+  repositoryFullName: string,
+  branch: string,
+): string {
+  const repo = repositoryFullName.split('/').map(encodeURIComponent).join('/')
+  const ref = branch.split('/').map(encodeURIComponent).join('/')
+  return `https://github.com/${repo}/tree/${ref}`
+}
+
 // Membership events point at the page that actually lists members, not the
 // overview — it is a real route (/workspaces/[workspaceSlug]/members), so the
 // link lands on the thing the message is about.

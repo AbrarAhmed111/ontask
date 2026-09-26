@@ -40,6 +40,8 @@ const DISPATCHED_EVENT_TYPES = [
   'member_removed',
   'work_session_started',
   'work_session_ended',
+  // Development Tasks (migration 20260926180000).
+  'development_status_changed',
   'daily_report_ready',
 ]
 
@@ -59,6 +61,19 @@ describe('slackPreferenceKeyFor', () => {
         key,
       )
     }
+  })
+
+  it('gives Development Task status changes their own switch', () => {
+    expect(slackPreferenceKeyFor('development_status_changed')).toBe(
+      'development',
+    )
+    expect(
+      isSlackEventEnabled({ development: false }, 'development_status_changed'),
+    ).toBe(false)
+    // A workspace that saved its settings before the switch existed hears it.
+    expect(
+      isSlackEventEnabled({ completed: true }, 'development_status_changed'),
+    ).toBe(true)
   })
 
   it('keeps the 0045 preference keys pointing at the same events', () => {
