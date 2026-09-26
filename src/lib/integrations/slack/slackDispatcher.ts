@@ -9,7 +9,10 @@ import { buildSlackEventMessage } from './slackMessageBuilder'
 import { isSlackEventEnabled } from './slackEventCategories'
 import { decideDailyReportForSlack } from '@/lib/dailyReportDigest'
 import type { DailyReportDigest } from '@/lib/dailyReportDigest'
-import type { SlackEntityType } from './slackMessageBuilder'
+import type {
+  SlackDevelopmentDetails,
+  SlackEntityType,
+} from './slackMessageBuilder'
 
 export interface DispatchSlackEventParams {
   workspaceId: string
@@ -35,6 +38,8 @@ export interface DispatchSlackEventParams {
   selfRemoved?: boolean
   blockerReason?: string
   reportId?: string
+  /** A Development Task's stage change: the stage, its branch and PR. */
+  development?: SlackDevelopmentDetails | null
 }
 
 type DailyReportGate =
@@ -142,6 +147,7 @@ export async function dispatchSlackNotification(
       selfRemoved,
       blockerReason,
       reportId,
+      development,
     } = params
 
     const eventType =
@@ -280,6 +286,7 @@ export async function dispatchSlackNotification(
       blockerReason,
       reportId,
       report: reportDigest,
+      development,
     })
 
     // 8. Post message to Slack

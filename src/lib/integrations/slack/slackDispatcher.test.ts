@@ -229,6 +229,64 @@ describe('dispatchSlackNotification', () => {
     expect(postSlackMessage).toHaveBeenCalledTimes(1)
   })
 
+  // The payload slack_payload_for_task_event() builds for a Development Task
+  // (migration 20260926180000): the task's assignees as recipientUserIds and
+  // the stage, branch and PR under `development`.
+  it('delivers a Development Task status change with its assignee and PR', async () => {
+    const params = {
+      workspaceId: 'ws-a',
+      eventType: 'development_status_changed',
+      eventId: 'event-dev-1',
+      entityType: 'development_task' as const,
+      entityId: 'task-1',
+      taskId: 'task-1',
+      taskTitle: 'Implement Google OAuth',
+      actorId: 'user-1',
+      recipientUserIds: ['user-2'],
+      development: {
+        status: 'in_review' as const,
+        branch: 'feature/google-oauth-abrar',
+        repository: 'acme/ontask',
+        prNumber: 142,
+        prUrl: 'https://github.com/acme/ontask/pull/142',
+        prTitle: 'Implement Google OAuth',
+        baseBranch: null,
+      },
+    }
+
+    expect(await dispatchSlackNotification(params)).toEqual({
+      success: true,
+      outcome: 'delivered',
+    })
+    expect(await dispatchSlackNotification(params)).toEqual({
+      success: true,
+      outcome: 'duplicate_event_skipped',
+    })
+    expect(postSlackMessage).toHaveBeenCalledTimes(1)
+    const [, , fallback, blocks] = postSlackMessage.mock.calls[0]
+    expect(fallback).toBe(
+      '[DevAbby] Development Task — In Review: "Implement Google OAuth" (feature/google-oauth-abrar)',
+    )
+    const rendered = JSON.stringify(blocks)
+    expect(rendered).toContain('*Assignee:* Araysh')
+    expect(rendered).toContain('https://github.com/acme/ontask/pull/142')
+  })
+
+  it('lets a workspace switch Development Task messages off on their own', async () => {
+    db.connections[0].notification_settings = { development: false }
+
+    const result = await dispatchSlackNotification({
+      workspaceId: 'ws-a',
+      eventType: 'development_status_changed',
+      eventId: 'event-dev-2',
+      taskId: 'task-1',
+      development: { status: 'in_development', branch: 'feature/x' },
+    })
+
+    expect(result.outcome).toBe('notification_type_disabled')
+    expect(postSlackMessage).not.toHaveBeenCalled()
+  })
+
   it('names collaborators who are still working after one member completes', async () => {
     const result = await dispatchSlackNotification({
       workspaceId: 'ws-a',

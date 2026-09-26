@@ -30,6 +30,7 @@ export async function POST(request: Request) {
       selfRemoved,
       blockerReason,
       reportId,
+      development,
     } = body
 
     if (!workspaceId || !eventType) {
@@ -59,6 +60,7 @@ export async function POST(request: Request) {
       selfRemoved,
       blockerReason,
       reportId,
+      development,
     })
 
     return NextResponse.json(result)
