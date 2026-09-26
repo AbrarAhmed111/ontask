@@ -16,6 +16,11 @@ const workspace = (overrides: Partial<Workspace> = {}): Workspace => ({
   reportTime: '09:00:00',
   dailyReportsEnabled: true,
   developmentEnabled: false,
+  eventsEnabled: true,
+  eventsOverviewEnabled: true,
+  eventsCountdownEnabled: true,
+  eventsNotificationsEnabled: true,
+  eventsMembersCanCreate: true,
   accent: 'ocean',
   createdAt: '2026-01-01',
   updatedAt: '2026-01-01',
@@ -317,5 +322,62 @@ describe('WorkspaceSettingsSection — Modules', () => {
       activeTab: 'integrations-settings',
     })
     expect(on).toContain('GitHub')
+  })
+})
+
+describe('WorkspaceSettingsSection: Events and Notifications', () => {
+  const events = { saving: false, onChange: noop }
+
+  it('gives the owner the Events switches', () => {
+    const html = render({ events, activeTab: 'events-settings' })
+    for (const title of [
+      'Enable Events',
+      'Show upcoming event on Overview',
+      'Countdown',
+      'Event notifications',
+      'Members can create workspace events',
+    ])
+      expect(html).toContain(title)
+    expect(html).not.toMatch(/type="checkbox"[^>]*disabled/)
+  })
+
+  it('shows members the switches read-only', () => {
+    const html = render({
+      events,
+      canManage: false,
+      activeTab: 'events-settings',
+    })
+    expect(html).toMatch(/type="checkbox"[^>]*disabled/)
+    expect(html).toContain('Only the workspace owner can change this.')
+  })
+
+  it('hides the other switches while Events is off', () => {
+    const html = render({
+      events,
+      workspace: workspace({ eventsEnabled: false }),
+      activeTab: 'events-settings',
+    })
+    expect(html).toContain('Enable Events')
+    expect(html).not.toContain('Show upcoming event on Overview')
+  })
+
+  it('has no Events tab in a personal workspace', () => {
+    const html = render({
+      events,
+      isPersonal: true,
+      workspace: workspace({ type: 'personal' }),
+      activeTab: 'events-settings',
+    })
+    expect(html).not.toContain('Enable Events')
+    expect(html).not.toMatch(/<\/svg>Events<\/button>/)
+  })
+
+  it('shows the user’s own notification settings in their tab', () => {
+    const html = render({
+      notifications: <p>my notification settings</p>,
+      activeTab: 'notifications-settings',
+    })
+    expect(html).toContain('Notifications')
+    expect(html).toContain('my notification settings')
   })
 })

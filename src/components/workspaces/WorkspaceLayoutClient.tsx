@@ -44,6 +44,7 @@ import { PERSONAL_WORKSPACE_SLUG } from '@/lib/workspaces'
 function sectionFromPathname(pathname: string): WorkspaceSection {
   if (pathname.endsWith('/members')) return 'members'
   if (pathname.endsWith('/daily-updates')) return 'daily-updates'
+  if (pathname.endsWith('/events')) return 'events'
   if (pathname.endsWith('/ideas')) return 'ideas'
   if (pathname.endsWith('/settings')) return 'settings'
   return 'overview'

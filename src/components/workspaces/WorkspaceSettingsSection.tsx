@@ -1,7 +1,9 @@
 import { ReactNode } from 'react'
 import {
   Bell,
+  BellRing,
   Blocks,
+  CalendarClock,
   CircleHelp,
   FileText,
   GitBranch,
@@ -9,6 +11,8 @@ import {
   Settings2,
   Sparkles,
   SlidersHorizontal,
+  Timer,
+  UserPlus,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { ErrorBanner } from '@/components/ui/ErrorBanner'
@@ -17,6 +21,7 @@ import { Skeleton } from '@/components/ui/Skeleton'
 import { formatTimeOfDay } from '@/lib/dailyReportWindow'
 import { getWorkspaceTheme } from '@/lib/workspaceThemes'
 import { PERSONAL_WORKSPACE_NAME } from '@/lib/workspaces'
+import { WorkspacePatch } from '@/lib/workspaces'
 import { Workspace } from '@/types/workspace'
 import { SlackIntegrationCard } from '@/components/settings/SlackIntegrationCard'
 import { SettingsCard } from '@/components/settings/SettingsCard'
@@ -26,7 +31,9 @@ export type WorkspaceSettingsTab =
   | 'workspace-settings'
   | 'reports-settings'
   | 'modules-settings'
+  | 'events-settings'
   | 'integrations-settings'
+  | 'notifications-settings'
   | 'preferences-settings'
   | 'guidance-settings'
 
@@ -81,6 +88,8 @@ export function WorkspaceSettingsSection({
   preferences,
   dailyReports,
   modules,
+  events,
+  notifications,
   guidance,
   activeTab = 'workspace-settings',
   onTabChange,
@@ -113,6 +122,12 @@ export function WorkspaceSettingsSection({
     saving: boolean
     onDevelopmentChange: (enabled: boolean) => void
   }
+  // The workspace's Events switches (owner only); shared workspaces only.
+  // Omit to leave the tab out.
+  events?: { saving: boolean; onChange: (patch: WorkspacePatch) => void }
+  // The signed-in user's own notification preferences (a user setting, the
+  // same in every workspace). Omit to leave the tab out.
+  notifications?: ReactNode
   activeTab?: WorkspaceSettingsTab
   onTabChange?: (tab: WorkspaceSettingsTab) => void
   onEdit: () => void
@@ -143,10 +158,22 @@ export function WorkspaceSettingsSection({
       visible: Boolean(modules && !isPersonal && workspace),
     },
     {
+      id: 'events-settings',
+      label: 'Events',
+      icon: CalendarClock,
+      visible: Boolean(events && !isPersonal && workspace),
+    },
+    {
       id: 'integrations-settings',
       label: 'Integrations',
       icon: Plug,
       visible: Boolean(!isPersonal && workspace),
+    },
+    {
+      id: 'notifications-settings',
+      label: 'Notifications',
+      icon: Bell,
+      visible: Boolean(notifications),
     },
     {
       id: 'preferences-settings',
@@ -302,6 +329,81 @@ export function WorkspaceSettingsSection({
             </div>
           </SettingsCard>
         )}
+
+      {selectedTab === 'events-settings' &&
+        events &&
+        !isPersonal &&
+        workspace && (
+          <SettingsCard icon={CalendarClock} title="Events">
+            <div className="space-y-3 px-5 py-4">
+              <PreferenceToggle
+                icon={CalendarClock}
+                title="Enable Events"
+                description="Workspace and personal events with reminders, on their own Events page."
+                checked={workspace.eventsEnabled}
+                disabled={!ready || !canManage || events.saving}
+                onChange={enabled =>
+                  events.onChange({ eventsEnabled: enabled })
+                }
+              />
+              {workspace.eventsEnabled && (
+                <>
+                  <PreferenceToggle
+                    icon={Sparkles}
+                    title="Show upcoming event on Overview"
+                    description="The next workspace event each member is part of, at the top of the Overview."
+                    checked={workspace.eventsOverviewEnabled}
+                    disabled={!ready || !canManage || events.saving}
+                    onChange={enabled =>
+                      events.onChange({ eventsOverviewEnabled: enabled })
+                    }
+                  />
+                  {workspace.eventsOverviewEnabled && (
+                    <PreferenceToggle
+                      icon={Timer}
+                      title="Countdown"
+                      description="A live days / hours / minutes / seconds countdown on that card."
+                      checked={workspace.eventsCountdownEnabled}
+                      disabled={!ready || !canManage || events.saving}
+                      onChange={enabled =>
+                        events.onChange({ eventsCountdownEnabled: enabled })
+                      }
+                    />
+                  )}
+                  <PreferenceToggle
+                    icon={BellRing}
+                    title="Event notifications"
+                    description="Reminders, changes and cancellations for workspace events. Each member can still turn their own off."
+                    checked={workspace.eventsNotificationsEnabled}
+                    disabled={!ready || !canManage || events.saving}
+                    onChange={enabled =>
+                      events.onChange({ eventsNotificationsEnabled: enabled })
+                    }
+                  />
+                  <PreferenceToggle
+                    icon={UserPlus}
+                    title="Members can create workspace events"
+                    description="Off: only the owner can create and manage workspace events. Personal events are always allowed."
+                    checked={workspace.eventsMembersCanCreate}
+                    disabled={!ready || !canManage || events.saving}
+                    onChange={enabled =>
+                      events.onChange({ eventsMembersCanCreate: enabled })
+                    }
+                  />
+                </>
+              )}
+              <p className="text-[10px] leading-4 text-muted">
+                {!canManage
+                  ? 'Only the workspace owner can change this.'
+                  : workspace.eventsEnabled
+                    ? 'Turning Events off hides the page and stops every reminder here. Events are kept and come back when it is turned on again.'
+                    : 'Events are kept while this is off; nobody is reminded about them.'}
+              </p>
+            </div>
+          </SettingsCard>
+        )}
+
+      {selectedTab === 'notifications-settings' && notifications}
 
       {selectedTab === 'integrations-settings' && !isPersonal && workspace && (
         <div className="grid gap-5 lg:grid-cols-2">

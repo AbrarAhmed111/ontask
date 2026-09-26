@@ -147,6 +147,21 @@ function describeEvent(event: ActivityEvent, actorName: string): string {
       return `Pull Request${prNumber(event.metadata)} was closed without merging — "${title}" is back in development`
     case 'development_pr_merged':
       return `Pull Request${prNumber(event.metadata)} was merged for "${title}"`
+    // Workspace events only -- personal events never reach Activity.
+    case 'event_created':
+      return `${actorName} created the event "${title}"${withDetail(event.metadata.schedule)}`
+    case 'event_updated':
+      if (typeof event.metadata.previous_schedule === 'string')
+        return `"${title}" was moved from ${event.metadata.previous_schedule} to ${event.metadata.schedule}`
+      if (typeof event.metadata.previous_title === 'string')
+        return `${actorName} renamed the event "${event.metadata.previous_title}" to "${title}"`
+      if (event.metadata.audience_changed === true)
+        return `${actorName} changed who "${title}" is for`
+      return `${actorName} updated the event "${title}"`
+    case 'event_cancelled':
+      return `"${title}" was cancelled`
+    case 'event_deleted':
+      return `${actorName} deleted the event "${title}"`
     default:
       return `${actorName} updated "${title}"${under}`
   }

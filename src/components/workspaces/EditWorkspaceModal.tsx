@@ -15,30 +15,7 @@ import {
   workspaceThemeVars,
 } from '@/lib/workspaceThemes'
 import { Workspace } from '@/types/workspace'
-
-const COMMON_TIMEZONES = [
-  'UTC',
-  'America/Los_Angeles',
-  'America/Denver',
-  'America/Chicago',
-  'America/New_York',
-  'America/Sao_Paulo',
-  'Europe/London',
-  'Europe/Paris',
-  'Europe/Berlin',
-  'Europe/Moscow',
-  'Africa/Cairo',
-  'Asia/Dubai',
-  'Asia/Karachi',
-  'Asia/Kolkata',
-  'Asia/Dhaka',
-  'Asia/Bangkok',
-  'Asia/Singapore',
-  'Asia/Shanghai',
-  'Asia/Tokyo',
-  'Australia/Sydney',
-  'Pacific/Auckland',
-]
+import { COMMON_TIMEZONES } from '@/lib/timezones'
 
 export function EditWorkspaceModal({
   workspace,

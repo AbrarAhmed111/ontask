@@ -4,6 +4,7 @@ import { ReactNode, useEffect, useState } from 'react'
 import Link from 'next/link'
 import {
   ArrowLeft,
+  CalendarClock,
   ChevronDown,
   ClipboardList,
   Clock,
@@ -40,7 +41,7 @@ import {
 } from '@/types/workspace'
 
 export type WorkspaceSection =
-  'overview' | 'daily-updates' | 'ideas' | 'members' | 'settings'
+  'overview' | 'daily-updates' | 'events' | 'ideas' | 'members' | 'settings'
 
 const NAV_ITEMS: {
   id: WorkspaceSection
@@ -48,6 +49,8 @@ const NAV_ITEMS: {
   icon: typeof LayoutDashboard
   // A personal workspace has no members to list, so it has no Members page.
   sharedOnly?: boolean
+  // Hidden in a shared workspace whose owner turned Events off.
+  eventsModule?: boolean
   // What an onboarding tour points at for this entry. It is rendered twice —
   // a sidebar icon from `sm:` up and a tab below it — and only one is ever
   // displayed (see lib/tourAnchors).
@@ -67,6 +70,14 @@ const NAV_ITEMS: {
     icon: ClipboardList,
     sharedOnly: true,
     tour: 'page-daily-updates',
+  },
+  // Personal and workspace events with reminders. In the Personal Workspace it
+  // lists the user's own personal events from every workspace.
+  {
+    id: 'events',
+    label: 'Events',
+    icon: CalendarClock,
+    eventsModule: true,
   },
   {
     id: 'ideas',
@@ -338,7 +349,12 @@ export function WorkspaceShell({
   const displayName = workspace?.name ?? paintIdentity?.name
   const displayTimezone = workspace?.timezone ?? paintIdentity?.timezone
   const showHeaderSkeleton = !isPersonal && !ready && !paintIdentity
-  const items = NAV_ITEMS.filter(item => !item.sharedOnly || !isPersonal)
+  const eventsOff =
+    !isPersonal && workspace?.type === 'shared' && !workspace.eventsEnabled
+  const items = NAV_ITEMS.filter(
+    item =>
+      (!item.sharedOnly || !isPersonal) && !(item.eventsModule && eventsOff),
+  )
   const showMembers = !isPersonal && ready && members.length > 0
   const headerPreview = members.slice(0, HEADER_PREVIEW_COUNT)
   const headerOverflow = members.length - headerPreview.length

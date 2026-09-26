@@ -7,6 +7,7 @@ import {
   WorkspaceSettingsTab,
 } from '@/components/workspaces/WorkspaceSettingsSection'
 import { EditWorkspaceModal } from '@/components/workspaces/EditWorkspaceModal'
+import { NotificationPreferencesCard } from '@/components/settings/NotificationPreferencesCard'
 import { useWorkspaceDetail } from '@/components/workspaces/WorkspaceDetailContext'
 import { useTour } from '@/components/tour/TourProvider'
 import { useSettings } from '@/hooks/useSettings'
@@ -18,7 +19,9 @@ const SETTINGS_TABS: WorkspaceSettingsTab[] = [
   'workspace-settings',
   'reports-settings',
   'modules-settings',
+  'events-settings',
   'integrations-settings',
+  'notifications-settings',
   'preferences-settings',
   'guidance-settings',
 ]
@@ -36,13 +39,14 @@ export function WorkspaceSettingsClient() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const { requestReplay } = useTour()
-  const { workspace, ready, isOwner, isPersonal, updateWorkspace } =
+  const { workspace, ready, isOwner, isPersonal, updateWorkspace, user } =
     useWorkspaceDetail()
   const { settings, ready: settingsReady, updateSettings } = useSettings()
   const [editing, setEditing] = useState(false)
   const [settingsError, setSettingsError] = useState<string | null>(null)
   const [dailyReportsSaving, setDailyReportsSaving] = useState(false)
   const [modulesSaving, setModulesSaving] = useState(false)
+  const [eventsSaving, setEventsSaving] = useState(false)
   const activeTab = tabFromSearchParams(searchParams)
 
   const showTabInUrl = useCallback(
@@ -99,6 +103,15 @@ export function WorkspaceSettingsClient() {
     }
   }
 
+  const handleEventsChange = async (
+    patch: Parameters<typeof updateWorkspace>[0],
+  ) => {
+    setEventsSaving(true)
+    const result = await handleUpdateWorkspace(patch)
+    setEventsSaving(false)
+    if (result.success) showSuccessToast('Events settings saved.')
+  }
+
   // The tour points at the Overview, so replaying it means going there: the
   // request outlives this page and the Overview starts it once it has loaded.
   const tour = TOURS[tourIdForWorkspace(isPersonal ? 'personal' : 'shared')]
@@ -138,6 +151,11 @@ export function WorkspaceSettingsClient() {
           saving: modulesSaving,
           onDevelopmentChange: handleDevelopmentChange,
         }}
+        events={{
+          saving: eventsSaving,
+          onChange: patch => void handleEventsChange(patch),
+        }}
+        notifications={<NotificationPreferencesCard userId={user.id} />}
         guidance={{
           label: tour.label,
           onReplay: handleReplayTour,

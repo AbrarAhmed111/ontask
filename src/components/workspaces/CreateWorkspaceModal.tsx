@@ -6,38 +6,7 @@ import { ErrorBanner } from '@/components/ui/ErrorBanner'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { TimeOfDaySelect } from '@/components/workspaces/TimeOfDaySelect'
-
-const COMMON_TIMEZONES = [
-  'UTC',
-  'America/Los_Angeles',
-  'America/Denver',
-  'America/Chicago',
-  'America/New_York',
-  'America/Sao_Paulo',
-  'Europe/London',
-  'Europe/Paris',
-  'Europe/Berlin',
-  'Europe/Moscow',
-  'Africa/Cairo',
-  'Asia/Dubai',
-  'Asia/Karachi',
-  'Asia/Kolkata',
-  'Asia/Dhaka',
-  'Asia/Bangkok',
-  'Asia/Singapore',
-  'Asia/Shanghai',
-  'Asia/Tokyo',
-  'Australia/Sydney',
-  'Pacific/Auckland',
-]
-
-function detectTimezone() {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
-  } catch {
-    return 'UTC'
-  }
-}
+import { COMMON_TIMEZONES, detectTimezone } from '@/lib/timezones'
 
 export function CreateWorkspaceModal({
   onCreate,

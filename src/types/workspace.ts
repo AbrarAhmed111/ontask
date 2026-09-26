@@ -31,6 +31,18 @@ export type Workspace = {
   // Owner-configurable, shared workspaces only, off by default. Turning it off
   // hides the module; its tasks and tracking data are kept.
   developmentEnabled: boolean
+  // Events (supabase/migrations/20260926220000_workspace_events.sql). All
+  // owner-configurable and on by default. `eventsEnabled` hides the Events
+  // page and stops every reminder in the workspace; the Overview pair decide
+  // whether the next event (and its live countdown) is shown there;
+  // `eventsNotificationsEnabled` stops workspace-event reminders and change
+  // notices (personal events keep reminding); `eventsMembersCanCreate` off
+  // leaves creating workspace events to the owner.
+  eventsEnabled: boolean
+  eventsOverviewEnabled: boolean
+  eventsCountdownEnabled: boolean
+  eventsNotificationsEnabled: boolean
+  eventsMembersCanCreate: boolean
   accent: string
   createdAt: string
   updatedAt: string
@@ -185,7 +197,9 @@ export type TaskDevelopment = {
   workspaceId: string
   branchName: string
   workType: DevelopmentWorkType
+  repositoryId: number | null
   repositoryFullName: string | null
+  repositoryUrl: string | null
   branchDetectedAt: string | null
   // When GitHub last reported the branch deleted (cleared when it is pushed
   // again). Only means Needs Attention without a PR -- see
@@ -218,6 +232,7 @@ export type GithubConnectionStatus =
 export type GithubConnection = {
   workspaceId: string
   accountLogin: string | null
+  repositoryId: number | null
   repositoryFullName: string | null
   repositoryUrl: string | null
   status: GithubConnectionStatus
@@ -403,9 +418,16 @@ export type NotificationType =
   // Something about the assignee's code needs them: the branch was deleted
   // before a PR, or the PR was closed without merging.
   | 'development_needs_attention'
+  // An Event is about to start: a workspace event for its audience, a
+  // personal one for its creator only.
+  | 'event_reminder'
+  | 'personal_event_reminder'
+  // A workspace event was moved, or this member was added to / taken off it.
+  | 'event_updated'
+  | 'event_cancelled'
 
 export type NotificationEntityType =
-  'task' | 'goal' | 'resource' | 'note' | 'workspace' | 'daily_update'
+  'task' | 'goal' | 'resource' | 'note' | 'workspace' | 'daily_update' | 'event'
 
 export type WorkspaceNotification = {
   id: string
@@ -421,6 +443,10 @@ export type WorkspaceNotification = {
   actorId: string | null
   readAt: string | null
   createdAt: string
+  // Extra facts for rendering, set by some types only. Event notifications
+  // carry `occurrenceAt` (ISO), `offsetMinutes`, `timezone`, `scope` and
+  // `dailyUpdatePrompt`.
+  metadata?: Record<string, unknown> | null
 }
 
 // A notification as the bell renders it: the row plus the workspace it came
@@ -730,4 +756,54 @@ export type SlackStatusData = {
   channel_name?: string
   notification_settings?: SlackNotificationSettings
   can_manage?: boolean
+}
+
+// ── Events ──────────────────────────────────────────────────────────────────
+// supabase/migrations/20260926220000_workspace_events.sql. An event is a
+// wall-clock time in an IANA timezone plus a small recurrence rule; the server
+// works out the occurrences (see lib/events.ts for how the UI reads them).
+
+// personal: private to its creator, wherever it was created. workspace: every
+// member sees it; reminders go to its audience.
+export type EventScope = 'personal' | 'workspace'
+// A personal event is always 'self'.
+export type EventAudience = 'self' | 'everyone' | 'selected'
+export type EventRecurrence =
+  'none' | 'daily' | 'weekdays' | 'weekly' | 'monthly'
+// A cancelled event is kept (listed under Past) and never reminds again. For a
+// recurring event this is the whole series.
+export type EventStatus = 'scheduled' | 'cancelled'
+
+export type WorkspaceEvent = {
+  id: string
+  workspaceId: string
+  // The workspace it lives in -- differs from the page's own workspace for a
+  // personal event listed on the Personal Workspace's Events page.
+  workspaceName: string
+  workspaceSlug: string
+  workspaceType: WorkspaceType
+  scope: EventScope
+  createdBy: string | null
+  title: string
+  description: string | null
+  // Local date ("2026-09-28") and time ("09:00:00") in `timezone`.
+  startsOn: string
+  startTime: string
+  timezone: string
+  durationMinutes: number | null
+  recurrence: EventRecurrence
+  // Minutes before each occurrence; 0 = at event time; empty = no reminder.
+  reminderOffsets: number[]
+  audience: EventAudience
+  audienceUserIds: string[]
+  dailyUpdatePrompt: boolean
+  status: EventStatus
+  cancelledAt: string | null
+  // The next few occurrences after the moment it was fetched (ISO instants),
+  // oldest first; empty once cancelled or over.
+  upcomingOccurrences: string[]
+  // The latest occurrence that had started when it was fetched.
+  lastOccurrenceAt: string | null
+  createdAt: string
+  updatedAt: string
 }

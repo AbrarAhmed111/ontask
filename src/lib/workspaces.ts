@@ -23,6 +23,12 @@ export type WorkspaceRow = {
   daily_reports_enabled?: boolean
   // Absent until the Development module migration is applied.
   development_enabled?: boolean
+  // Absent until the Events migration is applied; all default to on.
+  events_enabled?: boolean
+  events_overview_enabled?: boolean
+  events_countdown_enabled?: boolean
+  events_notifications_enabled?: boolean
+  events_members_can_create?: boolean
   accent: string
   created_at: string
   updated_at: string
@@ -44,6 +50,11 @@ export function rowToWorkspace(row: WorkspaceRow): Workspace {
     // default (a personal workspace opt-in, a shared one on) rather than guess.
     dailyReportsEnabled: row.daily_reports_enabled ?? row.type !== 'personal',
     developmentEnabled: row.development_enabled ?? false,
+    eventsEnabled: row.events_enabled ?? true,
+    eventsOverviewEnabled: row.events_overview_enabled ?? true,
+    eventsCountdownEnabled: row.events_countdown_enabled ?? true,
+    eventsNotificationsEnabled: row.events_notifications_enabled ?? true,
+    eventsMembersCanCreate: row.events_members_can_create ?? true,
     accent: row.accent,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -61,6 +72,11 @@ export type WorkspacePatch = Partial<
     | 'accent'
     | 'dailyReportsEnabled'
     | 'developmentEnabled'
+    | 'eventsEnabled'
+    | 'eventsOverviewEnabled'
+    | 'eventsCountdownEnabled'
+    | 'eventsNotificationsEnabled'
+    | 'eventsMembersCanCreate'
   >
 >
 
@@ -79,6 +95,16 @@ export function workspacePatchToRow(
     row.daily_reports_enabled = patch.dailyReportsEnabled
   if (patch.developmentEnabled !== undefined)
     row.development_enabled = patch.developmentEnabled
+  if (patch.eventsEnabled !== undefined)
+    row.events_enabled = patch.eventsEnabled
+  if (patch.eventsOverviewEnabled !== undefined)
+    row.events_overview_enabled = patch.eventsOverviewEnabled
+  if (patch.eventsCountdownEnabled !== undefined)
+    row.events_countdown_enabled = patch.eventsCountdownEnabled
+  if (patch.eventsNotificationsEnabled !== undefined)
+    row.events_notifications_enabled = patch.eventsNotificationsEnabled
+  if (patch.eventsMembersCanCreate !== undefined)
+    row.events_members_can_create = patch.eventsMembersCanCreate
   return row
 }
 

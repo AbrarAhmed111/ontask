@@ -11,6 +11,7 @@ import { WorkspaceDevelopmentSection } from '@/components/development/WorkspaceD
 import { DevelopmentDataProvider } from '@/components/development/DevelopmentDataContext'
 import { WorkspaceResourcesSection } from '@/components/workspaces/WorkspaceResourcesSection'
 import { WorkspaceSummarySection } from '@/components/workspaces/WorkspaceSummarySection'
+import { UpcomingEventCard } from '@/components/events/UpcomingEventCard'
 import { WorkspaceTaskForm } from '@/components/workspaces/WorkspaceTaskForm'
 import { CompletionModal } from '@/components/tasks/CompletionModal'
 import { GoalForm } from '@/components/goals/GoalForm'
@@ -352,6 +353,10 @@ export function WorkspaceOverviewClient() {
   return (
     <DevelopmentDataProvider>
       <div className="space-y-8">
+        {/* The next event and its countdown; renders nothing when the owner
+          has it off (or, in the Personal Workspace, when nothing is coming). */}
+        <UpcomingEventCard key={workspaceId} />
+
         <TaskBlockerActionsContext.Provider value={blockerActions}>
           <WorkspaceTasksSection
             ready={ready && tasksReady}
