@@ -78,7 +78,7 @@ function shiftLocalDate(
 // if they were UTC to get a first guess, measure how far that guess's
 // wall-clock reading in `timeZone` is from the target, and correct by that
 // offset. One pass is sufficient outside the DST-transition instant itself.
-function zonedTimeToInstant(
+export function zonedTimeToInstant(
   year: number,
   month: number,
   day: number,
