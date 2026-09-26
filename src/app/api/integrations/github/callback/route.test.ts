@@ -84,7 +84,7 @@ describe('GitHub connect callback — workspace scoping', () => {
       installationId: 77,
     })
     expect(location(response)).toBe(
-      'https://ontask.test/workspaces/team-b/settings?github=connected',
+      'https://ontask.test/workspaces/team-b/settings?integrations-settings&github=connected',
     )
   })
 
@@ -136,6 +136,7 @@ describe('GitHub connect callback — existing installations', () => {
     expect(connectWorkspaceInstallation).not.toHaveBeenCalled()
     const url = new URL(location(response))
     expect(url.pathname).toBe('/workspaces/team-b/settings')
+    expect(url.searchParams.has('integrations-settings')).toBe(true)
     const choice = decodeInstallationChoice(
       SECRET,
       url.searchParams.get('github_choose'),

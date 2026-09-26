@@ -42,10 +42,14 @@ export function SlackToastFromUrl({
     // The integrations' OAuth round trips land back here with their outcome in
     // the URL: say it once, then drop it from the address bar.
     if (github === 'connected' || githubError) {
-      if (github === 'connected') showSuccessToast('GitHub connected.')
+      // One toast per outcome however many times this runs before the URL
+      // is cleaned (Strict Mode, the settings page rewriting its tab param).
+      if (github === 'connected')
+        showSuccessToast('GitHub connected.', { id: 'github-connect' })
       else
         showErrorToast(
           GITHUB_ERRORS[githubError ?? ''] ?? "Couldn't connect GitHub.",
+          { id: 'github-connect' },
         )
       const newParams = new URLSearchParams(searchParams.toString())
       newParams.delete('github')
@@ -56,14 +60,18 @@ export function SlackToastFromUrl({
     }
 
     if (slack === 'connected') {
-      showSuccessToast('Slack workspace connected successfully!')
+      showSuccessToast('Slack workspace connected successfully!', {
+        id: 'slack-connect',
+      })
       onSlackConnected?.()
       const newParams = new URLSearchParams(searchParams.toString())
       newParams.delete('slack')
       const queryString = newParams.toString()
       router.replace(queryString ? `${pathname}?${queryString}` : pathname)
     } else if (slackError) {
-      showErrorToast(`Slack connection error: ${slackError}`)
+      showErrorToast(`Slack connection error: ${slackError}`, {
+        id: 'slack-connect',
+      })
       const newParams = new URLSearchParams(searchParams.toString())
       newParams.delete('slack_error')
       const queryString = newParams.toString()

@@ -7,7 +7,12 @@ import { AlertTriangle, Check } from 'lucide-react'
 // (rounded-2xl panel, forest/coral accents) rather than react-hot-toast's
 // plain default bubble — still flows through the same <Toaster/> mounted in
 // the root layout, so position/stacking/dismiss timing all just work.
-export function showSuccessToast(message: string) {
+// `id`: toasts with the same id replace each other instead of stacking -- for
+// a message that can be raised more than once for one event (an outcome read
+// from the URL, which several renders can see before it is removed).
+type ToastOptions = { id?: string }
+
+export function showSuccessToast(message: string, { id }: ToastOptions = {}) {
   toast.custom(
     t => (
       <div
@@ -19,11 +24,11 @@ export function showSuccessToast(message: string) {
         <p className="text-xs font-semibold text-ink">{message}</p>
       </div>
     ),
-    { duration: 4000 },
+    { duration: 4000, id },
   )
 }
 
-export function showErrorToast(message: string) {
+export function showErrorToast(message: string, { id }: ToastOptions = {}) {
   toast.custom(
     t => (
       <div
@@ -35,6 +40,6 @@ export function showErrorToast(message: string) {
         <p className="text-xs font-semibold text-ink">{message}</p>
       </div>
     ),
-    { duration: 5000 },
+    { duration: 5000, id },
   )
 }

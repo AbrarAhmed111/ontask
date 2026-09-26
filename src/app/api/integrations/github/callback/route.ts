@@ -62,7 +62,10 @@ export async function GET(request: NextRequest) {
   if (owner instanceof NextResponse) return owner
   const settingsUrl = `${base}/workspaces/${owner.workspace.slug}/settings`
   const done = (query: string) => {
-    const response = NextResponse.redirect(`${settingsUrl}?${query}`)
+    // Back on the Integrations tab, where the GitHub card is.
+    const response = NextResponse.redirect(
+      `${settingsUrl}?integrations-settings&${query}`,
+    )
     response.cookies.set(STATE_COOKIE, '', {
       ...STATE_COOKIE_OPTIONS,
       maxAge: 0,
