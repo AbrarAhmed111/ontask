@@ -27,13 +27,17 @@ const LINK_CLASS =
 const QUIET_LINK_CLASS =
   'text-[11px] font-semibold text-muted transition hover:text-ink disabled:opacity-50'
 
-function GithubLogo({ className = 'h-4 w-4' }: { className?: string }) {
+function GithubLogo({
+  className = 'h-[18px] w-[18px]',
+}: {
+  className?: string
+}) {
   return (
     <Image
       src={githubIcon}
       alt=""
-      width={16}
-      height={16}
+      width={18}
+      height={18}
       className={className}
     />
   )
@@ -181,7 +185,7 @@ export function GithubIntegrationCard({
 
   return (
     <SettingsCard
-      iconNode={<GithubLogo className="h-[15px] w-[15px]" />}
+      iconNode={<GithubLogo />}
       title="GitHub"
       className={className}
       action={
@@ -221,7 +225,7 @@ export function GithubIntegrationCard({
                 onClick={() => void chooseInstallation(option.id)}
                 className="flex w-full items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-left text-xs font-semibold text-ink transition hover:border-[var(--ws-accent,#375b4b)] disabled:opacity-50"
               >
-                <GithubLogo className="h-3.5 w-3.5 shrink-0" />
+                <GithubLogo className="h-4 w-4 shrink-0" />
                 <span className="truncate">
                   {option.account ?? `Installation ${option.id}`}
                 </span>
@@ -258,7 +262,7 @@ export function GithubIntegrationCard({
               href={github.connectUrl}
               className="inline-flex items-center gap-2 rounded-lg bg-[var(--ws-accent,#375b4b)] px-3.5 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:opacity-90"
             >
-              <GithubLogo className="h-3.5 w-3.5 brightness-0 invert" /> Connect
+              <GithubLogo className="h-4 w-4 brightness-0 invert" /> Connect
               GitHub
             </a>
           ) : (
@@ -378,7 +382,7 @@ export function GithubIntegrationCard({
                         value: String(repo.id),
                         label: repo.fullName,
                         description: repo.private ? 'Private' : 'Public',
-                        icon: <GithubLogo className="h-3.5 w-3.5" />,
+                        icon: <GithubLogo className="h-4 w-4" />,
                       }))}
                       className="min-w-0 flex-1"
                     />

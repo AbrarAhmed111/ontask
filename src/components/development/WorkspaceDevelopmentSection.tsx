@@ -50,13 +50,13 @@ import type {
 
 type Item = { task: WorkspaceTask; development: TaskDevelopment }
 
-function GithubLogo({ className = 'h-3.5 w-3.5' }: { className?: string }) {
+function GithubLogo({ className = 'h-4 w-4' }: { className?: string }) {
   return (
     <Image
       src={githubIcon}
       alt=""
-      width={14}
-      height={14}
+      width={16}
+      height={16}
       className={className}
     />
   )
