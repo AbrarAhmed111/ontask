@@ -1,5 +1,10 @@
+import { Suspense } from 'react'
 import { WorkspaceSettingsClient } from '@/components/workspaces/WorkspaceSettingsClient'
 
 export default function WorkspaceSettingsPage() {
-  return <WorkspaceSettingsClient />
+  return (
+    <Suspense fallback={null}>
+      <WorkspaceSettingsClient />
+    </Suspense>
+  )
 }

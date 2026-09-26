@@ -1,8 +1,11 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { WorkspaceSettingsSection } from '@/components/workspaces/WorkspaceSettingsSection'
+import { useCallback, useEffect, useState } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import {
+  WorkspaceSettingsSection,
+  WorkspaceSettingsTab,
+} from '@/components/workspaces/WorkspaceSettingsSection'
 import { EditWorkspaceModal } from '@/components/workspaces/EditWorkspaceModal'
 import { useWorkspaceDetail } from '@/components/workspaces/WorkspaceDetailContext'
 import { useTour } from '@/components/tour/TourProvider'
@@ -11,8 +14,27 @@ import { showSuccessToast } from '@/lib/toast'
 import { TOURS, tourIdForWorkspace } from '@/lib/tour/definitions'
 import { PERSONAL_WORKSPACE_PATH, workspacePath } from '@/lib/workspaces'
 
+const SETTINGS_TABS: WorkspaceSettingsTab[] = [
+  'workspace-settings',
+  'reports-settings',
+  'modules-settings',
+  'integrations-settings',
+  'preferences-settings',
+  'guidance-settings',
+]
+
+function tabFromSearchParams(searchParams: {
+  has: (key: string) => boolean
+}): WorkspaceSettingsTab {
+  return (
+    SETTINGS_TABS.find(tab => searchParams.has(tab)) ?? 'workspace-settings'
+  )
+}
+
 export function WorkspaceSettingsClient() {
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const { requestReplay } = useTour()
   const { workspace, ready, isOwner, isPersonal, updateWorkspace } =
     useWorkspaceDetail()
@@ -21,6 +43,29 @@ export function WorkspaceSettingsClient() {
   const [settingsError, setSettingsError] = useState<string | null>(null)
   const [dailyReportsSaving, setDailyReportsSaving] = useState(false)
   const [modulesSaving, setModulesSaving] = useState(false)
+  const activeTab = tabFromSearchParams(searchParams)
+
+  const showTabInUrl = useCallback(
+    (tab: WorkspaceSettingsTab) => {
+      const next = new URLSearchParams(searchParams.toString())
+      SETTINGS_TABS.forEach(key => next.delete(key))
+      const preserved = next.toString()
+      const query = preserved ? `${preserved}&${tab}` : tab
+      router.replace(query ? `${pathname}?${query}` : pathname, {
+        scroll: false,
+      })
+    },
+    [pathname, router, searchParams],
+  )
+
+  useEffect(() => {
+    if (SETTINGS_TABS.some(tab => searchParams.has(tab))) return
+    showTabInUrl('workspace-settings')
+  }, [searchParams, showTabInUrl])
+
+  const handleTabChange = (tab: WorkspaceSettingsTab) => {
+    showTabInUrl(tab)
+  }
 
   const handleUpdateWorkspace: typeof updateWorkspace = async patch => {
     const result = await updateWorkspace(patch)
@@ -86,6 +131,8 @@ export function WorkspaceSettingsClient() {
           onDevelopmentChange: handleDevelopmentChange,
         }}
         guidance={{ label: tour.label, onReplay: handleReplayTour }}
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
         onEdit={() => {
           setSettingsError(null)
           setEditing(true)
