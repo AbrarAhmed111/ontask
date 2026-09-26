@@ -1,4 +1,4 @@
-// A user's own notification preferences
+﻿// A user's own notification preferences
 // (supabase/migrations/20260926210000_notification_preferences.sql). One row
 // per preference the user has changed; no row means on. Which notification
 // types each key governs is decided in SQL (notification_preference_key) --

@@ -1,4 +1,4 @@
-// The timezones OnTask offers in its pickers (workspace create/edit, events),
+﻿// The timezones OnTask offers in its pickers (workspace create/edit, events),
 // plus whatever the browser reports if it isn't one of them.
 export const COMMON_TIMEZONES = [
   'UTC',

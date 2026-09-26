@@ -1,4 +1,4 @@
-// Desktop (browser) notifications: a copy of an in-app notification raised by
+﻿// Desktop (browser) notifications: a copy of an in-app notification raised by
 // an open OnTask tab when the notification arrives over realtime. It is a
 // delivery channel only -- what gets written to the notification center is
 // decided server-side, and nothing here is scheduled: with no tab open there
