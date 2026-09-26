@@ -48,6 +48,8 @@ import {
 } from '@/components/tasks/TaskMoveSelect'
 import { TaskNotesPanel } from '@/components/tasks/TaskNotesPanel'
 import { useTaskNoteCount } from '@/components/workspaces/TaskNoteCountsContext'
+import { useTaskDevelopment } from '@/components/development/DevelopmentDataContext'
+import { TaskDevelopmentBadge } from '@/components/development/TaskDevelopmentBadge'
 import type { AuthUser } from '@/hooks/useAuth'
 
 function formatCollaboratorFocusTime(seconds: number) {
@@ -110,6 +112,8 @@ export function WorkspaceTaskCard({
     null,
   )
   const noteCount = useTaskNoteCount(task.id)
+  // Set when this task is a Development Task (its code is tracked on GitHub).
+  const code = useTaskDevelopment(task.id)
   const completed = task.status === 'completed' || task.status === 'skipped'
   // Two different things read as "blocked" and stay separate: waiting on an
   // incomplete Goal dependency (derived, `blockedBy`) and having a blocker
@@ -261,6 +265,15 @@ export function WorkspaceTaskCard({
       }
       blocked={blocked}
       statusLabel={statusLabel}
+      badge={
+        code && (
+          <TaskDevelopmentBadge
+            task={task}
+            development={code.development}
+            connection={code.connection}
+          />
+        )
+      }
       focusLabel={isCollaborative ? 'All Focus Time' : 'Focused time'}
       workedSeconds={totalFocusedSeconds}
       plannedMinutes={task.plannedMinutes}

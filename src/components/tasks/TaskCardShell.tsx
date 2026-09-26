@@ -48,6 +48,7 @@ export function TaskCardShell({
   tone,
   blocked = false,
   statusLabel,
+  badge,
   focusLabel,
   workedSeconds,
   plannedMinutes,
@@ -73,6 +74,8 @@ export function TaskCardShell({
   // in its status pill.
   blocked?: boolean
   statusLabel: string
+  // Beside the status pill: what kind of task this is (e.g. a code task).
+  badge?: ReactNode
   focusLabel: string
   workedSeconds: number
   plannedMinutes?: number | null
@@ -136,6 +139,7 @@ export function TaskCardShell({
         >
           {statusLabel}
         </span>
+        {badge}
         <button
           aria-label={`Edit ${title}`}
           onClick={onEdit}

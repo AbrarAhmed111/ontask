@@ -12,6 +12,7 @@ import {
 import { TourAnchor, tourAnchor } from '@/lib/tourAnchors'
 import { WorkspaceMember, WorkspaceTask } from '@/types/workspace'
 import type { AuthUser } from '@/hooks/useAuth'
+import { TaskCodeBadge } from '@/components/development/TaskDevelopmentBadge'
 
 function StatCard({
   icon: Icon,
@@ -140,9 +141,12 @@ export function WorkspaceTasksSection({
         className="flex items-center justify-between rounded-xl border border-sage/40 bg-sage/5 px-4 py-2.5"
       >
         <div className="min-w-0">
-          <p className="truncate text-xs font-bold text-ink">
-            Currently working on {task.name}
-          </p>
+          <div className="flex min-w-0 items-center gap-2">
+            <p className="truncate text-xs font-bold text-ink">
+              Currently working on {task.name}
+            </p>
+            <TaskCodeBadge task={task} />
+          </div>
           <p className="truncate text-[10px] text-muted">Goal: {goalName}</p>
         </div>
         <p className="shrink-0 text-[11px] text-muted">
@@ -208,9 +212,12 @@ export function WorkspaceTasksSection({
                   className="flex items-center justify-between rounded-xl border border-line bg-panel px-4 py-2.5"
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-xs font-bold text-ink">
-                      {task.name}
-                    </p>
+                    <div className="flex min-w-0 items-center gap-2">
+                      <p className="truncate text-xs font-bold text-ink">
+                        {task.name}
+                      </p>
+                      <TaskCodeBadge task={task} />
+                    </div>
                     {parent && (
                       <p className="truncate text-[10px] text-muted">
                         under &ldquo;{parent.name}&rdquo;
