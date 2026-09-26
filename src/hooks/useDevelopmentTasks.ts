@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -324,29 +324,24 @@ export function useDevelopmentTasks(
     }
   }, [])
 
-  const items = useMemo(
-    () => {
-      const normalized = normalizeDevelopmentSnapshot({
-        tasks,
-        developments: developmentList,
+  const items = useMemo(() => {
+    const normalized = normalizeDevelopmentSnapshot({
+      tasks,
+      developments: developmentList,
+    })
+    const developments = new Map(
+      normalized.developments.map(item => [item.taskId, item]),
+    )
+    return normalized.tasks
+      .map(task => {
+        const development = developments.get(task.id)
+        return development ? { task, development } : null
       })
-      const developments = new Map(
-        normalized.developments.map(item => [item.taskId, item]),
+      .filter(
+        (item): item is { task: WorkspaceTask; development: TaskDevelopment } =>
+          item !== null,
       )
-      return normalized.tasks
-        .map(task => {
-          const development = developments.get(task.id)
-          return development ? { task, development } : null
-        })
-        .filter(
-          (
-            item,
-          ): item is { task: WorkspaceTask; development: TaskDevelopment } =>
-            item !== null,
-        )
-    },
-    [tasks, developmentList],
-  )
+  }, [tasks, developmentList])
 
   return {
     items,

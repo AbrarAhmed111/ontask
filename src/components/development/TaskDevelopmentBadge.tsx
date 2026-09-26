@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -62,7 +62,9 @@ export function TaskDevelopmentSummary({
   const repository =
     sameRepository && connection?.repositoryFullName
       ? connection.repositoryFullName
-      : (development.repositoryFullName ?? connection?.repositoryFullName ?? null)
+      : (development.repositoryFullName ??
+        connection?.repositoryFullName ??
+        null)
   const branchHref =
     detected && !branchGone && repository && development.prState !== 'merged'
       ? branchUrl(repository, development.branchName)

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import {
@@ -109,7 +109,9 @@ export function CodeTrackingPanel({
   const repository =
     sameRepository && connection?.repositoryFullName
       ? connection.repositoryFullName
-      : (development.repositoryFullName ?? connection?.repositoryFullName ?? null)
+      : (development.repositoryFullName ??
+        connection?.repositoryFullName ??
+        null)
   const detected = development.branchDetectedAt !== null
   const branchGone = development.branchDeletedAt !== null
   const attention = developmentAttention(task, development, connection)

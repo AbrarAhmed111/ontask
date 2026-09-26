@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+﻿import { describe, expect, it } from 'vitest'
 import {
   assigneeSlug,
   generateBranchName,
@@ -231,7 +231,11 @@ describe('developmentStage', () => {
       'suspended',
       'disconnected',
     ] as const) {
-      const connection = { status, repositoryId: 22, repositoryFullName: 'acme/ontask' }
+      const connection = {
+        status,
+        repositoryId: 22,
+        repositoryFullName: 'acme/ontask',
+      }
       expect(stage('working', 'in_review', {}, connection)).toBe(
         'needs_attention',
       )
