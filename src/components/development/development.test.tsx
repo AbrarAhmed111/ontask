@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { CodeTrackingPanel } from '@/components/development/CodeTrackingPanel'
-import { DevelopmentTaskForm } from '@/components/development/DevelopmentTaskForm'
+import {
+  BranchCollisionNotice,
+  DevelopmentTaskForm,
+} from '@/components/development/DevelopmentTaskForm'
+import { branchCollision } from '@/lib/development/branchName'
 import { DevelopmentTaskCreated } from '@/components/development/DevelopmentTaskCreated'
 import { SelectMenu } from '@/components/ui/SelectMenu'
 import { WorkspaceActivityFeed } from '@/components/workspaces/WorkspaceActivityFeed'
@@ -31,6 +35,8 @@ const development = (
   workType: 'feature',
   repositoryFullName: null,
   branchDetectedAt: null,
+  branchDeletedAt: null,
+  branchReleasedAt: null,
   prNumber: null,
   prUrl: null,
   prTitle: null,
@@ -134,11 +140,67 @@ describe('CodeTrackingPanel', () => {
     expect(html).toContain('In Review')
   })
 
-  it('PR closed without merging: back in development, never completed', () => {
+  it('PR closed without merging: Needs Attention with what to do, never completed', () => {
     const html = panel(withPr('closed', 'pr_closed'), { status: 'paused' })
-    expect(html).toContain('closed without merging')
+    expect(html).toContain(
+      'Needs Attention — Pull request was closed without being merged.',
+    )
+    expect(html).toContain('Open a new Pull Request')
+    expect(html).toContain('#142 — Implement Google OAuth')
     expect(html).not.toContain('Completed')
-    expect(html).not.toContain('merged')
+  })
+
+  it('branch deleted before a PR: Needs Attention, the name to push again, no dead link', () => {
+    const html = panel(
+      development({
+        repositoryFullName: 'acme/ontask',
+        branchDetectedAt: '2026-09-26T09:00:00Z',
+        branchDeletedAt: '2026-09-26T10:00:00Z',
+        trackingStatus: 'branch_detected',
+      }),
+      { status: 'working' },
+    )
+    expect(html).toContain(
+      'Needs Attention — Tracked branch was deleted or is no longer accessible.',
+    )
+    expect(html).toContain('Branch deleted on GitHub')
+    expect(html).toContain('Copy: feature/google-oauth-abrar')
+    expect(html).not.toContain('/tree/feature/google-oauth-abrar')
+    expect(html).not.toContain('Branch connected')
+  })
+
+  it('branch deleted while the PR is open: still In Review, no alarm', () => {
+    const html = panel(
+      {
+        ...withPr('open', 'in_review'),
+        branchDeletedAt: '2026-09-26T10:00:00Z',
+      },
+      { status: 'working' },
+    )
+    expect(html).toContain('In Review')
+    expect(html).not.toContain('Needs Attention')
+  })
+
+  it('branch deleted after the merge: still Completed', () => {
+    const html = panel(
+      {
+        ...withPr('merged', 'merged'),
+        branchDeletedAt: '2026-09-26T10:00:00Z',
+      },
+      { status: 'completed' },
+    )
+    expect(html).toContain('Completed — Pull Request #142')
+    expect(html).not.toContain('Needs Attention')
+  })
+
+  it('repository access removed: Needs Attention explaining the repository', () => {
+    const html = panel(withPr('open', 'in_review'), {
+      status: 'working',
+      connection: { ...connected, status: 'repository_access_lost' },
+    })
+    expect(html).toContain(
+      'The repository is no longer accessible through the connected GitHub installation.',
+    )
   })
 
   it('PR merged: completed, and says why', () => {
@@ -247,7 +309,7 @@ describe('DevelopmentTaskForm', () => {
       members={[member('u-abrar', 'Abrar Ahmed')]}
       goals={[]}
       currentUserId="u-abrar"
-      takenBranchNames={[]}
+      branchHolders={[]}
       onCreate={async () => ({ success: true })}
       onCancel={() => {}}
     />,
@@ -272,6 +334,43 @@ describe('DevelopmentTaskForm', () => {
     for (const label of ['Type', 'Goal', 'Assignee', 'Priority']) {
       expect(html).toContain(`aria-label="${label}"`)
     }
+  })
+})
+
+describe('BranchCollisionNotice', () => {
+  const name = 'feature/google-oauth-abrar'
+  const notice = (finished: boolean, takeOver = false) =>
+    renderToStaticMarkup(
+      <BranchCollisionNotice
+        collision={branchCollision(name, [
+          {
+            branchName: name,
+            taskId: 't-old',
+            title: 'Implement Google OAuth',
+            finished,
+          },
+        ])!}
+        takeOver={takeOver}
+        onTakeOverChange={() => {}}
+      />,
+    )
+
+  it('names the task that already has the branch, and gives this one a numbered name', () => {
+    const html = notice(false)
+    expect(html).toContain(
+      'This branch is already linked to another Development Task',
+    )
+    expect(html).toContain('Implement Google OAuth')
+    expect(html).toContain(`${name}-02`)
+    // An active task's branch is never offered.
+    expect(html).not.toContain('type="checkbox"')
+  })
+
+  it('offers a finished task’s name, and says what reusing it means', () => {
+    expect(notice(true)).toContain('type="checkbox"')
+    const html = notice(true, true)
+    expect(html).toContain('keeps its history')
+    expect(html).not.toContain(`${name}-02`)
   })
 })
 

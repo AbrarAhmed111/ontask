@@ -39,6 +39,10 @@ export type DevelopmentTaskInput = {
   assigneeId: string | null
   priority: TaskPriority | null
   branchName: string
+  // Take the exact branch name from the finished task that has it (which
+  // keeps its history). Never from an active task: that one keeps it, and
+  // this task gets a numbered name.
+  takeOverBranch?: boolean
 }
 
 type Result = { success: true } | { success: false; error: string }
@@ -240,6 +244,7 @@ export function useDevelopmentTasks(
         p_priority: input.priority,
         p_work_type: input.workType,
         p_branch_name: input.branchName,
+        p_take_over_branch: input.takeOverBranch ?? false,
       },
     )
     if (rpcError) return failure(rpcError, "Couldn't create the task.")

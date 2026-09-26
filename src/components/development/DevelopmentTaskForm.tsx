@@ -1,7 +1,7 @@
 'use client'
 
 import { FormEvent, ReactNode, useMemo, useState } from 'react'
-import { GitBranch, Target, UserRound } from 'lucide-react'
+import { AlertTriangle, GitBranch, Target, UserRound } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { ErrorBanner } from '@/components/ui/ErrorBanner'
@@ -11,9 +11,11 @@ import {
   WorkTypeIcon,
 } from '@/components/development/DevelopmentBadges'
 import {
+  BranchCollision,
+  BranchHolder,
+  branchCollision,
   generateBranchName,
   isValidBranchName,
-  numberedBranchName,
 } from '@/lib/development/branchName'
 import {
   PRIORITIES,
@@ -73,24 +75,82 @@ export const PRIORITY_OPTIONS: SelectMenuOption<TaskPriority | ''>[] = [
   })),
 ]
 
+// Said as soon as the branch a new task would get is already linked to
+// another Development Task: which task, and what happens instead. One branch
+// is never linked to two tasks -- the new one gets a numbered name or, when
+// the other task is finished, may take the name over on purpose.
+export function BranchCollisionNotice({
+  collision,
+  takeOver,
+  onTakeOverChange,
+}: {
+  collision: BranchCollision
+  takeOver: boolean
+  onTakeOverChange: (takeOver: boolean) => void
+}) {
+  const { holder, numberedName, canTakeOver } = collision
+  return (
+    <span
+      role="status"
+      className="mt-1.5 block rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] font-normal leading-5 text-amber-900"
+    >
+      <span className="flex items-start gap-1.5 font-semibold">
+        <AlertTriangle size={12} className="mt-1 shrink-0" aria-hidden />
+        <span>
+          This branch is already linked to another Development Task: “
+          {holder.title}”{holder.finished ? ' (finished)' : ''}.
+        </span>
+      </span>
+      <span className="mt-0.5 block pl-[18px]">
+        {takeOver ? (
+          <>
+            This task will use{' '}
+            <code className="font-mono font-semibold">{holder.branchName}</code>
+            . “{holder.title}” keeps its history but stops following the branch.
+          </>
+        ) : (
+          <>
+            This task will use{' '}
+            <code className="font-mono font-semibold">{numberedName}</code>{' '}
+            instead.
+          </>
+        )}
+      </span>
+      {canTakeOver && (
+        <label className="mt-1 flex items-center gap-1.5 pl-[18px] font-semibold">
+          <input
+            type="checkbox"
+            checked={takeOver}
+            onChange={event => onTakeOverChange(event.target.checked)}
+            className="accent-[var(--ws-accent,#375b4b)]"
+          />
+          Reuse <code className="font-mono">{holder.branchName}</code> for this
+          task
+        </label>
+      )}
+    </span>
+  )
+}
+
 // Create a Development Task. It is always a new task. Its branch name follows
 // the type (feature/, fix/, ...), the title and the assignee; if another task
-// in the workspace already has that name, it is numbered -02, -03, ... The
-// form previews that under the title; the server decides, and the dialog shows
-// the final name (to copy) once the task exists.
+// in the workspace already has that name, the form says which, and the new
+// task is numbered -02, -03, ... (or, if that task is finished, may reuse the
+// name). The server decides, and the dialog shows the final name (to copy)
+// once the task exists.
 export function DevelopmentTaskForm({
   members,
   goals,
   currentUserId,
-  takenBranchNames,
+  branchHolders,
   onCreate,
   onCancel,
 }: {
   members: WorkspaceMember[]
   goals: Goal[]
   currentUserId: string
-  // Branch names other Development Tasks in this workspace already have.
-  takenBranchNames: string[]
+  // The Development Tasks in this workspace holding a branch name.
+  branchHolders: BranchHolder[]
   onCreate: (
     input: DevelopmentTaskInput,
   ) => Promise<{ success: boolean; error?: string }>
@@ -102,6 +162,9 @@ export function DevelopmentTaskForm({
   const [goalId, setGoalId] = useState('')
   const [assigneeId, setAssigneeId] = useState(currentUserId)
   const [priority, setPriority] = useState<TaskPriority | ''>('medium')
+  // The branch name the person chose to take over, if any. The choice is per
+  // name: a different title or assignee has to be chosen again.
+  const [takeOverFor, setTakeOverFor] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -153,9 +216,12 @@ export function DevelopmentTaskForm({
     const member = members.find(m => m.userId === assigneeId) ?? null
     return generateBranchName(title, member, workType)
   }, [title, assigneeId, workType, members])
-  const previewBranchName = branchName
-    ? numberedBranchName(branchName, takenBranchNames)
-    : ''
+  const collision = branchName
+    ? branchCollision(branchName, branchHolders)
+    : null
+  const takeOver = Boolean(collision?.canTakeOver) && takeOverFor === branchName
+  const previewBranchName =
+    collision && !takeOver ? collision.numberedName : branchName
 
   const canSubmit =
     !saving && title.trim() !== '' && isValidBranchName(branchName)
@@ -173,6 +239,7 @@ export function DevelopmentTaskForm({
       assigneeId: assigneeId || null,
       priority: priority || null,
       branchName,
+      takeOverBranch: takeOver,
     })
     setSaving(false)
     if (!result.success) setError(result.error ?? "Couldn't save.")
@@ -205,10 +272,17 @@ export function DevelopmentTaskForm({
               <code className="font-mono font-semibold text-ink">
                 {previewBranchName}
               </code>
-              {previewBranchName !== branchName &&
-                ' — numbered, another task already uses this name'}
             </span>
           </span>
+        )}
+        {collision && (
+          <BranchCollisionNotice
+            collision={collision}
+            takeOver={takeOver}
+            onTakeOverChange={checked =>
+              setTakeOverFor(checked ? branchName : null)
+            }
+          />
         )}
       </label>
 

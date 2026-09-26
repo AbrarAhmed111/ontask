@@ -147,3 +147,40 @@ export function isNumberedVariant(name: string, base: string): boolean {
     name.startsWith(`${base}-`) && /^\d{2,}$/.test(name.slice(base.length + 1))
   )
 }
+
+// A Development Task that currently holds a branch name in the workspace (a
+// finished task whose name was handed on no longer does).
+export type BranchHolder = {
+  branchName: string
+  taskId: string
+  title: string
+  // Completed or skipped: its name may be reused, on purpose only.
+  finished: boolean
+}
+
+export type BranchCollision = {
+  holder: BranchHolder
+  // What the new task gets unless the name is reused.
+  numberedName: string
+  // Only a finished task's name can be taken over -- never an active one's.
+  canTakeOver: boolean
+}
+
+// Whether `name` is already linked to another Development Task, and what the
+// server will do about it (claim_development_branch_name, migration
+// 20260926200000): one branch is never linked to two tasks.
+export function branchCollision(
+  name: string,
+  holders: BranchHolder[],
+): BranchCollision | null {
+  const holder = holders.find(h => h.branchName === name)
+  if (!holder) return null
+  return {
+    holder,
+    numberedName: numberedBranchName(
+      name,
+      holders.map(h => h.branchName),
+    ),
+    canTakeOver: holder.finished,
+  }
+}

@@ -155,10 +155,10 @@ export function WorkspaceDevelopmentSection({ goals }: { goals: Goal[] }) {
     title: string
     branchName: string
   } | null>(null)
-  const closeCreate = () => {
+  const closeCreate = useCallback(() => {
     setCreating(false)
     setCreated(null)
-  }
+  }, [])
   const [openTaskId, setOpenTaskId] = useState<string | null>(null)
   // Whether the open task came from a link (?devtask=), which may point at a
   // task that no longer exists -- unlike one just created, which is simply not
@@ -250,6 +250,7 @@ export function WorkspaceDevelopmentSection({ goals }: { goals: Goal[] }) {
               items={development.items}
               goals={goals}
               members={members}
+              connection={github.connection}
               onOpen={setOpenTaskId}
             />
           )}
@@ -279,9 +280,16 @@ export function WorkspaceDevelopmentSection({ goals }: { goals: Goal[] }) {
               members={members}
               goals={goals}
               currentUserId={user.id}
-              takenBranchNames={development.items.map(
-                item => item.development.branchName,
-              )}
+              branchHolders={development.items
+                .filter(item => item.development.branchReleasedAt === null)
+                .map(item => ({
+                  branchName: item.development.branchName,
+                  taskId: item.task.id,
+                  title: item.task.name,
+                  finished:
+                    item.task.status === 'completed' ||
+                    item.task.status === 'skipped',
+                }))}
               onCreate={async input => {
                 const result = await development.createDevelopmentTask(input)
                 if (result.success && result.taskId && result.branchName) {
