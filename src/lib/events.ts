@@ -410,10 +410,31 @@ export function groupEventsByDay(
 }
 
 // ── the Overview ────────────────────────────────────────────────────────────
-// Which event the Overview features. Only 'next' today; an admin-chosen
-// featured event would be another strategy here, falling back to 'next' when
-// its event is over or gone.
-export type OverviewEventStrategy = { kind: 'next' }
+// Which event the Overview features: the next one for this person, or the one
+// the owner chose on the Events page (Workspace.eventsFeaturedEventId), which
+// falls back to 'next' once it is over, cancelled or gone.
+export type OverviewEventStrategy =
+  { kind: 'next' } | { kind: 'featured'; eventId: string }
+
+// The Overview strategy a workspace's settings ask for. The Personal
+// Workspace always shows the next event.
+export function overviewStrategy(
+  workspace: Pick<Workspace, 'type' | 'eventsFeaturedEventId'> | null,
+): OverviewEventStrategy {
+  return workspace?.type === 'shared' && workspace.eventsFeaturedEventId
+    ? { kind: 'featured', eventId: workspace.eventsFeaturedEventId }
+    : { kind: 'next' }
+}
+
+// Whether the owner can put this event on the Overview right now: a
+// scheduled workspace event with something live or still ahead.
+export function canFeatureEvent(event: WorkspaceEvent, now: number): boolean {
+  return (
+    event.scope === 'workspace' &&
+    event.status === 'scheduled' &&
+    Boolean(liveOccurrence(event, now) ?? nextOccurrence(event, now))
+  )
+}
 
 export type OverviewEvent = {
   event: WorkspaceEvent
@@ -425,6 +446,10 @@ export type OverviewEvent = {
 // A shared workspace's Overview shows its next workspace event that is for
 // this person; the Personal Workspace's shows their next personal event. A
 // live one wins over an upcoming one (the most recently started if several).
+//
+// An event the owner featured is shown instead -- to every member, whoever
+// its audience is, since the owner chose to put it in front of everyone --
+// while it is live or still ahead.
 export function pickOverviewEvent(
   events: WorkspaceEvent[],
   {
@@ -439,7 +464,15 @@ export function pickOverviewEvent(
     strategy?: OverviewEventStrategy
   },
 ): OverviewEvent | null {
-  void strategy
+  if (strategy.kind === 'featured' && scope === 'workspace') {
+    const event = events.find(e => e.id === strategy.eventId)
+    if (event && canFeatureEvent(event, now)) {
+      const liveAt = liveOccurrence(event, now)
+      if (liveAt) return { event, phase: 'live', occurrenceAt: liveAt }
+      const nextAt = nextOccurrence(event, now)
+      if (nextAt) return { event, phase: 'upcoming', occurrenceAt: nextAt }
+    }
+  }
   const candidates = events.filter(
     e =>
       e.scope === scope &&

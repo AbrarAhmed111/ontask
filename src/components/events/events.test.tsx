@@ -232,6 +232,55 @@ describe('the event detail', () => {
       'href="/workspaces/growducts/daily-updates"',
     )
   })
+
+  describe('the owner’s Overview choice', () => {
+    const control = {
+      featured: false,
+      available: true,
+      cardOff: false,
+      saving: false,
+      onChange: noop,
+    }
+    const renderWith = (overview: typeof control | null, featured = false) =>
+      renderToStaticMarkup(
+        <EventDetail
+          event={event()}
+          now={at('2026-10-01T00:00:00Z')}
+          members={members}
+          creatorName={null}
+          canManage={false}
+          dailyUpdatesHref={null}
+          overview={overview}
+          featured={featured}
+          onEdit={noop}
+          onCancelEvent={noop}
+          onDelete={noop}
+        />,
+      )
+
+    it('is offered to the owner only', () => {
+      expect(renderWith(null)).not.toContain('Show on Overview')
+      expect(renderWith(control)).toContain('Show on Overview')
+    })
+
+    it('reads as shown, with a way back, once chosen', () => {
+      const html = renderWith({ ...control, featured: true }, true)
+      expect(html).toContain('Remove from Overview')
+      expect(html).toContain('On Overview')
+    })
+
+    it('is not offered for an event with nothing ahead', () => {
+      expect(renderWith({ ...control, available: false })).not.toContain(
+        'Show on Overview',
+      )
+    })
+
+    it('says when the Overview card itself is off', () => {
+      expect(renderWith({ ...control, cardOff: true })).toContain(
+        'turned off in Settings',
+      )
+    })
+  })
 })
 
 describe('the event form', () => {

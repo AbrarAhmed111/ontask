@@ -3,6 +3,7 @@ import {
   EventRow,
   audienceLabel,
   canCreateWorkspaceEvents,
+  canFeatureEvent,
   canManageEvent,
   countdownParts,
   elapsedLabel,
@@ -16,6 +17,7 @@ import {
   isPastEvent,
   liveOccurrence,
   nextOccurrence,
+  overviewStrategy,
   pickOverviewEvent,
   recurrenceLabel,
   remindersLabel,
@@ -274,6 +276,106 @@ describe('the Overview event', () => {
     expect(
       pickOverviewEvent([], { scope: 'workspace', userId: 'x', now }),
     ).toBeNull()
+  })
+
+  describe('featured by the owner', () => {
+    const soonest = event({
+      id: 'soonest',
+      recurrence: 'none',
+      upcomingOccurrences: ['2026-10-01T01:00:00.000Z'],
+    })
+    const demo = event({
+      id: 'demo',
+      title: 'Demo Day',
+      recurrence: 'none',
+      // Only for someone else: the owner's choice still shows it to everyone.
+      audience: 'selected',
+      audienceUserIds: ['someone-else'],
+      upcomingOccurrences: ['2026-10-09T10:00:00.000Z'],
+      lastOccurrenceAt: null,
+    })
+    const featured = { kind: 'featured' as const, eventId: 'demo' }
+
+    it('wins over a sooner event, for every member', () => {
+      const picked = pickOverviewEvent([soonest, demo], {
+        scope: 'workspace',
+        userId: 'abrar',
+        now,
+        strategy: featured,
+      })
+      expect(picked).toMatchObject({
+        event: { id: 'demo' },
+        phase: 'upcoming',
+        occurrenceAt: '2026-10-09T10:00:00.000Z',
+      })
+    })
+
+    it('shows as live while it is under way', () => {
+      expect(
+        pickOverviewEvent([soonest, demo], {
+          scope: 'workspace',
+          userId: 'abrar',
+          now: at('2026-10-09T10:05:00Z'),
+          strategy: featured,
+        }),
+      ).toMatchObject({ event: { id: 'demo' }, phase: 'live' })
+    })
+
+    it.each([
+      ['over', demo, at('2026-10-09T10:15:00Z')],
+      ['cancelled', { ...demo, status: 'cancelled' as const }, now],
+    ])('falls back to the next event once it is %s', (_, chosen, when) => {
+      const later = {
+        ...soonest,
+        upcomingOccurrences: ['2026-10-20T01:00:00.000Z'],
+      }
+      expect(
+        pickOverviewEvent([later, chosen], {
+          scope: 'workspace',
+          userId: 'abrar',
+          now: when,
+          strategy: featured,
+        })?.event.id,
+      ).toBe('soonest')
+    })
+
+    it('falls back when the event is gone, and never features a personal one', () => {
+      const personal = {
+        ...demo,
+        scope: 'personal' as const,
+        audience: 'self' as const,
+      }
+      for (const events of [[soonest], [soonest, personal]]) {
+        expect(
+          pickOverviewEvent(events, {
+            scope: 'workspace',
+            userId: 'abrar',
+            now,
+            strategy: featured,
+          })?.event.id,
+        ).toBe('soonest')
+      }
+    })
+
+    it('comes from a shared workspace’s setting only', () => {
+      expect(
+        overviewStrategy({ type: 'shared', eventsFeaturedEventId: 'demo' }),
+      ).toEqual(featured)
+      expect(
+        overviewStrategy({ type: 'shared', eventsFeaturedEventId: null }),
+      ).toEqual({ kind: 'next' })
+      expect(
+        overviewStrategy({ type: 'personal', eventsFeaturedEventId: 'demo' }),
+      ).toEqual({ kind: 'next' })
+      expect(overviewStrategy(null)).toEqual({ kind: 'next' })
+    })
+
+    it('can only be a scheduled workspace event with something ahead', () => {
+      expect(canFeatureEvent(demo, now)).toBe(true)
+      expect(canFeatureEvent({ ...demo, status: 'cancelled' }, now)).toBe(false)
+      expect(canFeatureEvent({ ...demo, scope: 'personal' }, now)).toBe(false)
+      expect(canFeatureEvent(demo, at('2026-10-09T10:15:00Z'))).toBe(false)
+    })
   })
 
   it('the Personal Workspace shows only the user’s own personal events', () => {

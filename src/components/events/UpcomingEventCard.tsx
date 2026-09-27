@@ -12,6 +12,7 @@ import {
   elapsedLabel,
   eventHref,
   formatOccurrence,
+  overviewStrategy,
   pad2,
   pickOverviewEvent,
   scheduleLabel,
@@ -142,7 +143,8 @@ export function UpcomingEventView({
 }
 
 // The Overview's next event. A shared workspace: its next workspace event for
-// this person, while the owner has Events and "show on Overview" on. The
+// this person -- or the one the owner chose on the Events page, while it is
+// live or ahead -- while the owner has Events and "show on Overview" on. The
 // Personal Workspace: the user's own next personal event, only when there is
 // one. The countdown ticks in the browser from the occurrence's timestamp;
 // only reaching the end of the known occurrences ever refetches.
@@ -164,6 +166,7 @@ export function UpcomingEventCard() {
         scope: isPersonal ? 'personal' : 'workspace',
         userId: user.id,
         now: featuredNow,
+        strategy: overviewStrategy(workspace),
       })
     : null
 

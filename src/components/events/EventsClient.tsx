@@ -19,6 +19,7 @@ import {
   EventFilter,
   EventFormValues,
   canCreateWorkspaceEvents,
+  canFeatureEvent,
   canManageEvent,
   emptyEventForm,
   eventToForm,
@@ -57,8 +58,16 @@ export function EventsClient() {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const { workspace, workspaceId, user, members, isOwner, isPersonal, ready } =
-    useWorkspaceDetail()
+  const {
+    workspace,
+    workspaceId,
+    user,
+    members,
+    isOwner,
+    isPersonal,
+    ready,
+    updateWorkspace,
+  } = useWorkspaceDetail()
   const eventsOff = !isPersonal && workspace?.eventsEnabled === false
   const {
     events,
@@ -75,10 +84,18 @@ export function EventsClient() {
   const now = useNow(30_000)
   const [filter, setFilter] = useState<EventFilter>('upcoming')
   const [dialog, setDialog] = useState<Dialog>(null)
+  const [savingFeatured, setSavingFeatured] = useState(false)
 
   const displayTimezone = workspace?.timezone || 'UTC'
   const canCreateWorkspace = canCreateWorkspaceEvents(workspace, isOwner)
   const membersCanCreate = workspace?.eventsMembersCanCreate ?? true
+  // The event the owner put on the Overview; only marked while it is still
+  // live or ahead (after that the Overview is back to the next event).
+  const featuredId = isPersonal
+    ? null
+    : (workspace?.eventsFeaturedEventId ?? null)
+  const isFeatured = (event: WorkspaceEvent) =>
+    event.id === featuredId && canFeatureEvent(event, now)
   const selectedId = searchParams.get('event')
   const selected = selectedId
     ? (events.find(e => e.id === selectedId) ?? null)
@@ -145,6 +162,21 @@ export function EventsClient() {
     const result = await cancelEvent(event.id)
     if (result.ok) showSuccessToast(`${event.title} cancelled.`)
     else showErrorToast(result.error)
+  }
+
+  const handleFeature = async (event: WorkspaceEvent, featured: boolean) => {
+    setSavingFeatured(true)
+    const result = await updateWorkspace({
+      eventsFeaturedEventId: featured ? event.id : null,
+    })
+    setSavingFeatured(false)
+    if (!result.success) showErrorToast("Couldn't change the Overview event.")
+    else
+      showSuccessToast(
+        featured
+          ? `${event.title} is now shown on the Overview.`
+          : 'The Overview shows the next event again.',
+      )
   }
 
   const handleDelete = async (event: WorkspaceEvent) => {
@@ -252,6 +284,7 @@ export function EventsClient() {
                     now={now}
                     members={members}
                     showWorkspace={isPersonal}
+                    featured={isFeatured(event)}
                     onOpen={() => openEvent(event.id)}
                   />
                 ))}
@@ -286,6 +319,18 @@ export function EventsClient() {
             dailyUpdatesHref={
               selected.workspaceType === 'shared'
                 ? `/workspaces/${selected.workspaceSlug}/daily-updates`
+                : null
+            }
+            featured={isFeatured(selected)}
+            overview={
+              isOwner && !isPersonal && selected.scope === 'workspace'
+                ? {
+                    featured: isFeatured(selected),
+                    available: canFeatureEvent(selected, now),
+                    cardOff: workspace?.eventsOverviewEnabled === false,
+                    saving: savingFeatured,
+                    onChange: featured => handleFeature(selected, featured),
+                  }
                 : null
             }
             onEdit={() => setDialog({ kind: 'edit', event: selected })}

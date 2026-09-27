@@ -1,4 +1,4 @@
-import { Bell, ChevronRight, Lock, Repeat, Users } from 'lucide-react'
+import { Bell, ChevronRight, Lock, Repeat, Star, Users } from 'lucide-react'
 import {
   audienceLabel,
   formatEventClock,
@@ -54,6 +54,15 @@ export function StatusBadge({
   return null
 }
 
+// The event the owner chose for the Overview's "Upcoming event" card.
+export function OverviewBadge() {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-[var(--ws-accent-soft,#e9f0ec)] px-2 py-0.5 text-[10px] font-bold text-[var(--ws-accent,#375b4b)]">
+      <Star size={10} className="fill-current" /> On Overview
+    </span>
+  )
+}
+
 // One event in the Events list: when (on the event's own clock), what, and
 // who it is for, at a glance.
 export function EventListItem({
@@ -61,6 +70,7 @@ export function EventListItem({
   now,
   members,
   showWorkspace,
+  featured = false,
   onOpen,
 }: {
   event: WorkspaceEvent
@@ -69,6 +79,8 @@ export function EventListItem({
   // On the Personal Workspace's page, a personal event from a shared
   // workspace names where it lives.
   showWorkspace: boolean
+  // Shown on the Overview by the owner's choice (and not over yet).
+  featured?: boolean
   onOpen: () => void
 }) {
   const at = liveOccurrence(event, now) ?? nextOccurrence(event, now)
@@ -97,6 +109,7 @@ export function EventListItem({
               {event.title}
             </p>
             <StatusBadge event={event} now={now} />
+            {featured && <OverviewBadge />}
           </div>
           <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted">
             <span className="inline-flex items-center gap-1">
