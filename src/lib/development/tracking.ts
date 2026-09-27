@@ -23,6 +23,8 @@ export type TaskDevelopmentRow = {
   branch_deleted_at?: string | null
   // Absent until migration 20260926200000 is applied.
   branch_released_at?: string | null
+  // Absent until migration 20260927120000 is applied.
+  completed_cleared_at?: string | null
   pr_number: number | null
   pr_url: string | null
   pr_title: string | null
@@ -49,6 +51,7 @@ export function rowToTaskDevelopment(row: TaskDevelopmentRow): TaskDevelopment {
     branchDetectedAt: row.branch_detected_at,
     branchDeletedAt: row.branch_deleted_at ?? null,
     branchReleasedAt: row.branch_released_at ?? null,
+    completedClearedAt: row.completed_cleared_at ?? null,
     prNumber: row.pr_number,
     prUrl: row.pr_url,
     prTitle: row.pr_title,
@@ -224,6 +227,19 @@ export function developmentStage(
     default:
       return 'queued'
   }
+}
+
+// Cleared from the board's Completed column ("Clear completed"). Only a
+// finished task counts: reopening one resets the mark on the server, and until
+// that arrives the task already shows again.
+export function isClearedFromBoard(
+  task: Pick<WorkspaceTask, 'status'>,
+  development: Pick<TaskDevelopment, 'completedClearedAt'>,
+) {
+  return (
+    (task.status === 'completed' || task.status === 'skipped') &&
+    development.completedClearedAt != null
+  )
 }
 
 // What kind of change a Development Task is, in the order the picker offers

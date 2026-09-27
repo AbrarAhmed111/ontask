@@ -209,6 +209,10 @@ export type TaskDevelopment = {
   // name and PR stay for history; GitHub events for the branch no longer
   // reach this task. See migration 20260926200000.
   branchReleasedAt: string | null
+  // When this finished task was cleared from the board's Completed column
+  // (reset when it is reopened). Board only: the task stays in its Goal and
+  // everywhere else. See migration 20260927120000.
+  completedClearedAt?: string | null
   prNumber: number | null
   prUrl: string | null
   prTitle: string | null

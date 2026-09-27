@@ -12,6 +12,7 @@ import {
   WORK_TYPES,
   developmentAttention,
   developmentStage,
+  isClearedFromBoard,
 } from '@/lib/development/tracking'
 import type {
   DevelopmentTrackingStatus,
@@ -288,6 +289,29 @@ describe('developmentStage', () => {
     expect(stage('completed', 'pr_closed', deleted, connected)).toBe(
       'completed',
     )
+  })
+})
+
+describe('isClearedFromBoard', () => {
+  const cleared = { completedClearedAt: '2026-09-27T10:00:00Z' }
+
+  it.each<[WorkspaceTaskStatus, boolean]>([
+    ['completed', true],
+    ['skipped', true],
+    ['queued', false],
+    ['working', false],
+    ['blocked', false],
+    ['paused', false],
+  ])('a cleared %s task -> %s', (status, hidden) => {
+    expect(isClearedFromBoard({ status }, cleared)).toBe(hidden)
+  })
+
+  it('keeps a finished task that was never cleared', () => {
+    expect(
+      isClearedFromBoard({ status: 'completed' }, { completedClearedAt: null }),
+    ).toBe(false)
+    // Cached before migration 20260927120000: no field at all.
+    expect(isClearedFromBoard({ status: 'completed' }, {})).toBe(false)
   })
 })
 

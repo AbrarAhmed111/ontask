@@ -299,6 +299,7 @@ const isTaskDevelopment = isShape<TaskDevelopment>({
   branchDetectedAt: field.nullableString,
   branchDeletedAt: field.nullableString,
   branchReleasedAt: field.nullableString,
+  completedClearedAt: { kind: 'string', optional: true, nullable: true },
   prNumber: field.nullableNumber,
   prUrl: field.nullableString,
   prTitle: field.nullableString,
