@@ -1,7 +1,7 @@
 ﻿'use client'
 
-import { useState } from 'react'
-import { Bell, BellRing, Inbox, ShieldCheck } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Bell, BellRing, Inbox, ShieldCheck, Volume2 } from 'lucide-react'
 import { ErrorBanner } from '@/components/ui/ErrorBanner'
 import { PreferenceToggle } from '@/components/ui/PreferenceToggle'
 import { Skeleton } from '@/components/ui/Skeleton'
@@ -19,6 +19,12 @@ import {
   rememberBrowserPreference,
 } from '@/lib/browserNotifications'
 import { requestNotificationPermission } from '@/lib/notifications'
+import {
+  eventSoundEnabled,
+  playEventChime,
+  setEventSoundEnabled,
+  unlockEventSound,
+} from '@/lib/eventAlerts'
 
 function browserNote(permission: BrowserPermission, enabled: boolean): string {
   if (permission === 'unsupported')
@@ -38,12 +44,15 @@ export function NotificationPreferencesView({
   preferences,
   permission,
   onChange,
+  eventSound = null,
 }: {
   ready: boolean
   error: string | null
   preferences: NotificationPreferences
   permission: BrowserPermission
   onChange: (key: NotificationPreferenceKey, enabled: boolean) => void
+  // This device's chime for event reminders (not an account setting).
+  eventSound?: { enabled: boolean; onChange: (enabled: boolean) => void } | null
 }) {
   const browserOn = isPreferenceEnabled(preferences, 'browser')
   return (
@@ -90,6 +99,15 @@ export function NotificationPreferencesView({
                 }
                 onChange={enabled => onChange('browser', enabled)}
               />
+              {eventSound && (
+                <PreferenceToggle
+                  icon={Volume2}
+                  title="Sound for event reminders"
+                  description="Rings on this device when an event is about to start or starts, while an OnTask tab is open."
+                  checked={eventSound.enabled}
+                  onChange={eventSound.onChange}
+                />
+              )}
             </div>
           </section>
 
@@ -130,6 +148,9 @@ export function NotificationPreferencesCard({ userId }: { userId: string }) {
   const [permission, setPermission] = useState<BrowserPermission>(() =>
     browserPermission(),
   )
+  // Read after mount: localStorage doesn't exist while rendering on the server.
+  const [soundOn, setSoundOn] = useState(true)
+  useEffect(() => setSoundOn(eventSoundEnabled()), [])
 
   const handleChange = async (
     key: NotificationPreferenceKey,
@@ -151,6 +172,18 @@ export function NotificationPreferencesCard({ userId }: { userId: string }) {
       preferences={preferences}
       permission={permission}
       onChange={(key, enabled) => void handleChange(key, enabled)}
+      eventSound={{
+        enabled: soundOn,
+        onChange: enabled => {
+          setEventSoundEnabled(enabled)
+          setSoundOn(enabled)
+          // A sample, so the switch is also how to check the speakers.
+          if (enabled) {
+            unlockEventSound()
+            playEventChime('reminder')
+          }
+        },
+      }}
     />
   )
 }

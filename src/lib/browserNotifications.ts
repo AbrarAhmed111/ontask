@@ -8,6 +8,8 @@
 // here, so the realtime handler can check it synchronously; the settings card
 // updates it when the user flips the switch.
 
+import { isEventReminder, isEventStartAlert } from '@/lib/eventAlerts'
+
 let remembered: { userId: string; enabled: boolean } | null = null
 const shown = new Set<string>()
 
@@ -29,11 +31,14 @@ export function browserPermission(): BrowserPermission {
 
 // Whether a just-arrived notification should also pop up on the desktop: the
 // user allows it, the browser allows it, OnTask isn't the window they're
-// looking at, and it is new (a reconnect replaying old rows never pops up).
+// looking at -- unless it is urgent (an event reminder: it is about a time,
+// and the bell's badge alone is easy to miss) -- and it is new (a reconnect
+// replaying old rows never pops up).
 export function shouldShowBrowserNotification({
   enabled,
   permission,
   pageFocused,
+  urgent = false,
   createdAt,
   readAt,
   now = Date.now(),
@@ -41,12 +46,13 @@ export function shouldShowBrowserNotification({
   enabled: boolean
   permission: BrowserPermission
   pageFocused: boolean
+  urgent?: boolean
   createdAt: string
   readAt: string | null
   now?: number
 }): boolean {
-  if (!enabled || permission !== 'granted' || pageFocused || readAt)
-    return false
+  if (!enabled || permission !== 'granted' || readAt) return false
+  if (pageFocused && !urgent) return false
   const age = now - Date.parse(createdAt)
   return Number.isFinite(age) && age < 2 * 60_000
 }
@@ -58,6 +64,8 @@ export function showBrowserNotification(row: {
   created_at: string
   read_at: string | null
   user_id: string
+  notification_type?: string | null
+  metadata?: unknown
 }) {
   if (typeof window === 'undefined' || shown.has(row.id)) return
   const enabled = browserPreferenceFor(row.user_id)
@@ -68,6 +76,7 @@ export function showBrowserNotification(row: {
       permission: browserPermission(),
       pageFocused:
         document.visibilityState === 'visible' && document.hasFocus(),
+      urgent: isEventReminder(row.notification_type),
       createdAt: row.created_at,
       readAt: row.read_at,
     })
@@ -80,6 +89,8 @@ export function showBrowserNotification(row: {
       icon: '/favicon.ico',
       // Several tabs raise the same notification once.
       tag: row.id,
+      // An event starting stays on screen until it is dealt with.
+      requireInteraction: isEventStartAlert(row),
     })
     popup.onclick = () => {
       window.focus()

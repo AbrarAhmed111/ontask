@@ -31,6 +31,26 @@ describe('desktop notifications', () => {
     )
   })
 
+  it('pop up for an event reminder even while OnTask is in front', () => {
+    expect(
+      shouldShowBrowserNotification({
+        ...base,
+        pageFocused: true,
+        urgent: true,
+      }),
+    ).toBe(true)
+    expect(
+      shouldShowBrowserNotification({
+        ...base,
+        urgent: true,
+        permission: 'default',
+      }),
+    ).toBe(false)
+    expect(
+      shouldShowBrowserNotification({ ...base, urgent: true, enabled: false }),
+    ).toBe(false)
+  })
+
   it('never replay old or already-read notifications', () => {
     expect(
       shouldShowBrowserNotification({

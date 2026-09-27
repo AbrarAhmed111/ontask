@@ -17,6 +17,7 @@ import {
   rememberBrowserPreference,
   showBrowserNotification,
 } from '@/lib/browserNotifications'
+import { primeEventSound, ringForNotification } from '@/lib/eventAlerts'
 
 const LIMIT = 50
 const NO_NOTIFICATIONS: NotificationWithWorkspace[] = []
@@ -106,6 +107,10 @@ export function useNotifications(
         })
     }
 
+    // Let an event reminder ring: browsers only allow sound after a click or
+    // key press on the page, so get the audio ready on the first one.
+    primeEventSound()
+
     const stopResync = onResync(() => fetchNotifications())
 
     // The scope is in the channel name so a workspace switch never reuses --
@@ -131,10 +136,15 @@ export function useNotifications(
           // A new notification can also pop up on the desktop -- from any
           // workspace, before this bell's own scope is applied: a personal
           // event's reminder matters wherever the user happens to be.
-          if (payload.eventType === 'INSERT')
+          // An event reminder also rings (lib/eventAlerts.ts).
+          if (payload.eventType === 'INSERT') {
             showBrowserNotification(
               payload.new as Parameters<typeof showBrowserNotification>[0],
             )
+            ringForNotification(
+              payload.new as Parameters<typeof ringForNotification>[0],
+            )
+          }
           // Realtime can only filter on one column, so a shared workspace's
           // bell skips other workspaces' changes here rather than refetching
           // for something it won't display.
