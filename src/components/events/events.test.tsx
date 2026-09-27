@@ -2,6 +2,7 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { UpcomingEventView } from '@/components/events/UpcomingEventCard'
 import { EventDetail } from '@/components/events/EventDetail'
+import { EventAlertsBannerView } from '@/components/events/EventAlertsBanner'
 import { EventListItem } from '@/components/events/EventParts'
 import { EventForm } from '@/components/events/EventForm'
 import { NotificationPreferencesView } from '@/components/settings/NotificationPreferencesCard'
@@ -462,5 +463,25 @@ describe('event notifications in the bell', () => {
       }),
     )
     expect(html).toContain('New time: Every weekday · 9:30 AM')
+  })
+})
+
+describe('the event alerts banner', () => {
+  const render = (
+    permission: 'default' | 'granted' | 'denied' | 'unsupported',
+  ) =>
+    renderToStaticMarkup(
+      <EventAlertsBannerView
+        permission={permission}
+        onEnable={noop}
+        onDismiss={noop}
+      />,
+    )
+
+  it('asks only while the browser has not been asked yet', () => {
+    expect(render('default')).toContain('Turn on alerts')
+    expect(render('granted')).toBe('')
+    expect(render('denied')).toBe('')
+    expect(render('unsupported')).toBe('')
   })
 })

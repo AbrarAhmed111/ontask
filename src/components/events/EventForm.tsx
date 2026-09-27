@@ -261,11 +261,12 @@ export function EventForm({
             )
           })}
         </div>
-        {values.reminderOffsets.length === 0 && (
-          <p className="mt-1.5 text-[11px] text-muted">
-            No reminder — nobody will be notified before it starts.
-          </p>
-        )}
+        <p className="mt-1.5 text-[11px] text-muted">
+          {values.reminderOffsets.length === 0
+            ? 'No reminder before it starts. '
+            : ''}
+          Everyone it’s for is also alerted when it starts.
+        </p>
       </fieldset>
 
       {workspace && (

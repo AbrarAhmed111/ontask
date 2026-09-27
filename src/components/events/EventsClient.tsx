@@ -11,6 +11,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { EventForm } from '@/components/events/EventForm'
 import { EventDetail } from '@/components/events/EventDetail'
+import { EventAlertsBanner } from '@/components/events/EventAlertsBanner'
 import { EventListItem } from '@/components/events/EventParts'
 import { useWorkspaceDetail } from '@/components/workspaces/WorkspaceDetailContext'
 import { useWorkspaceEvents } from '@/hooks/useWorkspaceEvents'
@@ -222,6 +223,8 @@ export function EventsClient() {
           New Event
         </Button>
       </div>
+
+      <EventAlertsBanner />
 
       <div
         role="tablist"
