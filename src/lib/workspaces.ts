@@ -29,6 +29,8 @@ export type WorkspaceRow = {
   events_countdown_enabled?: boolean
   events_notifications_enabled?: boolean
   events_members_can_create?: boolean
+  // Absent until migration 20260927130000 is applied.
+  events_featured_event_id?: string | null
   accent: string
   created_at: string
   updated_at: string
@@ -55,6 +57,7 @@ export function rowToWorkspace(row: WorkspaceRow): Workspace {
     eventsCountdownEnabled: row.events_countdown_enabled ?? true,
     eventsNotificationsEnabled: row.events_notifications_enabled ?? true,
     eventsMembersCanCreate: row.events_members_can_create ?? true,
+    eventsFeaturedEventId: row.events_featured_event_id ?? null,
     accent: row.accent,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -77,6 +80,7 @@ export type WorkspacePatch = Partial<
     | 'eventsCountdownEnabled'
     | 'eventsNotificationsEnabled'
     | 'eventsMembersCanCreate'
+    | 'eventsFeaturedEventId'
   >
 >
 
@@ -105,6 +109,8 @@ export function workspacePatchToRow(
     row.events_notifications_enabled = patch.eventsNotificationsEnabled
   if (patch.eventsMembersCanCreate !== undefined)
     row.events_members_can_create = patch.eventsMembersCanCreate
+  if (patch.eventsFeaturedEventId !== undefined)
+    row.events_featured_event_id = patch.eventsFeaturedEventId
   return row
 }
 

@@ -43,6 +43,10 @@ export type Workspace = {
   eventsCountdownEnabled: boolean
   eventsNotificationsEnabled: boolean
   eventsMembersCanCreate: boolean
+  // The event the owner chose for the Overview's "Upcoming event" card, or
+  // null for the next one (supabase/migrations/20260927130000). Only ever a
+  // workspace event of this workspace; see pickOverviewEvent in lib/events.ts.
+  eventsFeaturedEventId?: string | null
   accent: string
   createdAt: string
   updatedAt: string

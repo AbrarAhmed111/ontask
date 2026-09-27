@@ -39,6 +39,11 @@ export function isWorkspace(value: unknown): value is Workspace {
     typeof value.eventsCountdownEnabled === 'boolean' &&
     typeof value.eventsNotificationsEnabled === 'boolean' &&
     typeof value.eventsMembersCanCreate === 'boolean' &&
+    // Optional: a workspace cached before the Overview's featured event
+    // existed has none.
+    (value.eventsFeaturedEventId === undefined ||
+      value.eventsFeaturedEventId === null ||
+      typeof value.eventsFeaturedEventId === 'string') &&
     typeof value.accent === 'string' &&
     typeof value.createdAt === 'string' &&
     typeof value.updatedAt === 'string'
