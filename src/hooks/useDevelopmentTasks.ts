@@ -300,6 +300,48 @@ export function useDevelopmentTasks(
     return { success: true }
   }
 
+  // Hide every finished task from the board's Completed column. Board only:
+  // the tasks, their Goals and their history are untouched.
+  const clearCompleted = () => {
+    const finished = new Set(
+      tasks
+        .filter(
+          task => task.status === 'completed' || task.status === 'skipped',
+        )
+        .map(task => task.id),
+    )
+    const cleared = developmentList.filter(
+      item => finished.has(item.taskId) && item.completedClearedAt == null,
+    )
+    if (cleared.length === 0) return
+    const clearedIds = new Set(cleared.map(item => item.taskId))
+    const clearedAt = new Date().toISOString()
+    setData(current => ({
+      ...current,
+      developments: current.developments.map(item =>
+        clearedIds.has(item.taskId)
+          ? { ...item, completedClearedAt: clearedAt }
+          : item,
+      ),
+    }))
+    void createClient()
+      .rpc('clear_completed_development_tasks', {
+        p_workspace_id: workspaceId,
+      })
+      .then(({ error: rpcError }) => {
+        if (!rpcError) return
+        setData(current => ({
+          ...current,
+          developments: current.developments.map(item =>
+            clearedIds.has(item.taskId)
+              ? { ...item, completedClearedAt: null }
+              : item,
+          ),
+        }))
+        setError("Couldn't clear completed tasks.")
+      })
+  }
+
   // Ask the server to check GitHub for this task (throttled there). Failure is
   // quiet: webhooks remain the primary path, this is only the safety net.
   const reconcile = useCallback(async (taskId: string) => {
@@ -350,6 +392,7 @@ export function useDevelopmentTasks(
     clearError: () => setError(null),
     createDevelopmentTask,
     updateBranchName,
+    clearCompleted,
     reconcile,
     reassignTask: actions.reassignTask,
     updateTask: actions.updateTask,

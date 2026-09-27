@@ -13,6 +13,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { useWorkspaceDetail } from '@/components/workspaces/WorkspaceDetailContext'
 import { useTour } from '@/components/tour/TourProvider'
+import { ClearCompletedButton } from '@/components/tasks/ClearCompletedButton'
 import { DevelopmentBoard } from '@/components/development/DevelopmentBoard'
 import { DevelopmentTourDemo } from '@/components/development/DevelopmentTourDemo'
 import { DevelopmentTaskForm } from '@/components/development/DevelopmentTaskForm'
@@ -22,6 +23,7 @@ import { useDevelopmentData } from '@/components/development/DevelopmentDataCont
 import {
   CONNECTION_STATUS_MESSAGES,
   DEVELOPMENT_STAGES,
+  isClearedFromBoard,
   isTracking,
 } from '@/lib/development/tracking'
 import { TOURS } from '@/lib/tour/definitions'
@@ -174,6 +176,18 @@ export function WorkspaceDevelopmentSection({ goals }: { goals: Goal[] }) {
     [goals],
   )
   const openItem = development.items.find(item => item.task.id === openTaskId)
+  // Cleared tasks leave the board only; a link or a Code badge still opens
+  // them (openItem looks in every item).
+  const boardItems = useMemo(
+    () =>
+      development.items.filter(
+        item => !isClearedFromBoard(item.task, item.development),
+      ),
+    [development.items],
+  )
+  const completedCount = boardItems.filter(
+    item => item.task.status === 'completed' || item.task.status === 'skipped',
+  ).length
 
   // A link to a task that isn't (or is no longer) a Development Task here.
   useEffect(() => {
@@ -204,11 +218,19 @@ export function WorkspaceDevelopmentSection({ goals }: { goals: Goal[] }) {
             Pull Request.
           </p>
         </div>
-        <span className="inline-flex" {...tourAnchor('dev-new-task')}>
-          <Button onClick={() => setCreating(true)} disabled={demo}>
-            <CirclePlus size={15} /> New Development Task
-          </Button>
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          {!demo && development.ready && (
+            <ClearCompletedButton
+              count={completedCount}
+              onClear={development.clearCompleted}
+            />
+          )}
+          <span className="inline-flex" {...tourAnchor('dev-new-task')}>
+            <Button onClick={() => setCreating(true)} disabled={demo}>
+              <CirclePlus size={15} /> New Development Task
+            </Button>
+          </span>
+        </div>
       </div>
 
       {demo ? (
@@ -247,7 +269,7 @@ export function WorkspaceDevelopmentSection({ goals }: { goals: Goal[] }) {
             </EmptyState>
           ) : (
             <DevelopmentBoard
-              items={development.items}
+              items={boardItems}
               goals={goals}
               members={members}
               connection={github.connection}
