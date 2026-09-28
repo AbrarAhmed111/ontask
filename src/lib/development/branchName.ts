@@ -2,53 +2,41 @@
 // creates the branch -- this exact name is what lets it recognise the branch,
 // and the Pull Request opened from it, when GitHub reports them.
 //
-//   "Implement Google OAuth" + Abrar Ahmed  ->  feature/google-oauth-abrar
-//   a Bug "Login button broken" + Iqra      ->  fix/login-button-broken-iqra
+//   <type>/<task ID>-<task title>-<assignee>
 //
-// Deterministic (same title and assignee, same name), lowercase, and limited to
-// letters, digits, "-" and "/" -- the same rule the database enforces
-// (claim_development_branch_name), which is also what makes the name unique in
-// the workspace by adding -02, -03, ... when it is already taken.
+//   OT-123 "Phase 2 — LLM DM Generation" + Abrar Ahmed
+//     ->  feature/OT-123-phase-2-llm-dm-generation-abrar
+//   OT-124 a Bug "Phase 2 Web UI Bugs" + Iqra
+//     ->  fix/OT-124-phase-2-web-ui-bugs-iqra
+//
+// The task ID is the Development Task's own sequential number in its workspace
+// (task_development.task_number, migration 20260928120000). The server writes
+// that number into the name it stores, so the one the form previews is only a
+// guess until the task exists.
+//
+// Deterministic (same task, title and assignee, same name), lowercase apart
+// from the "OT" of the ID, and limited to letters, digits, "-" and "/" -- the
+// same rule the database enforces (claim_development_branch_name), which also
+// makes the name unique in the workspace by adding -02, -03, ... when taken.
 
 import { workTypeInfo } from '@/lib/development/tracking'
 import type { DevelopmentWorkType } from '@/types/workspace'
 
-// Longest task part, before the assignee is added. Cut at a word boundary.
-const TASK_SLUG_MAX = 40
+export const TASK_ID_PREFIX = 'OT'
 const ASSIGNEE_SLUG_MAX = 20
 
 // Mirrors the database CHECK (task_development.branch_name) and leaves room
-// for a -N suffix under its 100-character limit.
-const BRANCH_NAME_PATTERN = /^[a-z0-9]+([-/][a-z0-9]+)*$/
+// for a -N suffix under its 100-character limit. The OT-<n> segment is
+// optional only so names from before task IDs stay valid.
+const BRANCH_NAME_PATTERN = /^[a-z0-9]+(\/OT-[0-9]+)?([-/][a-z0-9]+)*$/
 export const BRANCH_NAME_MAX = 90
 
-// A task title usually starts with what to do; the branch already says it is a
-// feature, so a leading "Implement"/"Add"/... says nothing ("Implement Google
-// OAuth" -> google-oauth). Only one, and only when something is left after it.
-const LEADING_VERBS = new Set([
-  'implement',
-  'add',
-  'build',
-  'create',
-  'make',
-  'develop',
-  'introduce',
-  'support',
-])
-
-const FILLER_WORDS = new Set([
-  'a',
-  'an',
-  'the',
-  'to',
-  'for',
-  'of',
-  'and',
-  'in',
-  'on',
-  'with',
-  'into',
-])
+// "OT-123". Only ever the number the task was given -- never made up.
+export function taskIdLabel(taskNumber: number): string {
+  if (!Number.isSafeInteger(taskNumber) || taskNumber < 1)
+    throw new RangeError(`Invalid task number: ${taskNumber}`)
+  return `${TASK_ID_PREFIX}-${taskNumber}`
+}
 
 // Lowercase ASCII words: accents folded (é -> e), everything else a separator.
 function words(text: string): string[] {
@@ -71,23 +59,10 @@ function joinWithin(parts: string[], max: number): string {
   return out || (parts[0] ?? '').slice(0, max)
 }
 
-// For a fix the branch already starts with fix/ (or hotfix/), so a leading
-// "Fix"/"Resolve" repeats it: "Fix login button" -> fix/login-button.
-const FIX_VERBS = new Set(['fix', 'resolve', 'repair'])
-
-export function taskSlug(
-  title: string,
-  workType: DevelopmentWorkType = 'feature',
-): string {
-  let parts = words(title)
-  const isFix = workType === 'bug' || workType === 'hotfix'
-  if (
-    parts.length > 1 &&
-    (LEADING_VERBS.has(parts[0]) || (isFix && FIX_VERBS.has(parts[0])))
-  )
-    parts = parts.slice(1)
-  const meaningful = parts.filter(part => !FILLER_WORDS.has(part))
-  return joinWithin(meaningful.length > 0 ? meaningful : parts, TASK_SLUG_MAX)
+// The whole title in kebab-case -- no words dropped, so the branch reads like
+// the task. Only a title too long for the branch is cut, at a word boundary.
+export function taskSlug(title: string, max = BRANCH_NAME_MAX): string {
+  return joinWithin(words(title), max)
 }
 
 // The assignee's first name ("Abrar Ahmed" -> abrar), else the start of their
@@ -102,13 +77,28 @@ export function assigneeSlug(
 }
 
 export function generateBranchName(
+  taskNumber: number,
   title: string,
   assignee: { fullName?: string | null; email?: string | null } | null,
   workType: DevelopmentWorkType = 'feature',
 ): string {
-  const task = taskSlug(title, workType) || 'task'
+  const start = `${workTypeInfo(workType).branchPrefix}${taskIdLabel(taskNumber)}-`
   const person = assigneeSlug(assignee)
-  return `${workTypeInfo(workType).branchPrefix}${person ? `${task}-${person}` : task}`
+  const end = person ? `-${person}` : ''
+  const task =
+    taskSlug(title, BRANCH_NAME_MAX - start.length - end.length) || 'task'
+  return `${start}${task}${end}`
+}
+
+// The number the next Development Task in the workspace will probably get,
+// for the form's preview. The server allocates the real one (a deleted
+// task's number is never reused, so it can be higher).
+export function nextTaskNumber(
+  taskNumbers: Iterable<number | null | undefined>,
+): number {
+  let max = 0
+  for (const n of taskNumbers) if (n && n > max) max = n
+  return max + 1
 }
 
 export function isValidBranchName(name: string): boolean {

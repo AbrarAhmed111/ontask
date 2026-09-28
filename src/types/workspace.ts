@@ -199,6 +199,10 @@ export type DevelopmentWorkType =
 export type TaskDevelopment = {
   taskId: string
   workspaceId: string
+  // The task's ID in its workspace, shown as OT-<n> (see taskIdLabel in
+  // lib/development/branchName.ts). Sequential, never reused. Null only
+  // before migration 20260928120000 is applied.
+  taskNumber: number | null
   branchName: string
   workType: DevelopmentWorkType
   repositoryId: number | null

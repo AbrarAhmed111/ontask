@@ -20,6 +20,7 @@ import { DevelopmentTaskForm } from '@/components/development/DevelopmentTaskFor
 import { DevelopmentTaskCreated } from '@/components/development/DevelopmentTaskCreated'
 import { DevelopmentTaskDetail } from '@/components/development/DevelopmentTaskDetail'
 import { useDevelopmentData } from '@/components/development/DevelopmentDataContext'
+import { nextTaskNumber } from '@/lib/development/branchName'
 import {
   CONNECTION_STATUS_MESSAGES,
   DEVELOPMENT_STAGES,
@@ -302,6 +303,9 @@ export function WorkspaceDevelopmentSection({ goals }: { goals: Goal[] }) {
               members={members}
               goals={goals}
               currentUserId={user.id}
+              nextTaskNumber={nextTaskNumber(
+                development.items.map(item => item.development.taskNumber),
+              )}
               branchHolders={development.items
                 .filter(item => item.development.branchReleasedAt === null)
                 .map(item => ({

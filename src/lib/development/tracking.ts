@@ -12,6 +12,8 @@ import type {
 export type TaskDevelopmentRow = {
   task_id: string
   workspace_id: string
+  // Absent until migration 20260928120000 is applied.
+  task_number?: number | null
   branch_name: string
   // Absent until migration 20260926150000 is applied.
   work_type?: DevelopmentWorkType
@@ -40,6 +42,7 @@ export function rowToTaskDevelopment(row: TaskDevelopmentRow): TaskDevelopment {
   return {
     taskId: row.task_id,
     workspaceId: row.workspace_id,
+    taskNumber: row.task_number ?? null,
     branchName: row.branch_name,
     workType: row.work_type ?? 'feature',
     repositoryId:

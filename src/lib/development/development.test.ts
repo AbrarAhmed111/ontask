@@ -1,11 +1,14 @@
 ﻿import { describe, expect, it } from 'vitest'
 import {
+  BRANCH_NAME_MAX,
   assigneeSlug,
   generateBranchName,
   isNumberedVariant,
   branchCollision,
   isValidBranchName,
+  nextTaskNumber,
   numberedBranchName,
+  taskIdLabel,
   taskSlug,
 } from '@/lib/development/branchName'
 import {
@@ -25,89 +28,140 @@ const abrar = { fullName: 'Abrar Ahmed', email: 'abrar@example.com' }
 
 describe('generateBranchName', () => {
   it.each([
-    ['Implement Google OAuth', abrar, 'feature/google-oauth-abrar'],
     [
-      'Workspace invites',
+      123,
+      'Phase 2 — LLM DM Generation',
+      abrar,
+      'feature',
+      'feature/OT-123-phase-2-llm-dm-generation-abrar',
+    ],
+    [
+      124,
+      'Phase 2 LLM Call Scripts',
+      abrar,
+      'feature',
+      'feature/OT-124-phase-2-llm-call-scripts-abrar',
+    ],
+    [
+      125,
+      'Phase 2 Web UI Bugs',
       { fullName: 'Iqra' },
-      'feature/workspace-invites-iqra',
+      'bug',
+      'fix/OT-125-phase-2-web-ui-bugs-iqra',
     ],
     [
-      'Realtime presence',
-      { fullName: 'Araysh Khan' },
-      'feature/realtime-presence-araysh',
+      126,
+      'Refactor current web code',
+      { fullName: 'Iqra' },
+      'refactor',
+      'refactor/OT-126-refactor-current-web-code-iqra',
     ],
-  ])('%s -> %s', (title, person, expected) => {
-    expect(generateBranchName(title, person)).toBe(expected)
+    [
+      127,
+      'Improve task notifications',
+      abrar,
+      'improvement',
+      'improvement/OT-127-improve-task-notifications-abrar',
+    ],
+    [
+      128,
+      'Update CI config',
+      { fullName: 'Araysh Khan' },
+      'chore',
+      'chore/OT-128-update-ci-config-araysh',
+    ],
+  ] as const)('OT-%i %s -> %s', (id, title, person, type, expected) => {
+    expect(generateBranchName(id, title, person, type)).toBe(expected)
   })
 
   it('takes its prefix from the task type', () => {
-    expect(generateBranchName('Login button broken', abrar, 'bug')).toBe(
-      'fix/login-button-broken-abrar',
+    expect(generateBranchName(1, 'Payments down', abrar, 'hotfix')).toBe(
+      'hotfix/OT-1-payments-down-abrar',
     )
-    expect(generateBranchName('Payments down', abrar, 'hotfix')).toBe(
-      'hotfix/payments-down-abrar',
+    expect(generateBranchName(1, 'Setup guide', abrar, 'docs')).toBe(
+      'docs/OT-1-setup-guide-abrar',
     )
-    expect(generateBranchName('Update setup guide', abrar, 'docs')).toBe(
-      'docs/update-setup-guide-abrar',
+    expect(generateBranchName(1, 'Setup guide', abrar)).toBe(
+      'feature/OT-1-setup-guide-abrar',
     )
   })
 
-  it('drops a leading "Fix" for a fix, so it is not fix/fix-...', () => {
-    expect(generateBranchName('Fix login button', abrar, 'bug')).toBe(
-      'fix/login-button-abrar',
+  it('keeps the exact task number', () => {
+    expect(generateBranchName(1, 'Task', null)).toBe('feature/OT-1-task')
+    expect(generateBranchName(1000042, 'Task', null)).toBe(
+      'feature/OT-1000042-task',
     )
-    // ...but keeps it for other types, where it carries meaning.
-    expect(generateBranchName('Fix login button', abrar)).toBe(
-      'feature/fix-login-button-abrar',
+  })
+
+  it('keeps every word of the title, verbs and small words included', () => {
+    expect(generateBranchName(9, 'Fix login button', abrar, 'bug')).toBe(
+      'fix/OT-9-fix-login-button-abrar',
     )
+    expect(
+      generateBranchName(9, 'Implement a way to add the logo', abrar),
+    ).toBe('feature/OT-9-implement-a-way-to-add-the-logo-abrar')
+  })
+
+  it('refuses a missing or invalid task number', () => {
+    for (const bad of [0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(() => generateBranchName(bad, 'Task', abrar)).toThrow(RangeError)
+    }
   })
 
   it('produces a valid name for every type', () => {
     for (const type of WORK_TYPES) {
       expect(
-        isValidBranchName(generateBranchName('A title', abrar, type.value)),
+        isValidBranchName(generateBranchName(5, 'A title', abrar, type.value)),
       ).toBe(true)
     }
   })
 
   it('is deterministic', () => {
-    expect(generateBranchName('Add session handling', abrar)).toBe(
-      generateBranchName('Add session handling', abrar),
+    expect(generateBranchName(3, 'Add session handling', abrar)).toBe(
+      generateBranchName(3, 'Add session handling', abrar),
     )
   })
 
   it('leaves the assignee out when there is none', () => {
-    expect(generateBranchName('Add logout flow', null)).toBe(
-      'feature/logout-flow',
+    expect(generateBranchName(4, 'Add logout flow', null)).toBe(
+      'feature/OT-4-add-logout-flow',
+    )
+    expect(generateBranchName(4, 'Add logout flow', { fullName: '  ' })).toBe(
+      'feature/OT-4-add-logout-flow',
     )
   })
 
-  it('removes special characters and folds accents', () => {
+  it('removes special characters and spaces, and folds accents', () => {
     expect(
-      generateBranchName('Fix: "café" menu & login (v2)!', {
+      generateBranchName(12, '  Fix: "café"   menu & login (v2)! ', {
         fullName: 'Zoë',
       }),
-    ).toBe('feature/fix-cafe-menu-login-v2-zoe')
+    ).toBe('feature/OT-12-fix-cafe-menu-login-v2-zoe')
+    expect(generateBranchName(12, 'feat/../x..y~^:?*[@{', null)).toBe(
+      'feature/OT-12-feat-x-y',
+    )
   })
 
   it('keeps an accented word whole', () => {
     expect(taskSlug('Naïve résumé parser')).toBe('naive-resume-parser')
   })
 
-  it('keeps a lone verb rather than producing nothing', () => {
-    expect(taskSlug('Implement')).toBe('implement')
-  })
-
   it('falls back to a placeholder for a title with no usable characters', () => {
-    expect(generateBranchName('!!!', null)).toBe('feature/task')
+    expect(generateBranchName(2, '!!!', null)).toBe('feature/OT-2-task')
+    expect(generateBranchName(2, '日本語のタイトル', abrar)).toBe(
+      'feature/OT-2-task-abrar',
+    )
   })
 
-  it('limits length at a word boundary', () => {
-    const slug = taskSlug(
-      'Build the extremely detailed quarterly analytics export pipeline for enterprise customers',
+  it('cuts only a title too long for a branch, at a word boundary, and keeps the ID and assignee', () => {
+    const title =
+      'Build the extremely detailed quarterly analytics export pipeline for enterprise customers across every region'
+    const name = generateBranchName(123, title, abrar, 'improvement')
+    expect(name.length).toBeLessThanOrEqual(BRANCH_NAME_MAX)
+    expect(name).toBe(
+      'improvement/OT-123-build-the-extremely-detailed-quarterly-analytics-export-pipeline-abrar',
     )
-    expect(slug.length).toBeLessThanOrEqual(40)
-    expect(slug).toBe('extremely-detailed-quarterly-analytics')
+    expect(isValidBranchName(name)).toBe(true)
   })
 
   it('uses the email name when there is no full name', () => {
@@ -122,17 +176,47 @@ describe('generateBranchName', () => {
       '   ',
       'ÄÖÜ ß ñ',
       'a'.repeat(300),
+      'word '.repeat(60),
       '日本語のタイトル',
       '--- / ---',
     ]) {
-      expect(isValidBranchName(generateBranchName(title, abrar))).toBe(true)
+      for (const id of [1, 99999999]) {
+        const name = generateBranchName(id, title, abrar, 'improvement')
+        expect(isValidBranchName(name)).toBe(true)
+        // Room left for the -02, -03, ... the server may add.
+        expect(`${name}-100`.length).toBeLessThanOrEqual(100)
+      }
     }
+  })
+})
+
+describe('taskIdLabel', () => {
+  it('formats the task number as OT-<n>', () => {
+    expect(taskIdLabel(123)).toBe('OT-123')
+  })
+})
+
+describe('nextTaskNumber', () => {
+  it('previews one past the highest known number', () => {
+    expect(nextTaskNumber([3, 9, 4])).toBe(10)
+  })
+
+  it('starts at 1, ignoring tasks without a number yet', () => {
+    expect(nextTaskNumber([])).toBe(1)
+    expect(nextTaskNumber([null, undefined])).toBe(1)
   })
 })
 
 describe('isValidBranchName', () => {
   it.each([
     ['feature/google-oauth-abrar', true],
+    ['feature/OT-123-phase-2-llm-dm-generation-abrar', true],
+    ['fix/OT-124-phase-2-web-ui-bugs-iqra-02', true],
+    ['feature/OT-x-task', false],
+    ['feature/OT--task', false],
+    ['feature/ot-1-task/OT-2-task', false],
+    ['OT-1/task', false],
+    ['feature/Ot-1-task', false],
     ['Feature/Upper', false],
     ['feature/has space', false],
     ['feature//double', false],

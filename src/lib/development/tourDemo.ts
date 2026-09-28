@@ -162,7 +162,7 @@ export function demoAssignee(key: string) {
 
 // Built on demand so the timestamps are relative to when the tour opens.
 export function buildDemoItems(now = Date.now()): DemoItem[] {
-  return SPECS.map(spec => {
+  return SPECS.map((spec, index) => {
     const id = `demo-task-${spec.key}`
     const createdAt = new Date(now - spec.age * 60_000).toISOString()
     const finished = spec.status === 'completed'
@@ -185,7 +185,9 @@ export function buildDemoItems(now = Date.now()): DemoItem[] {
     const development: TaskDevelopment = {
       taskId: id,
       workspaceId: 'demo-workspace',
+      taskNumber: index + 1,
       branchName: generateBranchName(
+        index + 1,
         spec.title,
         demoAssignee(spec.assignee),
         spec.workType,

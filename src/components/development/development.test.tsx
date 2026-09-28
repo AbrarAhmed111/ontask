@@ -34,6 +34,7 @@ const development = (
 ): TaskDevelopment => ({
   taskId: 't1',
   workspaceId: 'w1',
+  taskNumber: 1,
   branchName: 'feature/google-oauth-abrar',
   workType: 'feature',
   repositoryId: null,
@@ -360,6 +361,7 @@ describe('DevelopmentTaskForm', () => {
       members={[member('u-abrar', 'Abrar Ahmed')]}
       goals={[]}
       currentUserId="u-abrar"
+      nextTaskNumber={7}
       branchHolders={[]}
       onCreate={async () => ({ success: true })}
       onCancel={() => {}}

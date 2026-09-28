@@ -51,7 +51,7 @@ describe('DevelopmentTourDemo', () => {
   })
 
   it('shows a branch to create and a Pull Request at each later stage', () => {
-    expect(html).toContain('git checkout -b feature/')
+    expect(html).toContain('git checkout -b feature/OT-')
     expect(html).toContain('#128')
     expect(html).toContain('#121 merged')
   })

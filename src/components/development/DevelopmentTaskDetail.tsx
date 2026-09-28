@@ -137,11 +137,16 @@ export function DevelopmentTaskDetail({
               task={task}
               development={development}
               connection={connection}
-              suggestedBranchName={generateBranchName(
-                task.name,
-                assignee ?? null,
-                development.workType,
-              )}
+              suggestedBranchName={
+                development.taskNumber === null
+                  ? undefined
+                  : generateBranchName(
+                      development.taskNumber,
+                      task.name,
+                      assignee ?? null,
+                      development.workType,
+                    )
+              }
               onUseBranchName={name => void applyBranchName(name)}
             />
           </div>

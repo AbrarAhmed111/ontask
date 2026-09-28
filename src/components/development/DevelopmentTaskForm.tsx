@@ -133,7 +133,7 @@ export function BranchCollisionNotice({
 }
 
 // Create a Development Task. It is always a new task. Its branch name follows
-// the type (feature/, fix/, ...), the title and the assignee; if another task
+// the type (feature/, fix/, ...), the task ID, the title and the assignee; if another task
 // in the workspace already has that name, the form says which, and the new
 // task is numbered -02, -03, ... (or, if that task is finished, may reuse the
 // name). The server decides, and the dialog shows the final name (to copy)
@@ -142,6 +142,7 @@ export function DevelopmentTaskForm({
   members,
   goals,
   currentUserId,
+  nextTaskNumber,
   branchHolders,
   onCreate,
   onCancel,
@@ -149,6 +150,9 @@ export function DevelopmentTaskForm({
   members: WorkspaceMember[]
   goals: Goal[]
   currentUserId: string
+  // The task ID the new task will probably get, for the preview only: the
+  // server allocates the real one and writes it into the branch name.
+  nextTaskNumber: number
   // The Development Tasks in this workspace holding a branch name.
   branchHolders: BranchHolder[]
   onCreate: (
@@ -214,8 +218,8 @@ export function DevelopmentTaskForm({
   const branchName = useMemo(() => {
     if (!title.trim()) return ''
     const member = members.find(m => m.userId === assigneeId) ?? null
-    return generateBranchName(title, member, workType)
-  }, [title, assigneeId, workType, members])
+    return generateBranchName(nextTaskNumber, title, member, workType)
+  }, [nextTaskNumber, title, assigneeId, workType, members])
   const collision = branchName
     ? branchCollision(branchName, branchHolders)
     : null

@@ -26,6 +26,7 @@ const development = (
 ): TaskDevelopment => ({
   taskId: 't1',
   workspaceId: 'w1',
+  taskNumber: 1,
   branchName: 'feature/google-oauth-abrar',
   workType: 'feature',
   repositoryId: null,
