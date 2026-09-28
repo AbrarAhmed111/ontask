@@ -418,11 +418,14 @@ Development Task and its tracking.
 - **Development Tasks** are always created new, and are ordinary workspace tasks
   underneath (timers, notes, blockers, Goals and Activity all work unchanged).
   Each has a type — Feature, Bug, Hotfix, Improvement, Refactor, Chore or Docs —
-  a priority, and a generated branch name whose prefix follows the type:
-  "Implement Google OAuth" for Abrar Ahmed → `feature/google-oauth-abrar`; a Bug
-  "Login button broken" → `fix/login-button-broken-abrar`. If another task in
-  the workspace already has that name, the new one is numbered `-02`, `-03`, …
-  The final name is shown with a copy button once the task is created.
+  a priority, a task ID, and a generated branch name
+  `<type>/<task ID>-<task title>-<assignee>`: task OT-123 "Phase 2 — LLM DM
+  Generation" for Abrar Ahmed →
+  `feature/OT-123-phase-2-llm-dm-generation-abrar`; a Bug OT-124 "Phase 2 Web UI
+  Bugs" for Iqra → `fix/OT-124-phase-2-web-ui-bugs-iqra`. Task IDs are
+  sequential per workspace, assigned by the server (never reused), and written
+  into the branch name by it. The final name is shown with a copy button once
+  the task is created.
 - **OnTask never creates the branch.** The developer copies the name and creates
   it themselves; that exact name is how OnTask recognises the branch and the
   Pull Request opened from it.
