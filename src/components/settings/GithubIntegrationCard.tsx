@@ -84,6 +84,49 @@ function InstallationChoiceFromUrl({
   return null
 }
 
+// The GitHub card while the Development module is off: GitHub only feeds
+// Development tracking, so nothing is loaded -- it just says how to turn it on.
+export function GithubIntegrationOffCard({
+  canManage,
+  onOpenModules,
+  className = '',
+}: {
+  canManage: boolean
+  onOpenModules?: () => void
+  className?: string
+}) {
+  return (
+    <SettingsCard
+      iconNode={<GithubLogo />}
+      title="GitHub"
+      className={className}
+    >
+      <div className="space-y-3 px-5 py-4">
+        <p className="text-xs leading-5 text-muted">
+          Development is off for this workspace. GitHub tracks the branches and
+          Pull Requests of Development Tasks, so turn Development on in Modules
+          to connect a repository.
+        </p>
+        {canManage ? (
+          onOpenModules && (
+            <button
+              type="button"
+              onClick={onOpenModules}
+              className={LINK_CLASS}
+            >
+              Go to Modules
+            </button>
+          )
+        ) : (
+          <p className="text-[10px] leading-4 text-muted">
+            Only the workspace owner can turn Development on.
+          </p>
+        )}
+      </div>
+    </SettingsCard>
+  )
+}
+
 // Settings -> Development -> GitHub, for THIS workspace only (the settings page
 // renders it keyed by workspace, so nothing carries over from another one).
 // Every member can see which repository is tracked; only the owner connects,

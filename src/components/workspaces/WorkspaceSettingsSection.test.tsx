@@ -312,16 +312,30 @@ describe('WorkspaceSettingsSection — Modules', () => {
     expect(html).not.toContain('Modules')
   })
 
-  it('shows the GitHub card only while Development is on', () => {
-    expect(
-      render({ modules, activeTab: 'integrations-settings' }),
-    ).not.toContain('>GitHub<')
+  it('shows the GitHub card with a turn-on note while Development is off', () => {
+    const off = render({
+      modules,
+      canManage: false,
+      activeTab: 'integrations-settings',
+    })
+    expect(off).toContain('GitHub')
+    expect(off).toContain('Development is off for this workspace')
+    expect(off).toContain('Only the workspace owner can turn Development on.')
+    const owner = render({
+      modules,
+      canManage: true,
+      onTabChange: noop,
+      activeTab: 'integrations-settings',
+    })
+    expect(owner).toContain('Go to Modules')
+    expect(owner).not.toContain('Only the workspace owner')
     const on = render({
       modules,
       workspace: workspace({ developmentEnabled: true }),
       activeTab: 'integrations-settings',
     })
     expect(on).toContain('GitHub')
+    expect(on).not.toContain('Development is off')
   })
 })
 

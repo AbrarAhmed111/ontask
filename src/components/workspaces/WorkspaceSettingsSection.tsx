@@ -25,7 +25,10 @@ import { WorkspacePatch } from '@/lib/workspaces'
 import { Workspace } from '@/types/workspace'
 import { SlackIntegrationCard } from '@/components/settings/SlackIntegrationCard'
 import { SettingsCard } from '@/components/settings/SettingsCard'
-import { GithubIntegrationCard } from '@/components/settings/GithubIntegrationCard'
+import {
+  GithubIntegrationCard,
+  GithubIntegrationOffCard,
+} from '@/components/settings/GithubIntegrationCard'
 
 export type WorkspaceSettingsTab =
   | 'workspace-settings'
@@ -407,13 +410,23 @@ export function WorkspaceSettingsSection({
 
       {selectedTab === 'integrations-settings' && !isPersonal && workspace && (
         <div className="grid gap-5 lg:grid-cols-2">
-          {workspace.developmentEnabled && (
+          {workspace.developmentEnabled ? (
             <GithubIntegrationCard
               // Keyed by workspace: nothing it loaded for one workspace (a
               // repository list, a pending account choice) carries into another.
               key={workspace.id}
               workspaceId={workspace.id}
               canManage={canManage}
+            />
+          ) : (
+            <GithubIntegrationOffCard
+              canManage={canManage}
+              onOpenModules={
+                onTabChange &&
+                visibleTabs.some(t => t.id === 'modules-settings')
+                  ? () => onTabChange('modules-settings')
+                  : undefined
+              }
             />
           )}
 
